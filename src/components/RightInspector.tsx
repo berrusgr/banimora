@@ -35,6 +35,8 @@ import {
   Box,
   BarChart3,
   Table,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { CHART_PALETTES } from './ChartsAndTablesRenderer';
 import {
@@ -74,6 +76,73 @@ import {
   MAX_TOTAL_PROJECT_DURATION,
 } from '../utils/animationEngine';
 import { ensureAudioLipSyncAnalyzed } from '../utils/audioLipSync';
+
+type DesignSectionKey =
+  | 'actions'
+  | 'rig'
+  | 'expression'
+  | 'lipsync'
+  | 'transform'
+  | 'composite'
+  | 'text'
+  | 'chart'
+  | 'table'
+  | 'palette'
+  | 'timing'
+  | 'motionpath';
+
+const DesignAccordionSection: React.FC<{
+  isOpen: boolean;
+  onToggle: () => void;
+  title: React.ReactNode;
+  titleClassName?: string;
+  containerClassName?: string;
+  headerExtra?: React.ReactNode;
+  children: React.ReactNode;
+}> = ({
+  isOpen,
+  onToggle,
+  title,
+  titleClassName = 'text-xs font-bold text-slate-800',
+  containerClassName = 'p-3 rounded-xl bg-slate-50 border border-slate-200',
+  headerExtra,
+  children,
+}) => (
+  <div className={`${containerClassName} ${isOpen ? 'space-y-2.5' : ''}`}>
+    <div
+      role="button"
+      tabIndex={0}
+      aria-expanded={isOpen}
+      onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+      className="flex items-center justify-between gap-2 cursor-pointer select-none group"
+    >
+      <span className={`${titleClassName} flex items-center gap-1.5 min-w-0`}>
+        {title}
+      </span>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {headerExtra && (
+          <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+            {headerExtra}
+          </div>
+        )}
+        <span className="p-0.5 rounded text-slate-400 group-hover:text-slate-700 group-hover:bg-slate-200/60 transition-colors">
+          {isOpen ? (
+            <ChevronDown className="w-3.5 h-3.5" />
+          ) : (
+            <ChevronRight className="w-3.5 h-3.5" />
+          )}
+        </span>
+      </div>
+    </div>
+    {isOpen && children}
+  </div>
+);
 
 interface RightInspectorProps {
   scene: Scene;
@@ -366,6 +435,12 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
   const [rigPoseSlot, setRigPoseSlot] = useState<'start' | 'target'>('start');
   const [appliedAllFeedback, setAppliedAllFeedback] = useState(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<
+    Partial<Record<DesignSectionKey, boolean>>
+  >({});
+  const isSectionOpen = (key: DesignSectionKey) => !collapsedSections[key];
+  const toggleSection = (key: DesignSectionKey) =>
+    setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }));
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const bgUploadInputRef = useRef<HTMLInputElement>(null);
@@ -1283,11 +1358,18 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               </button>
 
               {/* 1. KARAKTER EYLEMLERİ (ACTIONS) - 3 KATEGORİ */}
-              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 space-y-2">
-                <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
-                  <Bone className="w-3.5 h-3.5 text-indigo-600" />
-                  Karakter Eylemleri (Actions)
-                </span>
+              <DesignAccordionSection
+                isOpen={isSectionOpen('actions')}
+                onToggle={() => toggleSection('actions')}
+                containerClassName="bg-white p-2.5 rounded-xl border border-indigo-100"
+                titleClassName="text-[11px] font-bold text-slate-800"
+                title={
+                  <>
+                    <Bone className="w-3.5 h-3.5 text-indigo-600" />
+                    Karakter Eylemleri (Actions)
+                  </>
+                }
+              >
 
                 {/* Category Tabs: Temel | İş & Yaşam | Duygusal */}
                 <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-slate-100 border border-slate-200">
@@ -1390,19 +1472,26 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                     />
                   </div>
                 </div>
-              </div>
+              </DesignAccordionSection>
 
               {/* 1.B HİBRİT HAREKET SİSTEMİ (HAZIR AKSİYON + MANUEL 2D İSKELET & EL DURUŞU) */}
-              <div className="bg-gradient-to-br from-pink-50/80 via-white to-indigo-50/50 p-2.5 rounded-xl border border-pink-200/90 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-slate-900 flex items-center gap-1.5">
+              <DesignAccordionSection
+                isOpen={isSectionOpen('rig')}
+                onToggle={() => toggleSection('rig')}
+                containerClassName="bg-gradient-to-br from-pink-50/80 via-white to-indigo-50/50 p-2.5 rounded-xl border border-pink-200/90"
+                titleClassName="text-[11px] font-bold text-slate-900"
+                title={
+                  <>
                     <Bone className="w-3.5 h-3.5 text-pink-600" />
                     Hibrit Hareket & 2D İskelet (Rigging)
-                  </span>
+                  </>
+                }
+                headerExtra={
                   <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-pink-100 text-pink-800">
                     2D Bone Rig
                   </span>
-                </div>
+                }
+              >
 
                 {/* Rig Motion Mode Selector (Preset / Hybrid / Manual / Pose-to-Pose) */}
                 <div className="grid grid-cols-2 gap-1">
@@ -1705,15 +1794,22 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                     </div>
                   </div>
                 </div>
-              </div>
+              </DesignAccordionSection>
 
               {/* 2. YÜZ İFADELERİ & KAFA YÖNÜ (EXPRESSIONS & HEAD DIRECTION) */}
-              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 space-y-2.5">
-                <div>
-                  <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5 mb-1.5">
+              <DesignAccordionSection
+                isOpen={isSectionOpen('expression')}
+                onToggle={() => toggleSection('expression')}
+                containerClassName="bg-white p-2.5 rounded-xl border border-indigo-100"
+                titleClassName="text-[11px] font-bold text-slate-800"
+                title={
+                  <>
                     <Smile className="w-3.5 h-3.5 text-indigo-600" />
-                    Yüz İfadesi (Expression)
-                  </span>
+                    Yüz İfadesi & Kafa Yönü
+                  </>
+                }
+              >
+                <div>
                   <div className="grid grid-cols-3 gap-1">
                     {EXPRESSION_OPTIONS.map((exp) => {
                       const curExp = resolvedCharConfig.expression || 'neutral';
@@ -1775,15 +1871,21 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                     })}
                   </div>
                 </div>
-              </div>
+              </DesignAccordionSection>
 
               {/* 3. DUDAK SENKRONİZASYONU (LIP-SYNC: SES DOSYASI VEYA MİKROFON) */}
-              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+              <DesignAccordionSection
+                isOpen={isSectionOpen('lipsync')}
+                onToggle={() => toggleSection('lipsync')}
+                containerClassName="bg-white p-2.5 rounded-xl border border-indigo-100"
+                titleClassName="text-[11px] font-bold text-slate-800"
+                title={
+                  <>
                     <Volume2 className="w-3.5 h-3.5 text-indigo-600" />
                     Dudak Senkronu (Lip-Sync)
-                  </span>
+                  </>
+                }
+                headerExtra={
                   <button
                     onClick={() => {
                       const nextEnabled = !resolvedCharConfig.lipSyncEnabled;
@@ -1819,7 +1921,8 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                   >
                     {resolvedCharConfig.lipSyncEnabled ? 'Aktif (Konuşuyor)' : 'Kapalı'}
                   </button>
-                </div>
+                }
+              >
 
                 <p className="text-[10px] text-slate-500 leading-snug">
                   Ses dosyası (.mp3/.wav) yükleyin veya mikrofonla kaydedin; oynatma sırasında dudaklar otomatik senkronize hareket eder.
@@ -1977,17 +2080,21 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                     )}
                   </div>
                 )}
-              </div>
+              </DesignAccordionSection>
             </div>
           )}
 
           {/* Position & Dimensions Grid (X, Y, W, H, Rotation) */}
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+          <DesignAccordionSection
+            isOpen={isSectionOpen('transform')}
+            onToggle={() => toggleSection('transform')}
+            title={
+              <>
                 <Move className="w-3.5 h-3.5 text-indigo-600" />
                 Konum & Boyut
-              </span>
+              </>
+            }
+            headerExtra={
               <button
                 onClick={() =>
                   onUpdateObject(selectedObject.id, {
@@ -1998,7 +2105,8 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               >
                 <FlipHorizontal className="w-3 h-3" /> Yatay Çevir
               </button>
-            </div>
+            }
+          >
 
             <div className="grid grid-cols-2 gap-2">
               <label className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
@@ -2133,25 +2241,32 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 </span>
               </div>
             </div>
-          </div>
+          </DesignAccordionSection>
 
           {/* 2-LEVEL COMPOSITE PART INSPECTOR (only for Parçalı Varlık) */}
           {resolvedAssetClass === 'composite' && mathDef?.parts && (
-            <div className="p-3 rounded-xl bg-pink-50/70 border border-pink-200 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-pink-900 flex items-center gap-1.5">
+            <DesignAccordionSection
+              isOpen={isSectionOpen('composite')}
+              onToggle={() => toggleSection('composite')}
+              containerClassName="p-3 rounded-xl bg-pink-50/70 border border-pink-200"
+              titleClassName="text-xs font-bold text-pink-900"
+              title={
+                <>
                   <Puzzle className="w-3.5 h-3.5 text-pink-600" />
                   Parçalı Varlık — Parça Düzenleyici
-                </span>
-                {selectedPartId && (
+                </>
+              }
+              headerExtra={
+                selectedPartId ? (
                   <button
                     onClick={() => onSelectPart?.(null)}
                     className="px-2 py-0.5 rounded bg-white border border-pink-200 text-[10px] font-semibold text-pink-700 hover:bg-pink-100 cursor-pointer"
                   >
                     Bütün Nesneyi Seç
                   </button>
-                )}
-              </div>
+                ) : undefined
+              }
+            >
 
               <p className="text-[10px] text-pink-800/80 leading-snug">
                 Alt parçayı doğrudan sahneden veya aşağıdaki listeden seçip bağımsız olarak konumlandırabilir, döndürebilir ve ölçekleyebilirsiniz.
@@ -2362,7 +2477,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                   </div>
                 );
               })()}
-            </div>
+            </DesignAccordionSection>
           )}
 
           {/* Text & Font Content Controls (if object supports text) */}
@@ -2371,19 +2486,24 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
             selectedObject.assetId === 'obj-speech-bubble' ||
             selectedObject.assetId === 'obj-formula-card' ||
             selectedObject.assetId === 'obj-badge-star') && (
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+            <DesignAccordionSection
+              isOpen={isSectionOpen('text')}
+              onToggle={() => toggleSection('text')}
+              title={
+                <>
                   <Type className="w-3.5 h-3.5 text-indigo-600" />
                   Metin İçeriği, Font & Boyut
-                </span>
-                {(selectedObject.assetId === 'text-formula' ||
-                  selectedObject.assetId === 'obj-formula-card') && (
+                </>
+              }
+              headerExtra={
+                selectedObject.assetId === 'text-formula' ||
+                selectedObject.assetId === 'obj-formula-card' ? (
                   <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[9.5px] font-bold">
                     LaTeX Destekli
                   </span>
-                )}
-              </div>
+                ) : undefined
+              }
+            >
               <textarea
                 rows={3}
                 value={selectedObject.text || ''}
@@ -2469,16 +2589,23 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                   className="w-full accent-indigo-600 cursor-pointer"
                 />
               </div>
-            </div>
+            </DesignAccordionSection>
           )}
 
           {/* Live Chart Data Editor */}
           {selectedObject.assetId.startsWith('chart-') && (
-            <div className="p-3 rounded-xl bg-indigo-50/60 border border-indigo-200 space-y-3">
-              <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
-                Grafik Veri Editörü
-              </span>
+            <DesignAccordionSection
+              isOpen={isSectionOpen('chart')}
+              onToggle={() => toggleSection('chart')}
+              containerClassName="p-3 rounded-xl bg-indigo-50/60 border border-indigo-200"
+              titleClassName="text-xs font-bold text-indigo-950"
+              title={
+                <>
+                  <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
+                  Grafik Veri Editörü
+                </>
+              }
+            >
 
               <div>
                 <span className="text-[10.5px] font-semibold text-slate-600 block mb-1">
@@ -2587,16 +2714,23 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                   )
                 )}
               </div>
-            </div>
+            </DesignAccordionSection>
           )}
 
           {/* Live Table Editor */}
           {selectedObject.assetId.startsWith('table-') && (
-            <div className="p-3 rounded-xl bg-indigo-50/60 border border-indigo-200 space-y-3">
-              <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                <Table className="w-3.5 h-3.5 text-indigo-600" />
-                Tablo Düzenleyici
-              </span>
+            <DesignAccordionSection
+              isOpen={isSectionOpen('table')}
+              onToggle={() => toggleSection('table')}
+              containerClassName="p-3 rounded-xl bg-indigo-50/60 border border-indigo-200"
+              titleClassName="text-xs font-bold text-indigo-950"
+              title={
+                <>
+                  <Table className="w-3.5 h-3.5 text-indigo-600" />
+                  Tablo Düzenleyici
+                </>
+              }
+            >
 
               <div>
                 <span className="text-[10.5px] font-semibold text-slate-600 block mb-1">
@@ -2703,16 +2837,21 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               <p className="text-[10px] text-indigo-700/80 leading-snug">
                 İpucu: Sahnedeki herhangi bir hücreye çift tıklayarak metni doğrudan düzenleyebilirsiniz.
               </p>
-            </div>
+            </DesignAccordionSection>
           )}
 
           {/* Color Pickers & Swatches */}
           {!selectedObject.imageUrl && (
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Palette className="w-3.5 h-3.5 text-indigo-600" />
-                Renk Paleti
-              </span>
+            <DesignAccordionSection
+              isOpen={isSectionOpen('palette')}
+              onToggle={() => toggleSection('palette')}
+              title={
+                <>
+                  <Palette className="w-3.5 h-3.5 text-indigo-600" />
+                  Renk Paleti
+                </>
+              }
+            >
 
               <div className="grid grid-cols-2 gap-2">
                 <label className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-2 cursor-pointer">
@@ -2807,16 +2946,20 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                   ))}
                 </div>
               </div>
-            </div>
+            </DesignAccordionSection>
           )}
 
           {/* Timeline Timing inside Design Tab */}
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+          <DesignAccordionSection
+            isOpen={isSectionOpen('timing')}
+            onToggle={() => toggleSection('timing')}
+            title={
+              <>
                 <Clock className="w-3.5 h-3.5 text-indigo-600" />
                 Zaman Çizelgesi Aralığı
-              </span>
+              </>
+            }
+            headerExtra={
               <button
                 onClick={() =>
                   onUpdateObject(selectedObject.id, {
@@ -2829,7 +2972,8 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               >
                 Tüm Sahneye Yay
               </button>
-            </div>
+            }
+          >
             <div className="grid grid-cols-2 gap-2">
               <label className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex justify-between items-center">
                 <span className="text-[11px] text-slate-500">Başlangıç</span>
@@ -2873,7 +3017,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 />
               </label>
             </div>
-          </div>
+          </DesignAccordionSection>
 
           {/* Quick Camera Focus on Selected Character / Object */}
           <button
@@ -2886,12 +3030,18 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
           </button>
 
           {/* Quick Motion Path & Continue Scene Access in Design Tab */}
-          <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+          <DesignAccordionSection
+            isOpen={isSectionOpen('motionpath')}
+            onToggle={() => toggleSection('motionpath')}
+            containerClassName="p-3 rounded-xl bg-amber-50/70 border border-amber-200"
+            titleClassName="text-xs font-bold text-amber-900"
+            title={
+              <>
                 <Route className="w-3.5 h-3.5 text-amber-600" />
                 Hareket Yolu (Motion Path)
-              </span>
+              </>
+            }
+            headerExtra={
               <button
                 onClick={() => {
                   const nextEnabled = !selectedObject.motionPath?.enabled;
@@ -2930,7 +3080,8 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               >
                 {selectedObject.motionPath?.enabled ? 'Aktif (Hedef B)' : '+ Rota Çiz'}
               </button>
-            </div>
+            }
+          >
             <p className="text-[10px] text-amber-800/90 leading-snug">
               Sahnede A noktasından B noktasına yürüme veya ilerleme izi ekleyin. Detaylı eğri ve süre ayarları için <strong>Animasyon</strong> sekmesine geçin.
             </p>
@@ -2941,7 +3092,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               <FastForward className="w-3.5 h-3.5" />
               <span>Sahneye Devam Et (Continue Scene)</span>
             </button>
-          </div>
+          </DesignAccordionSection>
         </div>
       )}
 

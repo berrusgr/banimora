@@ -20,6 +20,7 @@ import {
   MAX_TOTAL_PROJECT_DURATION,
 } from '../utils/animationEngine';
 import { drawLatexOnCanvas } from '../utils/latexRenderer';
+import { ensureAudioLipSyncAnalyzed } from '../utils/audioLipSync';
 import {
   encodeMixedAudioToMuxer,
   findSupportedAudioEncoderConfig,
@@ -37,14 +38,11 @@ interface ExportModalProps {
 interface RasterizedCache {
   bgImages: Map<string, HTMLImageElement>;
   staticObjectImages: Map<string, HTMLImageElement>;
-  characterPhaseImages: Map<string, HTMLImageElement[]>;
-  dynamicObjectFrames: Map<string, { duration: number; frames: HTMLImageElement[] }>;
+  liveFrameImages: Map<string, HTMLImageElement>;
 }
 
 const LOGICAL_W = 960;
 const LOGICAL_H = 540;
-const CHAR_PHASE_COUNT = 12;
-const CHAR_CYCLE_SEC = 1.5;
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -81,11 +79,9 @@ function extractSvgDataUrl(markup: string, width: number, height: number): strin
 async function buildRasterCache(scenes: Scene[]): Promise<RasterizedCache> {
   const bgImages = new Map<string, HTMLImageElement>();
   const staticObjectImages = new Map<string, HTMLImageElement>();
-  const characterPhaseImages = new Map<string, HTMLImageElement[]>();
-  const dynamicObjectFrames = new Map<
-    string,
-    { duration: number; frames: HTMLImageElement[] }
-  >();
+  const liveFrameImages = new Map<string, HTMLImageElement>();
+
+  const lipSyncPromises: Promise<void>[] = [];
 
   for (const s of scenes) {
     if (s.background.imageUrl && !bgImages.has(s.background.id)) {
@@ -98,6 +94,10 @@ async function buildRasterCache(scenes: Scene[]): Promise<RasterizedCache> {
     }
 
     for (const obj of s.objects) {
+      if (obj.characterConfig?.lipSyncEnabled && obj.characterConfig?.lipSyncAudioUrl) {
+        lipSyncPromises.push(ensureAudioLipSyncAnalyzed(obj.characterConfig.lipSyncAudioUrl));
+      }
+
       if (obj.imageUrl) {
         if (!staticObjectImages.has(obj.id)) {
           try {
@@ -123,100 +123,92 @@ async function buildRasterCache(scenes: Scene[]): Promise<RasterizedCache> {
         continue;
       }
 
-      const isCharacter = obj.category === 'characters';
-      if (isCharacter) {
-        if (!characterPhaseImages.has(obj.id)) {
-          const phaseFrames: HTMLImageElement[] = [];
-          for (let p = 0; p < CHAR_PHASE_COUNT; p++) {
-            const animTime = (p / CHAR_PHASE_COUNT) * CHAR_CYCLE_SEC;
-            const markup = renderToStaticMarkup(
-              <VectorAssetRenderer
-                assetId={obj.assetId}
-                color={obj.color}
-                secondaryColor={obj.secondaryColor}
-                characterConfig={obj.characterConfig}
-                animTime={animTime}
-              />
-            );
-            const dataUrl = extractSvgDataUrl(markup, obj.width, obj.height);
-            if (dataUrl) {
-              try {
-                const img = await loadImage(dataUrl);
-                phaseFrames.push(img);
-              } catch {
-                // fallback
-              }
-            }
-          }
-          if (phaseFrames.length > 0) {
-            characterPhaseImages.set(obj.id, phaseFrames);
-          }
-        }
-      } else if (
+      const isDynamicMath =
         obj.assetId.startsWith('math-') &&
-        ((obj.specificAnimations && obj.specificAnimations.length > 0) || obj.partStates)
-      ) {
-        if (!dynamicObjectFrames.has(obj.id)) {
-          const frameCount = Math.max(
-            12,
-            Math.min(90, Math.ceil(s.duration * 15))
-          );
-          const frames: HTMLImageElement[] = [];
-          for (let f = 0; f < frameCount; f++) {
-            const t =
-              frameCount > 1 ? (f / (frameCount - 1)) * s.duration : 0;
-            const mathAnim = computeObjectAnimation(obj, t, true);
-            const markup = renderToStaticMarkup(
-              <VectorAssetRenderer
-                assetId={obj.assetId}
-                color={obj.color}
-                secondaryColor={obj.secondaryColor}
-                animTime={t}
-                mathState={mathAnim.mathState}
-              />
-            );
-            const dataUrl = extractSvgDataUrl(markup, obj.width, obj.height);
-            if (dataUrl) {
-              try {
-                const img = await loadImage(dataUrl);
-                frames.push(img);
-              } catch {
-                // skip
-              }
-            }
-          }
-          if (frames.length > 0) {
-            dynamicObjectFrames.set(obj.id, {
-              duration: s.duration,
-              frames,
-            });
-          }
-        }
-      } else {
-        if (!staticObjectImages.has(obj.id)) {
-          const markup = renderToStaticMarkup(
-            <VectorAssetRenderer
-              assetId={obj.assetId}
-              color={obj.color}
-              secondaryColor={obj.secondaryColor}
-              animTime={0}
-            />
-          );
-          const dataUrl = extractSvgDataUrl(markup, obj.width, obj.height);
-          if (dataUrl) {
-            try {
-              const img = await loadImage(dataUrl);
-              staticObjectImages.set(obj.id, img);
-            } catch {
-              // fallback
-            }
+        ((obj.specificAnimations && obj.specificAnimations.length > 0) || obj.partStates);
+
+      if (obj.category === 'characters' || isDynamicMath) {
+        // Rasterized dynamically per-frame at exact export FPS for smooth 30/60fps & lip-sync
+        continue;
+      }
+
+      if (!staticObjectImages.has(obj.id)) {
+        const markup = renderToStaticMarkup(
+          <VectorAssetRenderer
+            assetId={obj.assetId}
+            color={obj.color}
+            secondaryColor={obj.secondaryColor}
+            animTime={0}
+          />
+        );
+        const dataUrl = extractSvgDataUrl(markup, obj.width, obj.height);
+        if (dataUrl) {
+          try {
+            const img = await loadImage(dataUrl);
+            staticObjectImages.set(obj.id, img);
+          } catch {
+            // fallback
           }
         }
       }
     }
   }
 
-  return { bgImages, staticObjectImages, characterPhaseImages, dynamicObjectFrames };
+  if (lipSyncPromises.length > 0) {
+    await Promise.all(lipSyncPromises);
+  }
+
+  return { bgImages, staticObjectImages, liveFrameImages };
+}
+
+async function prepareSceneDynamicRasters(
+  scene: Scene,
+  localTime: number,
+  cache: RasterizedCache
+): Promise<void> {
+  const tasks: Promise<void>[] = [];
+
+  for (const obj of scene.objects) {
+    if (obj.imageUrl) continue;
+
+    const isCharacter = obj.category === 'characters';
+    const isDynamicMath =
+      obj.assetId.startsWith('math-') &&
+      ((obj.specificAnimations && obj.specificAnimations.length > 0) || obj.partStates);
+
+    if (!isCharacter && !isDynamicMath) continue;
+
+    const anim = computeObjectAnimation(obj, localTime, true);
+    if (!anim.isVisible || anim.opacity <= 0.01) continue;
+
+    tasks.push(
+      (async () => {
+        const markup = renderToStaticMarkup(
+          <VectorAssetRenderer
+            assetId={obj.assetId}
+            color={obj.color}
+            secondaryColor={obj.secondaryColor}
+            characterConfig={obj.characterConfig}
+            animTime={localTime}
+            mathState={anim.mathState}
+          />
+        );
+        const dataUrl = extractSvgDataUrl(markup, obj.width, obj.height);
+        if (dataUrl) {
+          try {
+            const img = await loadImage(dataUrl);
+            cache.liveFrameImages.set(`${scene.id}:${obj.id}`, img);
+          } catch {
+            // Skip frame on decode failure
+          }
+        }
+      })()
+    );
+  }
+
+  if (tasks.length > 0) {
+    await Promise.all(tasks);
+  }
 }
 
 function drawSceneBackground(
@@ -510,33 +502,12 @@ function renderSingleSceneToCanvas(
       ctx.clip();
     }
 
-    const charPhases = cache.characterPhaseImages.get(obj.id);
-    const dynObj = cache.dynamicObjectFrames.get(obj.id);
+    const liveImg = cache.liveFrameImages.get(`${scene.id}:${obj.id}`);
     const staticImg = cache.staticObjectImages.get(obj.id);
 
-    if (charPhases && charPhases.length > 0) {
-      const phaseIdx =
-        Math.floor(((localTime % CHAR_CYCLE_SEC) / CHAR_CYCLE_SEC) * charPhases.length) %
-        charPhases.length;
+    if (liveImg) {
       ctx.drawImage(
-        charPhases[phaseIdx],
-        -obj.width / 2,
-        -obj.height / 2,
-        obj.width,
-        obj.height
-      );
-    } else if (dynObj && dynObj.frames.length > 0) {
-      const idx = Math.min(
-        dynObj.frames.length - 1,
-        Math.max(
-          0,
-          Math.floor(
-            (localTime / Math.max(0.1, dynObj.duration)) * dynObj.frames.length
-          )
-        )
-      );
-      ctx.drawImage(
-        dynObj.frames[idx],
+        liveImg,
         -obj.width / 2,
         -obj.height / 2,
         obj.width,
@@ -645,7 +616,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       const prevCtx = prevSceneCanvas.getContext('2d')!;
 
       // Helper to render composite frame at globalTime across targetScenes
-      const renderCompositeFrame = (globalTime: number) => {
+      const renderCompositeFrame = async (globalTime: number) => {
         let accumulated = 0;
         let sceneIdx = 0;
         for (let i = 0; i < targetScenes.length; i++) {
@@ -660,14 +631,20 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         const activeS = targetScenes[sceneIdx];
         const localTime = Math.max(0, globalTime - accumulated);
 
-        currCtx.clearRect(0, 0, outW, outH);
-        renderSingleSceneToCanvas(currCtx, activeS, localTime, cache, scaleFactor);
-
         const trans = activeS.transition;
         const inTransition =
           trans.type !== 'none' &&
           trans.duration > 0 &&
           localTime < trans.duration;
+
+        await prepareSceneDynamicRasters(activeS, localTime, cache);
+        if (inTransition && sceneIdx > 0) {
+          const prevS = targetScenes[sceneIdx - 1];
+          await prepareSceneDynamicRasters(prevS, prevS.duration, cache);
+        }
+
+        currCtx.clearRect(0, 0, outW, outH);
+        renderSingleSceneToCanvas(currCtx, activeS, localTime, cache, scaleFactor);
 
         if (!inTransition) {
           mainCtx.clearRect(0, 0, outW, outH);
@@ -850,7 +827,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           }
 
           const globalTime = frameIdx / fpsNum;
-          renderCompositeFrame(globalTime);
+          await renderCompositeFrame(globalTime);
 
           const videoFrame = new VideoFrame(mainCanvas, {
             timestamp: Math.round(globalTime * 1_000_000),
@@ -960,7 +937,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             return;
           }
           const globalTime = frameIdx / fpsNum;
-          renderCompositeFrame(globalTime);
+          await renderCompositeFrame(globalTime);
           const pct = Math.min(
             98,
             Math.round(5 + ((frameIdx + 1) / totalFrames) * 93)

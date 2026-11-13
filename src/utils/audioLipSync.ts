@@ -97,11 +97,11 @@ async function decodeAndAnalyzeAudio(audioUrl: string): Promise<void> {
 export function ensureAudioLipSyncAnalyzed(
   audioUrl: string | undefined,
   onReady?: () => void
-): void {
-  if (!audioUrl) return;
+): Promise<void> {
+  if (!audioUrl) return Promise.resolve();
   if (profileCache.has(audioUrl)) {
     onReady?.();
-    return;
+    return Promise.resolve();
   }
   let promise = pendingDecodes.get(audioUrl);
   if (!promise) {
@@ -113,6 +113,7 @@ export function ensureAudioLipSyncAnalyzed(
   if (onReady) {
     promise.then(onReady);
   }
+  return promise;
 }
 
 export function resolveVisemeFromAudio(

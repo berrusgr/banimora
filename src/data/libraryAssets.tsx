@@ -939,8 +939,8 @@ export const SCENE_BACKGROUNDS: SceneBackground[] = [
   {
     id: 'bg-banimora-arayuz',
     name: 'Banimora Stüdyo Arayüzü',
-    imageUrl: './backgrounds/banimora-arayuz.jpg',
-    style: 'url("./backgrounds/banimora-arayuz.jpg") center / cover no-repeat',
+    imageUrl: './backgrounds/banimora-arayuz.png',
+    style: 'url("./backgrounds/banimora-arayuz.png") center / cover no-repeat',
     darkCanvas: false,
   },
   {

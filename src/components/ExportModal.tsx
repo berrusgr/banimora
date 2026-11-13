@@ -615,6 +615,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       prevSceneCanvas.height = outH;
       const prevCtx = prevSceneCanvas.getContext('2d')!;
 
+      for (const ctx of [mainCtx, currCtx, prevCtx]) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+      }
+
       // Helper to render composite frame at globalTime across targetScenes
       const renderCompositeFrame = async (globalTime: number) => {
         let accumulated = 0;

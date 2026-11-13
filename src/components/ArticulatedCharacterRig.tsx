@@ -484,7 +484,8 @@ export interface JointAngles {
 
 export function computePoseJointAngles(
   pose: CharacterPoseType,
-  animTime: number
+  animTime: number,
+  headDirection: HeadDirectionType = 'center'
 ): JointAngles {
   const t = animTime * 3.0;
   const s = Math.sin(t);
@@ -572,37 +573,62 @@ export function computePoseJointAngles(
           rightKnee: 0,
           bodyBobY: s * -1.5,
         };
-      case 'walk':
+      case 'walk': {
+        const isLeft = headDirection === 'left';
+        const isRight = headDirection === 'right';
         return {
           headTilt: s * 3,
           leftShoulder: 8 + s * 14,
-          leftElbow: -12 - Math.max(0, -s) * 10,
+          leftElbow: isLeft
+            ? 10 + Math.max(0, s) * 8
+            : isRight
+              ? -10 - Math.max(0, -s) * 8
+              : -10 - Math.max(0, -s) * 8,
           leftWrist: s * 6,
-          rightShoulder: -8 + s * 14,
-          rightElbow: 12 + Math.max(0, s) * 10,
-          rightWrist: s * 6,
-          leftHip: -s * 20,
-          leftKnee: Math.max(0, s) * 22,
-          rightHip: s * 20,
-          rightKnee: Math.max(0, -s) * 22,
+          rightShoulder: -8 - s * 14,
+          rightElbow: isLeft
+            ? 10 + Math.max(0, -s) * 8
+            : isRight
+              ? -10 - Math.max(0, s) * 8
+              : 10 + Math.max(0, s) * 8,
+          rightWrist: -s * 6,
+          leftHip: -s * 18,
+          leftKnee: isLeft ? -Math.max(0, s) * 20 : Math.max(0, -s) * 20,
+          rightHip: s * 18,
+          rightKnee: isLeft ? -Math.max(0, -s) * 20 : Math.max(0, s) * 20,
           bodyBobY: Math.abs(c) * -4.5,
         };
+      }
       case 'run': {
         const rt = animTime * 6.5;
         const rs = Math.sin(rt);
         const rc = Math.cos(rt);
+        const isLeft = headDirection === 'left';
+        const isRight = headDirection === 'right';
         return {
-          headTilt: 5 + rs * 4,
+          headTilt: (isLeft ? -5 : 5) + rs * 4,
           leftShoulder: 12 + rs * 16,
-          leftElbow: -16 - Math.max(0, -rs) * 10,
+          leftElbow: isLeft
+            ? 16 + Math.max(0, rs) * 10
+            : isRight
+              ? -16 - Math.max(0, -rs) * 10
+              : -16 - Math.max(0, -rs) * 10,
           leftWrist: rs * 8,
-          rightShoulder: -12 + rs * 16,
-          rightElbow: 16 + Math.max(0, rs) * 10,
-          rightWrist: rs * 8,
+          rightShoulder: -12 - rs * 16,
+          rightElbow: isLeft
+            ? 16 + Math.max(0, -rs) * 10
+            : isRight
+              ? -16 - Math.max(0, rs) * 10
+              : 16 + Math.max(0, rs) * 10,
+          rightWrist: -rs * 8,
           leftHip: -rs * 36,
-          leftKnee: 18 + Math.max(0, rs) * 38,
+          leftKnee: isLeft
+            ? -(16 + Math.max(0, rs) * 36)
+            : 16 + Math.max(0, -rs) * 36,
           rightHip: rs * 36,
-          rightKnee: 18 + Math.max(0, -rs) * 38,
+          rightKnee: isLeft
+            ? -(16 + Math.max(0, -rs) * 36)
+            : 16 + Math.max(0, rs) * 36,
           bodyBobY: Math.abs(rc) * -9,
         };
       }
@@ -851,8 +877,9 @@ export function resolveHybridRigAngles(
 ): JointAngles {
   const speed = config.actionSpeed ?? 1.0;
   const intensity = config.actionIntensity ?? 1.0;
+  const headDirection = config.headDirection || 'center';
   const rigMode = config.rigMode || 'preset';
-  const presetRaw = computePoseJointAngles(config.pose, animTime * speed);
+  const presetRaw = computePoseJointAngles(config.pose, animTime * speed, headDirection);
 
   // Apply intensity scaling to dynamic preset angles (preserving seated hip/knee base when sitting)
   const isSeated = config.pose === 'sit';
@@ -942,7 +969,7 @@ export function resolveHybridRigAngles(
   }
 
   if (rigMode === 'pose-to-pose') {
-    const baseStatic = computePoseJointAngles(config.pose, 0);
+    const baseStatic = computePoseJointAngles(config.pose, 0, headDirection);
     const startJoints: JointAngles = {
       headTilt: customStart.headTilt ?? baseStatic.headTilt,
       leftShoulder: customStart.leftShoulder ?? baseStatic.leftShoulder,
@@ -999,7 +1026,7 @@ export function resolveHybridRigAngles(
   }
 
   // 'manual' mode: 100% Free 2D Bone Rigging
-  const staticFallback = computePoseJointAngles(config.pose, 0);
+  const staticFallback = computePoseJointAngles(config.pose, 0, headDirection);
   const breath = animTime > 0 ? Math.sin(animTime * 2.5 * speed) * 1.2 * intensity : 0;
   return {
     headTilt: (customStart.headTilt ?? staticFallback.headTilt) + breath * 0.4,

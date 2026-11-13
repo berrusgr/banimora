@@ -524,14 +524,17 @@ export function computePoseJointAngles(
         };
       case 'clap': {
         const clapWave = Math.sin(animTime * 9.0);
+        // Positive leftShoulder swings elbow outward; negative leftElbow bends forearm inward/upward to chest center
+        const shoulderOut = 19 - clapWave * 7; // +26 (open) -> +12 (closed)
+        const elbowIn = -125 - clapWave * 1;   // -124 (open) -> -126 (closed)
         return {
           headTilt: clapWave * 2,
-          leftShoulder: -38 + clapWave * 14,
-          leftElbow: -54 + clapWave * 16,
-          leftWrist: clapWave * 8,
-          rightShoulder: 38 - clapWave * 14,
-          rightElbow: 54 - clapWave * 16,
-          rightWrist: -clapWave * 8,
+          leftShoulder: shoulderOut,
+          leftElbow: elbowIn,
+          leftWrist: -12 + clapWave * 6,
+          rightShoulder: -shoulderOut,
+          rightElbow: -elbowIn,
+          rightWrist: 12 - clapWave * 6,
           leftHip: 0,
           leftKnee: 0,
           rightHip: 0,
@@ -641,12 +644,12 @@ export function computePoseJointAngles(
         const fastCos = Math.cos(animTime * 12);
         return {
           headTilt: 6 + s * 1.5,
-          leftShoulder: -26 + fast * 4,
-          leftElbow: -54 + fastCos * 8,
-          leftWrist: fast * 10,
-          rightShoulder: 26 - fastCos * 4,
-          rightElbow: 54 - fast * 8,
-          rightWrist: -fastCos * 10,
+          leftShoulder: 16 + fast * 2.5,
+          leftElbow: -115 + fastCos * 6,
+          leftWrist: -12 + fast * 8,
+          rightShoulder: -16 - fastCos * 2.5,
+          rightElbow: 115 - fast * 6,
+          rightWrist: 12 - fastCos * 8,
           leftHip: 0,
           leftKnee: 0,
           rightHip: 0,
@@ -4546,7 +4549,7 @@ function renderActionOverlayProps(
       );
     case 'typing':
       return (
-        <g transform="translate(106, 152)">
+        <g transform="translate(110, 154)">
           {/* Laptop base & screen */}
           <rect x="-32" y="8" width="64" height="5" rx="2" fill="#64748b" />
           <polygon

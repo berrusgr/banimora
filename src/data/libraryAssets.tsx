@@ -661,6 +661,24 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
     },
   },
   {
+    id: 'text-hanging-board',
+    name: 'Askılı Sarı Tabela',
+    subtitle: 'Transparan askılı beyaz metin kutusu',
+    category: 'text',
+    defaultWidth: 320,
+    defaultHeight: 232,
+    defaultColor: '#1e293b',
+    defaultSecondaryColor: '#f6bd00',
+    defaultText: 'KONU BAŞLIĞI\nAçıklama metnini buraya yazın.',
+    defaultFontSize: 18,
+    trackColor: '#eab308',
+    defaultAnimations: {
+      enter: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
+      emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
+      exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
+    },
+  },
+  {
     id: 'text-rough-speech',
     name: 'Klasik Konuşma Balonu',
     subtitle: 'Rough.js dalgalı konuşma balonu',
@@ -2274,6 +2292,86 @@ export const VectorAssetRenderer: React.FC<VectorRendererProps> = ({
             </span>
           </div>
         );
+
+      case 'text-hanging-board': {
+        const borderYellow = secondaryColor || '#f6bd00';
+        const rodAmber = '#b46900';
+        return (
+          <div className="w-full h-full relative bg-transparent">
+            <svg
+              viewBox="0 0 400 290"
+              preserveAspectRatio="none"
+              className="w-full h-full block pointer-events-none"
+            >
+              {/* 3D bottom amber shadow lip */}
+              <rect x="0" y="78" width="400" height="210" rx="16" fill={rodAmber} />
+              {/* White board fill & outer golden-yellow border */}
+              <rect
+                x="2.5"
+                y="72"
+                width="395"
+                height="207"
+                rx="14"
+                fill="#ffffff"
+                stroke={borderYellow}
+                strokeWidth="5"
+              />
+              {/* Inner thin golden-yellow border separated by crisp white gap */}
+              <rect
+                x="9"
+                y="78.5"
+                width="382"
+                height="194"
+                rx="10"
+                fill="none"
+                stroke={borderYellow}
+                strokeWidth="2"
+              />
+              {/* Top hanging rods + rivet pins (drawn over top frame, outside remains transparent) */}
+              <line
+                x1="35"
+                y1="3"
+                x2="35"
+                y2="96"
+                stroke={rodAmber}
+                strokeWidth="4.5"
+                strokeLinecap="round"
+              />
+              <circle cx="35" cy="96" r="5" fill={rodAmber} />
+              <line
+                x1="365"
+                y1="3"
+                x2="365"
+                y2="96"
+                stroke={rodAmber}
+                strokeWidth="4.5"
+                strokeLinecap="round"
+              />
+              <circle cx="365" cy="96" r="5" fill={rodAmber} />
+            </svg>
+            <div
+              className="absolute flex items-center justify-center text-center px-3 py-2 overflow-hidden"
+              style={{
+                top: '29%',
+                left: '5%',
+                right: '5%',
+                bottom: '9%',
+                color,
+              }}
+            >
+              <span
+                className="font-semibold leading-snug whitespace-pre-line break-words"
+                style={{ fontSize: `${fontSize}px`, fontFamily }}
+              >
+                {displayedText}
+                {textRevealRatio < 1 && (
+                  <span className="inline-block w-1 h-5 bg-indigo-600 ml-1 animate-pulse" />
+                )}
+              </span>
+            </div>
+          </div>
+        );
+      }
 
       case 'text-callout':
       case 'obj-badge-star':

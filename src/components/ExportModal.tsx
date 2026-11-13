@@ -120,7 +120,8 @@ async function buildRasterCache(scenes: Scene[]): Promise<RasterizedCache> {
         obj.assetId === 'obj-formula-card' ||
         obj.assetId === 'text-callout' ||
         obj.assetId === 'obj-badge-star' ||
-        obj.assetId === 'obj-speech-bubble';
+        obj.assetId === 'obj-speech-bubble' ||
+        obj.assetId === 'text-hanging-board';
 
       if (isTextCard) {
         continue;
@@ -294,20 +295,23 @@ function drawWrappedText(
   lineHeight: number,
   align: CanvasTextAlign = 'left'
 ) {
-  const words = text.split(' ');
+  const paragraphs = text.split(/\r?\n/);
   const lines: string[] = [];
-  let currentLine = '';
 
-  for (const word of words) {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    if (ctx.measureText(testLine).width > maxWidth && currentLine) {
-      lines.push(currentLine);
-      currentLine = word;
-    } else {
-      currentLine = testLine;
+  for (const para of paragraphs) {
+    const words = para.split(' ');
+    let currentLine = '';
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      if (ctx.measureText(testLine).width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
     }
+    if (currentLine || para === '') lines.push(currentLine);
   }
-  if (currentLine) lines.push(currentLine);
 
   ctx.textAlign = align;
   ctx.textBaseline = 'middle';
@@ -334,6 +338,68 @@ function drawTextCardObject(
   const displayedText = textRevealRatio < 1 ? rawText.slice(0, visibleChars) : rawText;
   const fontSize = obj.fontSize || 18;
   const secondary = obj.secondaryColor || '#6366f1';
+
+  if (obj.assetId === 'text-hanging-board') {
+    const sx = w / 400;
+    const sy = h / 290;
+    const borderYellow = obj.secondaryColor || '#f6bd00';
+    const rodAmber = '#b46900';
+
+    ctx.save();
+    ctx.translate(-halfW, -halfH);
+    ctx.scale(sx, sy);
+
+    // 3D bottom amber shadow lip
+    ctx.fillStyle = rodAmber;
+    ctx.beginPath();
+    ctx.roundRect(0, 78, 400, 210, 16);
+    ctx.fill();
+
+    // White interior + outer golden-yellow border
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = borderYellow;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.roundRect(2.5, 72, 395, 207, 14);
+    ctx.fill();
+    ctx.stroke();
+
+    // Inner thin golden-yellow border
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(9, 78.5, 382, 194, 10);
+    ctx.stroke();
+
+    // Top hanging cords + pins
+    ctx.strokeStyle = rodAmber;
+    ctx.fillStyle = rodAmber;
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = 'round';
+    for (const px of [35, 365]) {
+      ctx.beginPath();
+      ctx.moveTo(px, 3);
+      ctx.lineTo(px, 96);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(px, 96, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    const fontFam = obj.fontFamily || 'Inter, system-ui, sans-serif';
+    ctx.fillStyle = obj.color || '#1e293b';
+    ctx.font = `600 ${fontSize}px ${fontFam}`;
+    drawWrappedText(
+      ctx,
+      displayedText,
+      0,
+      h * 0.09,
+      w * 0.84,
+      fontSize * 1.28,
+      'center'
+    );
+    return;
+  }
 
   if (obj.assetId === 'obj-speech-bubble') {
     ctx.fillStyle = secondary;

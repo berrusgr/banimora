@@ -681,6 +681,7 @@ export type VectorAssetId =
   | 'text-warning-box'
   | 'text-tip-box'
   | 'text-chalkboard'
+  | 'text-hanging-board'
   | 'text-rough-speech'
   | 'text-rough-speech-oval'
   | 'text-rough-speech-side'

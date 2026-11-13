@@ -58,6 +58,16 @@ export function App() {
   useEffect(() => {
     setSelectedPartId(null);
   }, [selectedObjectId, activeSceneId]);
+
+  // Warn user before closing or refreshing the browser tab so unsaved work isn't lost
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
   const [selectedCameraMovementId, setSelectedCameraMovementId] = useState<string | null>(
     null
   );
@@ -469,6 +479,15 @@ export function App() {
   // Delete a Scene (when scenes.length > 1)
   const handleDeleteScene = (sceneId: string) => {
     if (scenes.length <= 1) return;
+    const sceneIndex = scenes.findIndex((s) => s.id === sceneId);
+    const targetScene = sceneIndex >= 0 ? scenes[sceneIndex] : undefined;
+    const sceneLabel = targetScene
+      ? `Sahne ${sceneIndex + 1} (${targetScene.name})`
+      : 'Bu sahne';
+    const confirmed = window.confirm(
+      `${sceneLabel} silinecek. Emin misiniz?`
+    );
+    if (!confirmed) return;
     const remainingScenes = scenes.filter((s) => s.id !== sceneId);
     updateScenesState(() => remainingScenes, true);
     if (activeScene.id === sceneId) {

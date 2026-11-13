@@ -28,6 +28,7 @@ import {
 } from '../types/studio';
 import { VectorAssetRenderer } from '../data/libraryAssets';
 import { getMathAssetDefinition, resolveObjectAssetClass } from '../data/mathAssetsRegistry';
+import { resolveEffectiveCharacterConfig } from '../utils/audioLipSync';
 import { DEFAULT_CHARACTER_CONFIGS } from './ArticulatedCharacterRig';
 import {
   computeObjectAnimation,
@@ -150,6 +151,14 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
   // Inline text editing on canvas
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const clickStartRef = useRef<{ id: string; x: number; y: number } | null>(null);
+
+  // Re-render when async lip-sync audio analysis completes (e.g. while paused/scrubbing)
+  const [, setLipSyncReadyTick] = useState(0);
+  useEffect(() => {
+    const onLipReady = () => setLipSyncReadyTick((n) => n + 1);
+    window.addEventListener('banimora-lipsync-ready', onLipReady);
+    return () => window.removeEventListener('banimora-lipsync-ready', onLipReady);
+  }, []);
 
   useEffect(() => {
     if (isPlaying || selectedObjectId !== editingTextId) {
@@ -1002,7 +1011,7 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                     fontFamily={obj.fontFamily}
                     textRevealRatio={!isPlaying && isSelected ? 1 : anim.textRevealRatio}
                     drawProgress={anim.drawProgress}
-                    characterConfig={obj.characterConfig}
+                    characterConfig={resolveEffectiveCharacterConfig(obj, scene.audioClips)}
                     imageUrl={obj.imageUrl}
                     animTime={currentTime}
                     chartData={obj.chartData}

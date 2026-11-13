@@ -1,3 +1,5 @@
+import type { AudioClip, CanvasObject, CharacterConfig } from '../types/studio';
+
 export type AudioVisemeType =
   | 'closed'
   | 'open_wide'
@@ -143,7 +145,7 @@ export function resolveVisemeFromAudio(
   const zcr = curr.zcr;
 
   // Silence / breath pause -> mouth closed
-  if (rms < 0.085) {
+  if (rms < 0.055) {
     return 'closed';
   }
 
@@ -164,4 +166,30 @@ export function resolveVisemeFromAudio(
 
   // Mid vowel / consonant (i, ı, l, n, r, d, t)
   return zcr > 0.28 ? 'consonant_sz' : 'narrow_i';
+}
+
+/**
+ * Aligns lipSyncAudioStartTime to the exact scene timestamp where the audio actually starts playing:
+ * - If linked to a scene audio track clip, uses the clip's startTime.
+ * - If uploaded/attached directly to the character, playback begins at obj.startTime.
+ */
+export function resolveEffectiveCharacterConfig(
+  obj: Pick<CanvasObject, 'startTime' | 'characterConfig'>,
+  sceneAudioClips: Pick<AudioClip, 'audioUrl' | 'startTime'>[] = []
+): CharacterConfig | undefined {
+  const cfg = obj.characterConfig;
+  if (!cfg || !cfg.lipSyncEnabled || !cfg.lipSyncAudioUrl) return cfg;
+
+  const matchingSceneClip = sceneAudioClips.find(
+    (c) => Boolean(c.audioUrl) && c.audioUrl === cfg.lipSyncAudioUrl
+  );
+  const effectiveStartTime = matchingSceneClip
+    ? (cfg.lipSyncAudioStartTime ?? matchingSceneClip.startTime)
+    : obj.startTime;
+
+  if (cfg.lipSyncAudioStartTime === effectiveStartTime) return cfg;
+  return {
+    ...cfg,
+    lipSyncAudioStartTime: effectiveStartTime,
+  };
 }

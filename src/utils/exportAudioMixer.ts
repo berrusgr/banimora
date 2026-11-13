@@ -155,6 +155,7 @@ export async function renderScenesAudioTrack(
     for (const obj of scene.objects) {
       const lipUrl = obj.characterConfig?.lipSyncAudioUrl;
       if (!obj.characterConfig?.lipSyncEnabled || !lipUrl) continue;
+      if (scene.audioClips.some((c) => c.audioUrl === lipUrl)) continue;
       const startInScene = Math.max(0, obj.startTime);
       const startAt = sceneOffset + startInScene;
       const maxPlayDur = Math.max(0, Math.min(obj.duration, scene.duration - startInScene));

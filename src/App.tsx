@@ -155,6 +155,20 @@ export function App() {
   const activeSceneIdRef = useRef<string>(activeScene.id);
   activeSceneIdRef.current = activeScene.id;
 
+  // Preload lip-sync audio amplitude envelopes for all scenes so mouths move on frame 1
+  useEffect(() => {
+    scenes.forEach((s) => {
+      s.audioClips.forEach((clip) => {
+        if (clip.audioUrl) ensureAudioLipSyncAnalyzed(clip.audioUrl);
+      });
+      s.objects.forEach((obj) => {
+        if (obj.characterConfig?.lipSyncEnabled && obj.characterConfig?.lipSyncAudioUrl) {
+          ensureAudioLipSyncAnalyzed(obj.characterConfig.lipSyncAudioUrl);
+        }
+      });
+    });
+  }, [scenes]);
+
   useEffect(() => {
     if (!isPlaying) {
       lastFrameRef.current = null;
@@ -189,11 +203,12 @@ export function App() {
       // Also trigger any character Lip-Sync voice audio when playhead is within character's span
       activeScene.objects.forEach((obj) => {
         const lipUrl = obj.characterConfig?.lipSyncAudioUrl;
+        if (!obj.characterConfig?.lipSyncEnabled || !lipUrl) return;
+        // Skip if already played via scene.audioClips
+        if (activeScene.audioClips.some((c) => c.audioUrl === lipUrl)) return;
         const lipKey = `lip-${obj.id}`;
         const objEnd = obj.startTime + Math.max(0.1, obj.duration);
         if (
-          obj.characterConfig?.lipSyncEnabled &&
-          lipUrl &&
           next >= obj.startTime &&
           next < objEnd &&
           !triggeredClipsRef.current.has(lipKey)

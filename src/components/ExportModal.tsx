@@ -20,7 +20,10 @@ import {
   MAX_TOTAL_PROJECT_DURATION,
 } from '../utils/animationEngine';
 import { drawLatexOnCanvas } from '../utils/latexRenderer';
-import { ensureAudioLipSyncAnalyzed } from '../utils/audioLipSync';
+import {
+  ensureAudioLipSyncAnalyzed,
+  resolveEffectiveCharacterConfig,
+} from '../utils/audioLipSync';
 import {
   encodeMixedAudioToMuxer,
   findSupportedAudioEncoderConfig,
@@ -188,7 +191,7 @@ async function prepareSceneDynamicRasters(
             assetId={obj.assetId}
             color={obj.color}
             secondaryColor={obj.secondaryColor}
-            characterConfig={obj.characterConfig}
+            characterConfig={resolveEffectiveCharacterConfig(obj, scene.audioClips)}
             animTime={localTime}
             mathState={anim.mathState}
           />

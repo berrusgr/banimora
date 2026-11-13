@@ -99,6 +99,7 @@ export function App() {
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [loopPlayback, setLoopPlayback] = useState(true);
+  const [playAllScenes, setPlayAllScenes] = useState(true);
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   // Commit or replace scene state in Undo/Redo history
@@ -139,6 +140,10 @@ export function App() {
   const triggeredClipsRef = useRef<Set<string>>(new Set());
   const currentTimeRef = useRef<number>(currentTime);
   currentTimeRef.current = currentTime;
+  const scenesRef = useRef<Scene[]>(scenes);
+  scenesRef.current = scenes;
+  const activeSceneIdRef = useRef<string>(activeScene.id);
+  activeSceneIdRef.current = activeScene.id;
 
   useEffect(() => {
     if (!isPlaying) {
@@ -199,7 +204,38 @@ export function App() {
       if (next >= activeScene.duration) {
         triggeredClipsRef.current.clear();
         soundEngine.stopAll();
-        if (loopPlayback) {
+
+        const allScenes = scenesRef.current;
+        const currentIdx = allScenes.findIndex((s) => s.id === activeSceneIdRef.current);
+        const hasNextScene =
+          playAllScenes && currentIdx >= 0 && currentIdx < allScenes.length - 1;
+
+        if (hasNextScene) {
+          const nextScene = allScenes[currentIdx + 1];
+          if (nextScene.transition.type !== 'none') {
+            setPreviousSceneBg(
+              activeScene.background.imageUrl
+                ? `url("${activeScene.background.imageUrl}") center / cover no-repeat`
+                : activeScene.background.style
+            );
+            setTransitionTriggerKey((k) => k + 1);
+          }
+          setSelectedObjectId(null);
+          setSelectedPartId(null);
+          setIsCameraSelected(false);
+          setSelectedCameraMovementId(null);
+          setActiveSceneId(nextScene.id);
+          currentTimeRef.current = 0;
+          setCurrentTime(0);
+        } else if (loopPlayback) {
+          if (playAllScenes && allScenes.length > 1) {
+            const firstScene = allScenes[0];
+            setSelectedObjectId(null);
+            setSelectedPartId(null);
+            setIsCameraSelected(false);
+            setSelectedCameraMovementId(null);
+            setActiveSceneId(firstScene.id);
+          }
           currentTimeRef.current = 0;
           setCurrentTime(0);
         } else {
@@ -218,7 +254,16 @@ export function App() {
 
     animId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(animId);
-  }, [isPlaying, activeScene.duration, activeScene.audioClips, activeScene.objects, loopPlayback]);
+  }, [
+    isPlaying,
+    activeScene.id,
+    activeScene.duration,
+    activeScene.background,
+    activeScene.audioClips,
+    activeScene.objects,
+    loopPlayback,
+    playAllScenes,
+  ]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1372,6 +1417,15 @@ export function App() {
           setIsPlaying(false);
           setCurrentTime(time);
         }}
+        onSeekSceneTime={(targetSceneId, localTime) => {
+          setIsPlaying(false);
+          if (targetSceneId !== activeScene.id) {
+            setActiveSceneId(targetSceneId);
+            setSelectedObjectId(null);
+            setIsCameraSelected(false);
+          }
+          setCurrentTime(localTime);
+        }}
         isPlaying={isPlaying}
         onTogglePlay={() => {
           if (!isPlaying && currentTime >= activeScene.duration - 0.1) {
@@ -1380,11 +1434,18 @@ export function App() {
           setIsPlaying((p) => !p);
         }}
         onRestart={() => {
+          if (playAllScenes && scenes.length > 0 && scenes[0].id !== activeScene.id) {
+            setActiveSceneId(scenes[0].id);
+            setSelectedObjectId(null);
+            setIsCameraSelected(false);
+          }
           setCurrentTime(0);
           setIsPlaying(true);
         }}
         loopPlayback={loopPlayback}
         onToggleLoop={() => setLoopPlayback((l) => !l)}
+        playAllScenes={playAllScenes}
+        onTogglePlayAllScenes={() => setPlayAllScenes((v) => !v)}
       />
 
       {/* 6. 2D ARTICULATED CHARACTER STUDIO MODAL */}

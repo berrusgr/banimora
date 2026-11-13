@@ -57,11 +57,14 @@ interface BottomTimelineProps {
   onDeleteAudioClip: (clipId: string) => void;
   currentTime: number;
   onSeek: (time: number) => void;
+  onSeekSceneTime?: (sceneId: string, localTime: number) => void;
   isPlaying: boolean;
   onTogglePlay: () => void;
   onRestart: () => void;
   loopPlayback: boolean;
   onToggleLoop: () => void;
+  playAllScenes?: boolean;
+  onTogglePlayAllScenes?: () => void;
 }
 
 export const BottomTimeline: React.FC<BottomTimelineProps> = ({
@@ -90,11 +93,14 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
   onDeleteAudioClip,
   currentTime,
   onSeek,
+  onSeekSceneTime,
   isPlaying,
   onTogglePlay,
   onRestart,
   loopPlayback,
   onToggleLoop,
+  playAllScenes = true,
+  onTogglePlayAllScenes,
 }) => {
   const timelineTrackAreaRef = useRef<HTMLDivElement>(null);
   const leftLayerScrollRef = useRef<HTMLDivElement>(null);
@@ -102,8 +108,34 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
   const syncingScrollRef = useRef<'left' | 'right' | null>(null);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [subTracksExpanded, setSubTracksExpanded] = useState(true);
+  const [expandedSceneIds, setExpandedSceneIds] = useState<Record<string, boolean>>({
+    [activeSceneId]: true,
+  });
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
   const [dragOverLayerId, setDragOverLayerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setExpandedSceneIds((prev) => (prev[activeSceneId] ? prev : { ...prev, [activeSceneId]: true }));
+  }, [activeSceneId]);
+
+  const toggleSceneExpanded = (id: string) => {
+    setExpandedSceneIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const sceneSpans = React.useMemo(() => {
+    let acc = 0;
+    return scenes.map((s, idx) => {
+      const start = acc;
+      const dur = Math.max(1, s.duration);
+      acc += dur;
+      return { scene: s, index: idx, start, duration: dur, end: acc };
+    });
+  }, [scenes]);
+
+  const activeSceneSpan =
+    sceneSpans.find((sp) => sp.scene.id === activeSceneId) || sceneSpans[0];
+  const isMultiSceneTimeline = Boolean(playAllScenes) && scenes.length > 1;
+  const activeSceneOffset = isMultiSceneTimeline ? activeSceneSpan?.start ?? 0 : 0;
 
   // Top-most object on stage (last in scene.objects) appears at top of timeline
   const orderedObjects = [...scene.objects].reverse();
@@ -134,7 +166,10 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
     initialDuration: number;
   } | null>(null);
 
-  const totalDuration = Math.max(1, scene.duration);
+  const totalDuration = isMultiSceneTimeline
+    ? Math.max(1, totalProjectDuration)
+    : Math.max(1, scene.duration);
+  const activeSceneDuration = Math.max(1, scene.duration);
   const remainingProjectSeconds = Math.max(
     0,
     Number((MAX_TOTAL_PROJECT_DURATION - totalProjectDuration).toFixed(1))
@@ -169,10 +204,28 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
     return Math.max(0, Math.min(totalDuration, Number((ratio * totalDuration).toFixed(2))));
   };
 
+  const seekFromClientX = (clientX: number) => {
+    const t = clientXToTime(clientX);
+    if (isMultiSceneTimeline && onSeekSceneTime) {
+      const targetSpan =
+        sceneSpans.find((sp) => t >= sp.start && t <= sp.end) ||
+        sceneSpans[sceneSpans.length - 1];
+      if (targetSpan) {
+        const localT = Math.max(
+          0,
+          Math.min(targetSpan.duration, Number((t - targetSpan.start).toFixed(2)))
+        );
+        onSeekSceneTime(targetSpan.scene.id, localT);
+        return;
+      }
+    }
+    onSeek(Math.max(0, Math.min(activeSceneDuration, t)));
+  };
+
   useEffect(() => {
     if (!isScrubbing) return;
     const onMove = (e: MouseEvent) => {
-      onSeek(clientXToTime(e.clientX));
+      seekFromClientX(e.clientX);
     };
     const onUp = () => setIsScrubbing(false);
     window.addEventListener('mousemove', onMove);
@@ -181,7 +234,7 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [isScrubbing, totalDuration]);
+  }, [isScrubbing, totalDuration, isMultiSceneTimeline, sceneSpans]);
 
   useEffect(() => {
     if (!draggingTrack) return;
@@ -196,7 +249,7 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
         const nextStart = Math.max(
           0,
           Math.min(
-            Math.max(0, totalDuration - draggingTrack.initialDuration),
+            Math.max(0, activeSceneDuration - draggingTrack.initialDuration),
             Number((draggingTrack.initialStart + deltaSec).toFixed(1))
           )
         );
@@ -267,7 +320,7 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
         const nextDur = Math.max(
           0.5,
           Math.min(
-            totalDuration - draggingTrack.initialStart,
+            activeSceneDuration - draggingTrack.initialStart,
             Number((draggingTrack.initialDuration + deltaSec).toFixed(1))
           )
         );
@@ -302,7 +355,10 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
     };
   }, [draggingTrack, totalDuration, onUpdateObject, onUpdateAudioClip, onUpdateCameraMovement]);
 
-  const playheadPercent = Math.min(100, Math.max(0, (currentTime / totalDuration) * 100));
+  const playheadPercent = Math.min(
+    100,
+    Math.max(0, ((activeSceneOffset + currentTime) / totalDuration) * 100)
+  );
   const projectUsagePercent = Math.min(
     100,
     (totalProjectDuration / MAX_TOTAL_PROJECT_DURATION) * 100
@@ -469,10 +525,25 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
             <Repeat className="w-3.5 h-3.5" />
           </button>
 
-          {/* Digital Time Display: 00:02.4 / 00:10.0 (up to 10:00.0) */}
+          {onTogglePlayAllScenes && (
+            <button
+              onClick={onTogglePlayAllScenes}
+              className={`px-2 py-1 rounded-lg border text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
+                playAllScenes
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                  : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-600'
+              }`}
+              title="Sahneleri arka arkaya sıralı oynat (Vyond zaman çizelgesi)"
+            >
+              <FastForward className="w-3 h-3" />
+              <span>Sıralı</span>
+            </button>
+          )}
+
+          {/* Digital Time Display */}
           <div className="ml-1 px-2.5 py-0.5 rounded-md bg-white border border-slate-200 font-mono text-xs flex items-center gap-1.5">
             <span className="text-indigo-600 font-bold">
-              {formatStudioTime(currentTime)}
+              {formatStudioTime(activeSceneOffset + currentTime)}
             </span>
             <span className="text-slate-300">/</span>
             <span className="text-slate-500">{formatStudioTime(totalDuration)}</span>
@@ -569,163 +640,254 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
               onScroll={() => handleSyncScroll('left')}
               className="flex-1 overflow-y-auto divide-y divide-slate-200/70"
             >
-              {/* SPECIAL CAMERA TRACK ROW IMMEDIATELY UNDER SCENE HEADER */}
-              <div
-                onClick={() => onAddOrSelectCamera()}
-                className={`h-9 px-3 flex items-center justify-between text-xs cursor-pointer transition-colors ${
-                  isCameraSelected
-                    ? 'bg-orange-100/90 text-orange-950 font-bold'
-                    : 'bg-orange-50/50 text-orange-900 hover:bg-orange-100/60'
-                }`}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Video className="w-3.5 h-3.5 text-orange-600 shrink-0" />
-                  <span className="truncate font-semibold">Kamera (Zoom/Pan)</span>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAddCameraMovement();
-                  }}
-                  className="px-1.5 py-0.5 rounded bg-orange-500 hover:bg-orange-600 text-white text-[9.5px] font-bold flex items-center gap-0.5 shrink-0 cursor-pointer"
-                  title="Kamera Hareketi Ekle (Add Camera Movement)"
-                >
-                  <Plus className="w-2.5 h-2.5" />
-                  <span>Hareket</span>
-                </button>
-              </div>
+              {sceneSpans.map((sp) => {
+                const isThisActive = sp.scene.id === activeSceneId;
+                const isThisExpanded = Boolean(expandedSceneIds[sp.scene.id]);
+                const sceneObjs = isThisActive
+                  ? orderedObjects
+                  : [...sp.scene.objects].reverse();
 
-              {orderedObjects.map((obj) => {
-              const isSelected = obj.id === selectedObjectId;
-              const isDragTarget = dragOverLayerId === obj.id && draggedLayerId !== obj.id;
-              const mathDef = getMathAssetDefinition(obj.assetId);
-              const specs = obj.specificAnimations || [];
-              return (
-                <React.Fragment key={obj.id}>
-                  <div
-                    draggable={Boolean(onReorderObject)}
-                    onDragStart={(e) => {
-                      setDraggedLayerId(obj.id);
-                      e.dataTransfer.effectAllowed = 'move';
-                      e.dataTransfer.setData('text/plain', obj.id);
-                    }}
-                    onDragOver={(e) => {
-                      if (!draggedLayerId || draggedLayerId === obj.id) return;
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = 'move';
-                      if (dragOverLayerId !== obj.id) {
-                        setDragOverLayerId(obj.id);
-                      }
-                    }}
-                    onDragLeave={() => {
-                      if (dragOverLayerId === obj.id) {
-                        setDragOverLayerId(null);
-                      }
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const sourceId = draggedLayerId || e.dataTransfer.getData('text/plain');
-                      if (sourceId && sourceId !== obj.id) {
-                        onReorderObject?.(sourceId, obj.id);
-                      }
-                      setDraggedLayerId(null);
-                      setDragOverLayerId(null);
-                    }}
-                    onDragEnd={() => {
-                      setDraggedLayerId(null);
-                      setDragOverLayerId(null);
-                    }}
-                    onClick={() => onSelectObject(obj.id)}
-                    className={`h-9 px-2 flex items-center justify-between text-xs cursor-pointer transition-colors group ${
-                      isDragTarget
-                        ? 'bg-indigo-100/80 ring-2 ring-inset ring-indigo-500'
-                        : isSelected
-                        ? 'bg-indigo-50 text-indigo-950 font-bold'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    } ${draggedLayerId === obj.id ? 'opacity-50' : ''}`}
-                  >
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <GripVertical
-                        size={13}
-                        className="text-slate-300 group-hover:text-slate-500 cursor-grab active:cursor-grabbing shrink-0"
-                      />
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: obj.trackColor }}
-                      />
-                      <span className="truncate">{obj.name}</span>
-                    </div>
-                    <span className="text-[10px] font-mono text-slate-500 ml-2 shrink-0">
-                      {obj.duration >= 60
-                        ? formatCompactDuration(obj.duration)
-                        : `${obj.duration.toFixed(1)}s`}
-                    </span>
-                  </div>
-                  {specs.map((spec) => {
-                    const partSchema = spec.partId
-                      ? mathDef?.parts?.find((p) => p.id === spec.partId)
-                      : undefined;
-                    const schema =
-                      partSchema?.supportedAnimations.find(
-                        (s) => s.id === spec.animationId
-                      ) ||
-                      mathDef?.specificAnimations?.find(
-                        (s) => s.id === spec.animationId
-                      );
-                    const partLabel = partSchema?.name;
-                    const isSpecPartSelected =
-                      isSelected &&
-                      spec.partId &&
-                      selectedPartId === spec.partId;
-                    return (
-                      <div
-                        key={spec.id}
-                        onClick={() => {
-                          onSelectObject(obj.id);
-                          onSelectPart?.(spec.partId || null);
-                        }}
-                        className={`h-7 pl-6 pr-2 flex items-center justify-between text-[10.5px] cursor-pointer transition-colors ${
-                          isSpecPartSelected
-                            ? 'bg-pink-50 text-pink-900 font-semibold'
-                            : 'bg-slate-50/70 text-slate-600 hover:bg-slate-100'
-                        }`}
-                      >
-                        <span className="truncate">
-                          ↳{' '}
-                          {partLabel
-                            ? `${partLabel} • ${schema?.label || spec.label}`
-                            : schema?.label || spec.label}
-                        </span>
-                        <span className="text-[9.5px] font-mono text-slate-400 ml-1 shrink-0">
-                          {spec.duration.toFixed(1)}s
+                return (
+                  <React.Fragment key={sp.scene.id}>
+                    {/* VYOND-STYLE COLLAPSIBLE SCENE ROW */}
+                    <div
+                      onClick={() => onSelectScene(sp.scene.id)}
+                      className={`h-8 px-2 flex items-center justify-between text-xs cursor-pointer transition-colors ${
+                        isThisActive
+                          ? 'bg-indigo-100/90 text-indigo-950 font-bold'
+                          : 'bg-slate-100/90 text-slate-700 hover:bg-indigo-50/70 font-semibold'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1 min-w-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSceneExpanded(sp.scene.id);
+                          }}
+                          className="p-0.5 rounded hover:bg-indigo-200/60 text-indigo-700 cursor-pointer shrink-0"
+                          title={isThisExpanded ? 'Sahne nesnelerini daralt' : 'Sahne nesnelerini aç'}
+                        >
+                          {isThisExpanded ? (
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          ) : (
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        <Film className="w-3 h-3 text-indigo-600 shrink-0" />
+                        <span className="truncate">Sahne {sp.index + 1}</span>
+                        <span className="text-[9.5px] font-mono px-1 rounded bg-white/80 text-slate-600 border border-slate-200/70 shrink-0">
+                          {sp.scene.objects.length}
                         </span>
                       </div>
-                    );
-                  })}
-                </React.Fragment>
-              );
-            })}
+                      <span className="text-[10px] font-mono text-slate-500 ml-1 shrink-0">
+                        {formatCompactDuration(sp.duration)}
+                      </span>
+                    </div>
 
-            {/* Audio Tracks in Left Header */}
-            {scene.audioClips.map((clip: AudioClip) => (
-              <div
-                key={clip.id}
-                className="h-8 px-3 flex items-center justify-between text-xs text-emerald-800 bg-emerald-50/60"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Volume2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span className="truncate text-[11px] font-medium">{clip.name}</span>
-                </div>
-                <button
-                  onClick={() => onDeleteAudioClip(clip.id)}
-                  className="text-slate-400 hover:text-red-600 p-0.5 cursor-pointer"
-                  title="Ses Katmanını Kaldır"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-          </div>
+                    {isThisExpanded && isThisActive && (
+                      <>
+                        {/* SPECIAL CAMERA TRACK ROW IMMEDIATELY UNDER ACTIVE SCENE */}
+                        <div
+                          onClick={() => onAddOrSelectCamera()}
+                          className={`h-9 pl-5 pr-2.5 flex items-center justify-between text-xs cursor-pointer transition-colors ${
+                            isCameraSelected
+                              ? 'bg-orange-100/90 text-orange-950 font-bold'
+                              : 'bg-orange-50/50 text-orange-900 hover:bg-orange-100/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <Video className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+                            <span className="truncate font-semibold">Kamera</span>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAddCameraMovement();
+                            }}
+                            className="px-1.5 py-0.5 rounded bg-orange-500 hover:bg-orange-600 text-white text-[9.5px] font-bold flex items-center gap-0.5 shrink-0 cursor-pointer"
+                            title="Kamera Hareketi Ekle (Add Camera Movement)"
+                          >
+                            <Plus className="w-2.5 h-2.5" />
+                            <span>Hareket</span>
+                          </button>
+                        </div>
+
+                        {sceneObjs.map((obj) => {
+                          const isSelected = obj.id === selectedObjectId;
+                          const isDragTarget =
+                            dragOverLayerId === obj.id && draggedLayerId !== obj.id;
+                          const mathDef = getMathAssetDefinition(obj.assetId);
+                          const specs = obj.specificAnimations || [];
+                          return (
+                            <React.Fragment key={obj.id}>
+                              <div
+                                draggable={Boolean(onReorderObject)}
+                                onDragStart={(e) => {
+                                  setDraggedLayerId(obj.id);
+                                  e.dataTransfer.effectAllowed = 'move';
+                                  e.dataTransfer.setData('text/plain', obj.id);
+                                }}
+                                onDragOver={(e) => {
+                                  if (!draggedLayerId || draggedLayerId === obj.id) return;
+                                  e.preventDefault();
+                                  e.dataTransfer.dropEffect = 'move';
+                                  if (dragOverLayerId !== obj.id) {
+                                    setDragOverLayerId(obj.id);
+                                  }
+                                }}
+                                onDragLeave={() => {
+                                  if (dragOverLayerId === obj.id) {
+                                    setDragOverLayerId(null);
+                                  }
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  const sourceId =
+                                    draggedLayerId || e.dataTransfer.getData('text/plain');
+                                  if (sourceId && sourceId !== obj.id) {
+                                    onReorderObject?.(sourceId, obj.id);
+                                  }
+                                  setDraggedLayerId(null);
+                                  setDragOverLayerId(null);
+                                }}
+                                onDragEnd={() => {
+                                  setDraggedLayerId(null);
+                                  setDragOverLayerId(null);
+                                }}
+                                onClick={() => onSelectObject(obj.id)}
+                                className={`h-9 pl-5 pr-2 flex items-center justify-between text-xs cursor-pointer transition-colors group ${
+                                  isDragTarget
+                                    ? 'bg-indigo-100/80 ring-2 ring-inset ring-indigo-500'
+                                    : isSelected
+                                    ? 'bg-indigo-50 text-indigo-950 font-bold'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                                } ${draggedLayerId === obj.id ? 'opacity-50' : ''}`}
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <GripVertical
+                                    size={13}
+                                    className="text-slate-300 group-hover:text-slate-500 cursor-grab active:cursor-grabbing shrink-0"
+                                  />
+                                  <span
+                                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: obj.trackColor }}
+                                  />
+                                  <span className="truncate">{obj.name}</span>
+                                </div>
+                                <span className="text-[10px] font-mono text-slate-500 ml-2 shrink-0">
+                                  {obj.duration >= 60
+                                    ? formatCompactDuration(obj.duration)
+                                    : `${obj.duration.toFixed(1)}s`}
+                                </span>
+                              </div>
+                              {specs.map((spec) => {
+                                const partSchema = spec.partId
+                                  ? mathDef?.parts?.find((p) => p.id === spec.partId)
+                                  : undefined;
+                                const schema =
+                                  partSchema?.supportedAnimations.find(
+                                    (s) => s.id === spec.animationId
+                                  ) ||
+                                  mathDef?.specificAnimations?.find(
+                                    (s) => s.id === spec.animationId
+                                  );
+                                const partLabel = partSchema?.name;
+                                const isSpecPartSelected =
+                                  isSelected &&
+                                  spec.partId &&
+                                  selectedPartId === spec.partId;
+                                return (
+                                  <div
+                                    key={spec.id}
+                                    onClick={() => {
+                                      onSelectObject(obj.id);
+                                      onSelectPart?.(spec.partId || null);
+                                    }}
+                                    className={`h-7 pl-8 pr-2 flex items-center justify-between text-[10.5px] cursor-pointer transition-colors ${
+                                      isSpecPartSelected
+                                        ? 'bg-pink-50 text-pink-900 font-semibold'
+                                        : 'bg-slate-50/70 text-slate-600 hover:bg-slate-100'
+                                    }`}
+                                  >
+                                    <span className="truncate">
+                                      ↳{' '}
+                                      {partLabel
+                                        ? `${partLabel} • ${schema?.label || spec.label}`
+                                        : schema?.label || spec.label}
+                                    </span>
+                                    <span className="text-[9.5px] font-mono text-slate-400 ml-1 shrink-0">
+                                      {spec.duration.toFixed(1)}s
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </React.Fragment>
+                          );
+                        })}
+
+                        {/* Audio Tracks in Left Header */}
+                        {sp.scene.audioClips.map((clip: AudioClip) => (
+                          <div
+                            key={clip.id}
+                            className="h-8 pl-5 pr-2.5 flex items-center justify-between text-xs text-emerald-800 bg-emerald-50/60"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Volume2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span className="truncate text-[11px] font-medium">
+                                {clip.name}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => onDeleteAudioClip(clip.id)}
+                              className="text-slate-400 hover:text-red-600 p-0.5 cursor-pointer"
+                              title="Ses Katmanını Kaldır"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </>
+                    )}
+
+                    {isThisExpanded && !isThisActive && (
+                      <>
+                        {sceneObjs.map((obj) => (
+                          <div
+                            key={obj.id}
+                            onClick={() => onSelectScene(sp.scene.id)}
+                            className="h-9 pl-6 pr-2 flex items-center justify-between text-xs text-slate-600 hover:bg-indigo-50/50 cursor-pointer transition-colors"
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span
+                                className="w-2 h-2 rounded-full shrink-0 opacity-80"
+                                style={{ backgroundColor: obj.trackColor }}
+                              />
+                              <span className="truncate">{obj.name}</span>
+                            </div>
+                            <span className="text-[10px] font-mono text-slate-400 ml-2 shrink-0">
+                              {obj.duration.toFixed(1)}s
+                            </span>
+                          </div>
+                        ))}
+                        {sp.scene.audioClips.map((clip: AudioClip) => (
+                          <div
+                            key={clip.id}
+                            onClick={() => onSelectScene(sp.scene.id)}
+                            className="h-8 pl-6 pr-2.5 flex items-center justify-between text-xs text-emerald-700/90 bg-emerald-50/35 hover:bg-emerald-50/60 cursor-pointer"
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <Volume2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <span className="truncate text-[11px]">{clip.name}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
           ) : (
             <div className="flex-1 flex items-center justify-center p-3 text-[11px] text-slate-400 text-center">
               Alt katmanları görmek için üstteki ok simgesine tıklayın.
@@ -738,7 +900,7 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
           ref={timelineTrackAreaRef}
           onMouseDown={(e) => {
             if ((e.target as HTMLElement).dataset.timelineSeek === 'true') {
-              onSeek(clientXToTime(e.clientX));
+              seekFromClientX(e.clientX);
               setIsScrubbing(true);
             }
           }}
@@ -748,7 +910,7 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
           <div
             data-timeline-seek="true"
             onMouseDown={(e) => {
-              onSeek(clientXToTime(e.clientX));
+              seekFromClientX(e.clientX);
               setIsScrubbing(true);
             }}
             className="h-7 border-b border-slate-200 bg-slate-100/80 relative flex items-end select-none cursor-pointer shrink-0"
@@ -823,9 +985,75 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
               })}
             </div>
 
-            {subTracksExpanded && (
-              <>
-                {/* SPECIAL CAMERA TRACK ROW IMMEDIATELY UNDER SCENE RULER */}
+            {subTracksExpanded &&
+              sceneSpans.map((sp) => {
+                const isThisActive = sp.scene.id === activeSceneId;
+                const isThisExpanded = Boolean(expandedSceneIds[sp.scene.id]);
+                const sceneStartPct = isMultiSceneTimeline
+                  ? (sp.start / totalDuration) * 100
+                  : 0;
+                const sceneWidthPct = isMultiSceneTimeline
+                  ? (sp.duration / totalDuration) * 100
+                  : isThisActive
+                  ? 100
+                  : 0;
+                const inactiveObjs = [...sp.scene.objects].reverse();
+
+                return (
+                  <React.Fragment key={sp.scene.id}>
+                    {/* VYOND-STYLE SCENE HEADER BAR */}
+                    <div
+                      data-timeline-seek="true"
+                      className={`h-8 relative flex items-center ${
+                        isThisActive ? 'bg-indigo-50/70' : 'bg-slate-100/60'
+                      }`}
+                    >
+                      {sceneWidthPct > 0 && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectScene(sp.scene.id);
+                          }}
+                          style={{
+                            left: `${sceneStartPct}%`,
+                            width: `${Math.max(2, sceneWidthPct)}%`,
+                          }}
+                          className={`absolute h-6 rounded-md border px-2 flex items-center justify-between overflow-hidden cursor-pointer transition-colors ${
+                            isThisActive
+                              ? 'bg-indigo-600/90 border-indigo-700 text-white shadow-2xs'
+                              : 'bg-white hover:bg-indigo-50 border-slate-300 text-slate-700'
+                          }`}
+                          title={`Sahne ${sp.index + 1}: ${sp.scene.name} (${formatCompactDuration(
+                            sp.duration
+                          )})`}
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <Film className="w-3 h-3 shrink-0" />
+                            <span className="text-[10.5px] font-bold truncate">
+                              Sahne {sp.index + 1}
+                            </span>
+                            {sp.scene.transition.type !== 'none' && (
+                              <span
+                                className={`text-[9px] px-1 rounded font-semibold shrink-0 ${
+                                  isThisActive
+                                    ? 'bg-white/20 text-white'
+                                    : 'bg-indigo-50 text-indigo-600'
+                                }`}
+                              >
+                                ⇄ {sp.scene.transition.type}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[9.5px] font-mono opacity-85 shrink-0 ml-1">
+                            {formatCompactDuration(sp.duration)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {isThisExpanded && isThisActive && (
+                      <>
+                        {/* SPECIAL CAMERA TRACK ROW IMMEDIATELY UNDER ACTIVE SCENE */}
                 <div
                   data-timeline-seek="true"
                   className={`h-9 relative flex items-center ${
@@ -870,7 +1098,7 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
                     </div>
                   ) : (
                     scene.camera.movements.map((mov: CameraMovement, mIdx: number) => {
-                      const leftPct = (mov.startTime / totalDuration) * 100;
+                      const leftPct = ((activeSceneOffset + mov.startTime) / totalDuration) * 100;
                       const widthPct = (mov.duration / totalDuration) * 100;
                       const isMovSelected =
                         isCameraSelected &&
@@ -976,7 +1204,7 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
 
                 {orderedObjects.map((obj) => {
               const isSelected = obj.id === selectedObjectId;
-              const leftPct = (obj.startTime / totalDuration) * 100;
+              const leftPct = ((activeSceneOffset + obj.startTime) / totalDuration) * 100;
               const widthPct = (obj.duration / totalDuration) * 100;
 
               const enterEndSec =
@@ -1095,7 +1323,7 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
                   </div>
                 </div>
                 {specs.map((spec) => {
-                  const sLeftPct = (spec.startTime / totalDuration) * 100;
+                  const sLeftPct = ((activeSceneOffset + spec.startTime) / totalDuration) * 100;
                   const sWidthPct = (spec.duration / totalDuration) * 100;
                   const partSchema = spec.partId
                     ? mathDef?.parts?.find((p) => p.id === spec.partId)
@@ -1239,7 +1467,7 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
 
             {/* Audio Clips Track Bars */}
             {scene.audioClips.map((clip: AudioClip) => {
-              const leftPct = (clip.startTime / totalDuration) * 100;
+              const leftPct = ((activeSceneOffset + clip.startTime) / totalDuration) * 100;
               const widthPct = (clip.duration / totalDuration) * 100;
               return (
                 <div
@@ -1289,8 +1517,85 @@ export const BottomTimeline: React.FC<BottomTimelineProps> = ({
                 </div>
               );
             })}
-              </>
-            )}
+                      </>
+                    )}
+
+                    {isThisExpanded && !isThisActive && (
+                      <>
+                        {inactiveObjs.map((obj) => {
+                          const oLeft = isMultiSceneTimeline
+                            ? ((sp.start + obj.startTime) / totalDuration) * 100
+                            : (obj.startTime / totalDuration) * 100;
+                          const oWidth = (obj.duration / totalDuration) * 100;
+                          return (
+                            <div
+                              key={obj.id}
+                              data-timeline-seek="true"
+                              className="h-9 relative flex items-center"
+                            >
+                              {isMultiSceneTimeline && (
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelectScene(sp.scene.id);
+                                  }}
+                                  style={{
+                                    left: `${oLeft}%`,
+                                    width: `${Math.max(1.5, oWidth)}%`,
+                                    borderColor: obj.trackColor,
+                                  }}
+                                  className="absolute h-7 rounded-md border bg-white/90 hover:bg-indigo-50/60 px-2 flex items-center overflow-hidden cursor-pointer shadow-2xs opacity-85"
+                                  title={`${obj.name} (Sahne ${sp.index + 1})`}
+                                >
+                                  <div
+                                    className="absolute inset-0 opacity-15"
+                                    style={{ backgroundColor: obj.trackColor }}
+                                  />
+                                  <span className="text-[10px] font-semibold text-slate-700 truncate z-10">
+                                    {obj.name}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {sp.scene.audioClips.map((clip: AudioClip) => {
+                          const aLeft = isMultiSceneTimeline
+                            ? ((sp.start + clip.startTime) / totalDuration) * 100
+                            : (clip.startTime / totalDuration) * 100;
+                          const aWidth = (clip.duration / totalDuration) * 100;
+                          return (
+                            <div
+                              key={clip.id}
+                              data-timeline-seek="true"
+                              className="h-8 relative flex items-center"
+                            >
+                              {isMultiSceneTimeline && (
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelectScene(sp.scene.id);
+                                  }}
+                                  style={{
+                                    left: `${aLeft}%`,
+                                    width: `${Math.max(2, aWidth)}%`,
+                                  }}
+                                  className="absolute h-6 rounded-md bg-emerald-50 border border-emerald-300 px-2 flex items-center gap-1.5 overflow-hidden cursor-pointer opacity-85"
+                                >
+                                  <Volume2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                  <span className="text-[10px] font-semibold text-emerald-800 truncate">
+                                    {clip.name}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+                  </React.Fragment>
+                );
+              })}
           </div>
 
           {/* RED VERTICAL PLAYHEAD */}

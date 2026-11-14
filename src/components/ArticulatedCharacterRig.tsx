@@ -25,6 +25,23 @@ import {
   NoseStyleType,
   RigJointKey,
 } from '../types/studio';
+import type {
+  CanonicalBoneId,
+  EvaluatedRigRenderState,
+  GroundCompensationMode,
+  RigAnimationLayerInput,
+  RigEvaluationResult,
+  TwoBoneArmIKSolution,
+} from '../types/rigStandard';
+import {
+  evaluateCharacterRig,
+  evaluateCharacterRigForRenderer,
+} from '../rig/rigEvaluator';
+import {
+  computeTorsoChainWorldTransform,
+} from '../rig/rigKinematics';
+
+export { evaluateCharacterRig, evaluateCharacterRigForRenderer };
 
 /**
  * Darkens or lightens a hex color by `percent` (-100 to 100)
@@ -4545,6 +4562,32 @@ export interface ArticulatedCharacterRigProps {
   onChangeJointAngles?: (patch: CustomJointAngles) => void;
   calibrationDebug?: boolean;
   calibrationTick?: number;
+  /** Faz 3B-1/3B-2/3B-3: Kanonik kemik açıları (18 kanonik kemiğin tamamını destekler) */
+  canonicalBoneAngles?: Partial<Record<CanonicalBoneId, number>>;
+  /** Faz 3B-2/3B-3: Ayak tabanını zemine paralel tutan otomatik bilek düzeltmesi (varsayılan: false) */
+  autoLevelAnkles?: boolean;
+  /** Faz 3B-3: L1–L3 animasyon katmanları (evaluateCharacterRig üzerinden değerlendirilir) */
+  rigLayers?: readonly RigAnimationLayerInput[];
+  /** Faz 3B-3: L4 kullanıcı manuel eklem açısı override'ları */
+  userJointOverrides?: Partial<Record<RigJointKey, number>>;
+  /** Faz 3B-3: L4 kullanıcı dikey gövde salınımı override'ı */
+  userBodyBobYOverride?: number;
+  /** Faz 3B-3: Sol ve sağ kol IK çözümleri (varsa L2 katmanına dönüştürülür) */
+  leftArmIK?: TwoBoneArmIKSolution;
+  rightArmIK?: TwoBoneArmIKSolution;
+  leftArmIKWeight?: number;
+  rightArmIKWeight?: number;
+  includePreservedWristInIKLayer?: boolean;
+  /** Faz 3B-3: Nötr poza göre dikey pelvis telafi modu (varsayılan: 'disabled') */
+  groundCompensationMode?: GroundCompensationMode;
+  /** Faz 3B-3: Dışarıdan önceden hesaplanmış evaluateCharacterRig çıktısı (verilirse doğrudan tüketilir) */
+  evaluatedRig?: RigEvaluationResult;
+  /** Faz 3B-3: Karakter varlık kimliği (ör. 'char-robot-mira' desteklenmeyen karakter kontrolü için) */
+  assetId?: string;
+  /** Faz 3B-3: Değerlendirilen birleşik render durumunu dışarıya bildiren opsiyonel geri çağırım */
+  onEvaluatedRigState?: (state: EvaluatedRigRenderState) => void;
+  /** Eski (Faz 3B öncesi) 11 eklemli renderer davranışına anında dönüş bayrağı */
+  useLegacyRendererFallback?: boolean;
 }
 
 function renderActionOverlayProps(
@@ -4707,15 +4750,88 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
   onSelectJoint,
   onChangeJointAngles,
   calibrationDebug = false,
+  canonicalBoneAngles,
+  autoLevelAnkles = false,
+  rigLayers,
+  userJointOverrides,
+  userBodyBobYOverride,
+  leftArmIK,
+  rightArmIK,
+  leftArmIKWeight = 1,
+  rightArmIKWeight = 1,
+  includePreservedWristInIKLayer = false,
+  groundCompensationMode = 'disabled',
+  evaluatedRig,
+  assetId,
+  onEvaluatedRigState,
+  useLegacyRendererFallback = false,
 }) => {
   const svgRef = React.useRef<SVGSVGElement | null>(null);
   const patternUid = React.useId().replace(/:/g, '');
   const [draggingJoint, setDraggingJoint] = React.useState<RigJointKey | null>(null);
 
-  const angles = resolveHybridRigAngles(config, animTime, activeRigPoseSlot, showJointPins);
+  const basePoseAngles = resolveHybridRigAngles(config, animTime, activeRigPoseSlot, showJointPins);
 
-  const leftHandGesture = resolveHandGesture(config, 'left');
-  const rightHandGesture = resolveHandGesture(config, 'right');
+  // Faz 3B-3: Birleşik L0–L5 Rig Evaluator -> SVG Renderer Değerlendirmesi
+  const renderState = useMemo(
+    () =>
+      evaluateCharacterRigForRenderer({
+        config,
+        assetId,
+        basePoseAngles,
+        portraitMode,
+        layers: rigLayers,
+        leftArmIK,
+        rightArmIK,
+        leftArmIKWeight,
+        rightArmIKWeight,
+        includePreservedWristInIKLayer,
+        canonicalBoneAngles,
+        userJointOverrides,
+        userBodyBobYOverride,
+        autoLevelAnkles,
+        groundCompensationMode,
+        preEvaluatedRig: evaluatedRig,
+        useLegacyRendererFallback,
+      }),
+    [
+      config,
+      assetId,
+      basePoseAngles.headTilt,
+      basePoseAngles.leftShoulder,
+      basePoseAngles.leftElbow,
+      basePoseAngles.leftWrist,
+      basePoseAngles.rightShoulder,
+      basePoseAngles.rightElbow,
+      basePoseAngles.rightWrist,
+      basePoseAngles.leftHip,
+      basePoseAngles.leftKnee,
+      basePoseAngles.rightHip,
+      basePoseAngles.rightKnee,
+      basePoseAngles.bodyBobY,
+      portraitMode,
+      rigLayers,
+      leftArmIK,
+      rightArmIK,
+      leftArmIKWeight,
+      rightArmIKWeight,
+      includePreservedWristInIKLayer,
+      canonicalBoneAngles,
+      userJointOverrides,
+      userBodyBobYOverride,
+      autoLevelAnkles,
+      groundCompensationMode,
+      evaluatedRig,
+      useLegacyRendererFallback,
+    ]
+  );
+
+  if (onEvaluatedRigState) {
+    onEvaluatedRigState(renderState);
+  }
+
+  const leftHandGesture = renderState.leftHandGesture as HandGestureType;
+  const rightHandGesture = renderState.rightHandGesture as HandGestureType;
 
   // Interactive 2D Bone Rigging mouse drag handler
   const startJointDrag = (
@@ -4852,21 +4968,9 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
     );
   };
 
-  // Resolve active facial expression (explicit expression or pose-driven fallback)
-  const resolvedExpression: CharacterExpressionType =
-    config.expression && config.expression !== 'neutral'
-      ? config.expression
-      : config.pose === 'surprised'
-      ? 'surprised'
-      : config.pose === 'sad'
-      ? 'sad'
-      : config.pose === 'scared'
-      ? 'worried'
-      : config.pose === 'cheer' || config.pose === 'idea-bulb'
-      ? 'happy'
-      : 'neutral';
-
-  const headDirection: HeadDirectionType = config.headDirection || 'center';
+  // Resolve active facial expression and head direction from unified renderState
+  const resolvedExpression: CharacterExpressionType = renderState.expression;
+  const headDirection: HeadDirectionType = renderState.headDirection;
 
   // Proportions matching Image 2 (classic) OR Image 3 (slender-pro)
   const isSlenderPro = config.bodyStyle === 'slender-pro';
@@ -5187,6 +5291,80 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
   const neckScaleX = 0.85 + userNeckScale * 0.15;
   const neckScaleY = userNeckScale;
 
+  // Faz 3B-3: Kanonik 18 kemik açısı ve gövde ofsetinin birleşik renderState'ten aktarılması
+  const rigProfile = renderState.profile;
+  const pelvisAngle = renderState.svgBoneAngles.pelvis;
+  const spineAngle = renderState.svgBoneAngles.spine;
+  const chestAngle = renderState.svgBoneAngles.chest;
+  const neckAngle = renderState.svgBoneAngles.neck;
+  const canonicalHeadAngle = renderState.canonicalHeadAngleDeg;
+  const legacyHeadTiltAngle = renderState.legacyHeadTiltDeg;
+
+  const leftShoulderAngle = renderState.svgBoneAngles.leftShoulder;
+  const leftElbowAngle = renderState.svgBoneAngles.leftElbow;
+  const leftWristAngle = renderState.svgBoneAngles.leftWrist;
+  const rightShoulderAngle = renderState.svgBoneAngles.rightShoulder;
+  const rightElbowAngle = renderState.svgBoneAngles.rightElbow;
+  const rightWristAngle = renderState.svgBoneAngles.rightWrist;
+
+  const leftHipAngle = renderState.svgBoneAngles.leftHip;
+  const leftKneeAngle = renderState.svgBoneAngles.leftKnee;
+  const leftAnkleAngle = renderState.svgBoneAngles.leftAnkle;
+  const rightHipAngle = renderState.svgBoneAngles.rightHip;
+  const rightKneeAngle = renderState.svgBoneAngles.rightKnee;
+  const rightAnkleAngle = renderState.svgBoneAngles.rightAnkle;
+
+  const bodyBobY = renderState.bodyBobY;
+
+  const torsoChain = useMemo(
+    () =>
+      computeTorsoChainWorldTransform(
+        rigProfile,
+        {
+          pelvis: pelvisAngle,
+          spine: spineAngle,
+          chest: chestAngle,
+          neck: neckAngle,
+          head: canonicalHeadAngle,
+        },
+        {
+          portraitMode,
+          flipHorizontal: Boolean(config.flipHorizontal),
+          bodyBobY,
+          speechHeadBobY,
+          speechHeadTilt,
+          legacyHeadTiltDeg: legacyHeadTiltAngle,
+          canonicalHeadAngleDeg: canonicalHeadAngle,
+          headDirection,
+          userHeadScale,
+          userHeadOffsetY,
+          userNeckScale,
+        }
+      ),
+    [
+      rigProfile,
+      pelvisAngle,
+      spineAngle,
+      chestAngle,
+      neckAngle,
+      canonicalHeadAngle,
+      portraitMode,
+      config.flipHorizontal,
+      bodyBobY,
+      speechHeadBobY,
+      speechHeadTilt,
+      legacyHeadTiltAngle,
+      headDirection,
+      userHeadScale,
+      userHeadOffsetY,
+      userNeckScale,
+    ]
+  );
+
+  const collarAnchorInRootSpace = torsoChain.collarAnchorInRootSpace;
+  const torsoCumulativeAngleDeg = torsoChain.torsoCumulativeAngleDeg;
+  const classicUpperPelvisPivotY = torsoChain.classicUpperPelvisRawPivot.y;
+
   const dicebearBaseScale = isSlenderPro ? 0.59 : 0.38;
 
   const renderDicebearBackHair = () => {
@@ -5297,8 +5475,10 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
   // ============================================================================
   if (config.photoAvatarMode === 'realistic-avatar' && config.photoAvatarUrl) {
     const breathBob = Math.sin(animTime * 2.6) * 2.2;
+    const activeHeadAngleForRealisticAvatar =
+      legacyHeadTiltAngle + canonicalHeadAngle;
     const subtleTilt =
-      angles.headTilt * 0.45 + Math.sin(animTime * 1.8) * 1.4 + headLookShiftX * 0.4;
+      activeHeadAngleForRealisticAvatar * 0.45 + Math.sin(animTime * 1.8) * 1.4 + headLookShiftX * 0.4;
     const talkEnergy = config.lipSyncEnabled
       ? Math.abs(Math.sin(animTime * 15)) * 0.65 +
         Math.abs(Math.cos(animTime * 23)) * 0.35
@@ -5449,19 +5629,6 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
     // Anchor head & neck directly to the scaled collar opening (y=68 scaled around ground y=325)
     const slenderCollarY = 325 + (68 - 325) * prop.bodyScaleY;
 
-    const slenderRightShoulder =
-      config.pose === 'clipboard' &&
-      (!config.rigMode || config.rigMode === 'preset') &&
-      config.customJointAngles?.rightShoulder === undefined
-        ? -24
-        : angles.rightShoulder;
-    const slenderRightElbow =
-      config.pose === 'clipboard' &&
-      (!config.rigMode || config.rigMode === 'preset') &&
-      config.customJointAngles?.rightElbow === undefined
-        ? -64
-        : angles.rightElbow;
-
     return (
       <svg
         ref={svgRef}
@@ -5471,21 +5638,36 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
         {/* Soft studio floor shadow */}
         <ellipse cx="104" cy="326" rx="44" ry="5.5" fill="rgba(0,0,0,0.12)" />
 
-        <g transform={`${config.flipHorizontal ? 'translate(104, 0) scale(-1, 1) translate(-104, 0) ' : ''}translate(0, ${prop.translateY + angles.bodyBobY})`}>
+        <g transform={`${config.flipHorizontal ? 'translate(104, 0) scale(-1, 1) translate(-104, 0) ' : ''}translate(0, ${prop.translateY + bodyBobY})`}>
           {/* Back hair behind torso & neck */}
           {useDicebear && (
             <g
-              transform={`translate(104, ${slenderCollarY + speechHeadBobY}) scale(${prop.headScale}) rotate(${angles.headTilt + speechHeadTilt}) translate(-110, -114)`}
+              data-rig-group="back-hair-collar-base"
+              transform={`translate(${collarAnchorInRootSpace.x}, ${collarAnchorInRootSpace.y + speechHeadBobY}) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
             >
-              {renderDicebearBackHair()}
+              <g
+                data-rig-group="back-hair-neck-carrier"
+                transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 122)` : undefined}
+              >
+                <g
+                  data-rig-group="back-hair-head-carrier"
+                  transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
+                >
+                  {renderDicebearBackHair()}
+                </g>
+              </g>
             </g>
           )}
           <g
             transform={`translate(104, 325) scale(${prop.bodyScaleX}, ${prop.bodyScaleY}) translate(-104, -325)`}
           >
+            <g
+              data-canonical-bone="pelvis"
+              transform={pelvisAngle !== 0 ? `rotate(${pelvisAngle} 104 168)` : undefined}
+            >
             {/* 1. LEGS & SHOES (Supports trousers, jeans, shorts, skirt, joggers + all 5 shoe styles) */}
             {/* LEFT LEG */}
-            <g transform={`rotate(${angles.leftHip} 89 168)`}>
+            <g transform={`rotate(${leftHipAngle} 89 168)`}>
               <circle cx="89" cy="168" r="15" fill={bStyle === 'skirt' ? config.skinTone : config.bottomColor} />
               {bStyle === 'shorts' ? (
                 <>
@@ -5503,7 +5685,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                 <line x1="75.5" y1="168" x2="77.5" y2="246" stroke={secondaryTop} strokeWidth="2.4" />
               )}
               {renderBoneOverlay('leftHip', 89, 168, 89, 240, 0, 'Sol Kalça (Üst Bacak)')}
-              <g transform={`rotate(${angles.leftKnee} 89 246)`}>
+              <g transform={`rotate(${leftKneeAngle} 89 246)`}>
                 <circle cx="88.5" cy="246" r="12" fill={calfColor} />
                 <path
                   d="M76 246 L101 246 L97 314 L78 314 Z"
@@ -5518,8 +5700,13 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                     <rect x="77.5" y="308" width="20" height="5" rx="2" fill={pantsShade} />
                   </>
                 )}
-                <g transform="translate(76, 312)">
-                  {renderShoeShape('left')}
+                <g
+                  data-canonical-bone="leftAnkle"
+                  transform={leftAnkleAngle !== 0 ? `rotate(${leftAnkleAngle} 89 312)` : undefined}
+                >
+                  <g transform="translate(76, 312)">
+                    {renderShoeShape('left')}
+                  </g>
                 </g>
                 {renderBoneOverlay(
                   'leftKnee',
@@ -5527,14 +5714,14 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   246,
                   89,
                   312,
-                  angles.leftHip,
+                  leftHipAngle,
                   'Sol Diz (Alt Bacak)'
                 )}
               </g>
             </g>
 
             {/* RIGHT LEG */}
-            <g transform={`rotate(${angles.rightHip} 119 168)`}>
+            <g transform={`rotate(${rightHipAngle} 119 168)`}>
               <circle cx="119" cy="168" r="15" fill={bStyle === 'skirt' ? config.skinTone : config.bottomColor} />
               {bStyle === 'shorts' ? (
                 <>
@@ -5552,7 +5739,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                 <line x1="132" y1="168" x2="128.5" y2="246" stroke={secondaryTop} strokeWidth="2.4" />
               )}
               {renderBoneOverlay('rightHip', 119, 168, 118, 240, 0, 'Sağ Kalça (Üst Bacak)')}
-              <g transform={`rotate(${angles.rightKnee} 118 246)`}>
+              <g transform={`rotate(${rightKneeAngle} 118 246)`}>
                 <circle cx="118" cy="246" r="12" fill={calfColor} />
                 <path
                   d="M106 246 L130 246 L124 314 L106 314 Z"
@@ -5567,8 +5754,13 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                     <rect x="105.5" y="308" width="19" height="5" rx="2" fill={pantsShade} />
                   </>
                 )}
-                <g transform="translate(105, 312)">
-                  {renderShoeShape('right')}
+                <g
+                  data-canonical-bone="rightAnkle"
+                  transform={rightAnkleAngle !== 0 ? `rotate(${rightAnkleAngle} 118 312)` : undefined}
+                >
+                  <g transform="translate(105, 312)">
+                    {renderShoeShape('right')}
+                  </g>
                 </g>
                 {renderBoneOverlay(
                   'rightKnee',
@@ -5576,7 +5768,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   246,
                   118,
                   312,
-                  angles.rightHip,
+                  rightHipAngle,
                   'Sağ Diz (Alt Bacak)'
                 )}
               </g>
@@ -5625,6 +5817,14 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
             />
 
             {/* 2. SLENDER PRO TORSO, COLLARED SHIRT, BELT & ARMS */}
+            <g
+              data-canonical-bone="spine"
+              transform={spineAngle !== 0 ? `rotate(${spineAngle} 104 144)` : undefined}
+            >
+              <g
+                data-canonical-bone="chest"
+                transform={chestAngle !== 0 ? `rotate(${chestAngle} 104 108)` : undefined}
+              >
             {/* TORSO BODY (Supports all OutfitStyleType options on Slender Pro) */}
             <path
               d={
@@ -5831,7 +6031,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
             )}
 
             {/* RIGHT ARM / VIEWER'S RIGHT (Rendered AFTER torso & belt so arm/props stay in front!) */}
-            <g transform={`rotate(${slenderRightShoulder} 131 82)`}>
+            <g transform={`rotate(${rightShoulderAngle} 131 82)`}>
               {/* Upper Sleeve */}
               <path
                 d="M123 80 A8 8 0 0 1 139 80 L141 118 A7 7 0 0 1 126 118 Z"
@@ -5839,7 +6039,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
               />
               {renderBoneOverlay('rightShoulder', 131, 82, 133.5, 114, 0, 'Sağ Omuz (Üst Kol)')}
               {/* Elbow & Forearm */}
-              <g transform={`rotate(${slenderRightElbow} 133.5 118)`}>
+              <g transform={`rotate(${rightElbowAngle} 133.5 118)`}>
                 <circle cx="133.5" cy="118" r="7" fill={config.topColor} />
                 <path
                   d="M126.5 118 L140.5 118 L138.5 152 L128.5 152 Z"
@@ -5862,7 +6062,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   118,
                   133.5,
                   149,
-                  slenderRightShoulder,
+                  rightShoulderAngle,
                   'Sağ Dirsek (Ön Kol)'
                 )}
                 {/* Articulated Right Hand with Clear Fingers & Gestures */}
@@ -5870,7 +6070,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   'right',
                   config.skinTone,
                   rightHandGesture,
-                  angles.rightWrist,
+                  rightWristAngle,
                   133.5,
                   152,
                   0.92
@@ -5881,18 +6081,18 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                     'right',
                     133.5,
                     152,
-                    angles.rightWrist,
-                    slenderRightShoulder + slenderRightElbow,
+                    rightWristAngle,
+                    rightShoulderAngle + rightElbowAngle,
                     { skinTone: config.skinTone, isSpeaking: Boolean(config.lipSyncEnabled), animTime, calibrationDebug }
                   )}
-                <g transform={`rotate(${angles.rightWrist} 133.5 152)`}>
+                <g transform={`rotate(${rightWristAngle} 133.5 152)`}>
                   {renderBoneOverlay(
                     'rightWrist',
                     133.5,
                     152,
                     133.5,
                     166,
-                    slenderRightShoulder + slenderRightElbow,
+                    rightShoulderAngle + rightElbowAngle,
                     'Sağ Bilek & El'
                   )}
                 </g>
@@ -5958,7 +6158,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
             </g>
 
             {/* LEFT ARM / VIEWER'S LEFT (Hangs naturally with buttoned cuff, Image 3) */}
-            <g transform={`rotate(${angles.leftShoulder} 75 80)`}>
+            <g transform={`rotate(${leftShoulderAngle} 75 80)`}>
               {/* Upper Arm */}
               <path
                 d="M67 80 A8 8 0 0 1 83 80 L81 118 A7 7 0 0 1 67 118 Z"
@@ -5966,7 +6166,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
               />
               {renderBoneOverlay('leftShoulder', 75, 80, 74, 114, 0, 'Sol Omuz (Üst Kol)')}
               {/* Elbow & Forearm */}
-              <g transform={`rotate(${angles.leftElbow} 74 118)`}>
+              <g transform={`rotate(${leftElbowAngle} 74 118)`}>
                 <circle cx="74" cy="118" r="7" fill={config.topColor} />
                 <path
                   d="M67 118 L81 118 L79 152 L67 152 Z"
@@ -5997,7 +6197,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   118,
                   73,
                   149,
-                  angles.leftShoulder,
+                  leftShoulderAngle,
                   'Sol Dirsek (Ön Kol)'
                 )}
                 {/* Articulated Left Hand with Clear Fingers & Gestures */}
@@ -6005,7 +6205,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   'left',
                   config.skinTone,
                   leftHandGesture,
-                  angles.leftWrist,
+                  leftWristAngle,
                   73,
                   152.5,
                   0.92
@@ -6016,140 +6216,161 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                     'left',
                     73,
                     152.5,
-                    angles.leftWrist,
-                    angles.leftShoulder + angles.leftElbow,
+                    leftWristAngle,
+                    leftShoulderAngle + leftElbowAngle,
                     { skinTone: config.skinTone, isSpeaking: Boolean(config.lipSyncEnabled), animTime, calibrationDebug }
                   )}
-                <g transform={`rotate(${angles.leftWrist} 73 152.5)`}>
+                <g transform={`rotate(${leftWristAngle} 73 152.5)`}>
                   {renderBoneOverlay(
                     'leftWrist',
                     73,
                     152.5,
                     73,
                     167,
-                    angles.leftShoulder + angles.leftElbow,
+                    leftShoulderAngle + leftElbowAngle,
                     'Sol Bilek & El'
                   )}
                 </g>
               </g>
             </g>
+              </g>
+            </g>
+            </g>
           </g>
 
           {/* 3. REFINED SLENDER-PRO HEAD & NECK (Anchored to scaled collar so head never detaches!) */}
           <g
-            transform={`translate(104, ${slenderCollarY + speechHeadBobY}) scale(${prop.headScale}) rotate(${angles.headTilt + speechHeadTilt}) translate(-110, -114)`}
+            data-rig-group="head-collar-base"
+            transform={`translate(${collarAnchorInRootSpace.x}, ${collarAnchorInRootSpace.y + speechHeadBobY}) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
           >
-            {!useDicebear && renderHairBack(config.hairStyle, config.hairColor)}
-
-            {/* Longer Slender Neck tapering cleanly into the Shirt Collar V-Opening */}
-            <g transform={`translate(110, 122) scale(${neckScaleX}, ${neckScaleY}) translate(-110, -122)`}>
-              <path
-                d="M100 98 L120 98 L118 126 Q110 130 102 126 Z"
-                fill={config.skinTone}
-              />
+            <g
+              data-canonical-bone="neck"
+              transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 122)` : undefined}
+            >
               {!useDicebear && (
-                <polygon
-                  points="100,104 120,104 119,117 101,112"
-                  fill={neckShadowTone}
-                />
+                <g
+                  data-rig-group="vector-back-hair-head-carrier"
+                  transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
+                >
+                  {renderHairBack(config.hairStyle, config.hairColor)}
+                </g>
               )}
+
+              {/* Longer Slender Neck tapering cleanly into the Shirt Collar V-Opening */}
+              <g transform={`translate(110, 122) scale(${neckScaleX}, ${neckScaleY}) translate(-110, -122)`}>
+                <path
+                  d="M100 98 L120 98 L118 126 Q110 130 102 126 Z"
+                  fill={config.skinTone}
+                />
+                {!useDicebear && (
+                  <polygon
+                    points="100,104 120,104 119,117 101,112"
+                    fill={neckShadowTone}
+                  />
+                )}
+              </g>
+
+              <g
+                data-canonical-bone="head"
+                transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
+              >
+                {config.photoAvatarMode === 'hybrid-head' && config.photoAvatarUrl ? (
+                  renderHybridPhotoHead()
+                ) : useDicebear ? (
+                  <>
+                    {renderDicebearHead()}
+                    {config.accessory !== 'none' &&
+                      config.accessory !== 'tortoise-glasses' &&
+                      config.accessory !== 'wire-glasses' &&
+                      config.accessory !== 'round-glasses' &&
+                      config.accessory !== 'square-glasses' &&
+                      config.accessory !== 'sunglasses' &&
+                      renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
+                  </>
+                ) : (
+                  <>
+                    {/* 3/4 Perspective Ears */}
+                    {renderHeadEars(config.skinTone, earInnerTone, headDirection)}
+
+                    {/* Sculpted Face Base (with 3/4 angled head contour when turned left/right) */}
+                    <g fill={config.skinTone}>
+                      {renderFaceShapePath(config.faceShape, headDirection)}
+                    </g>
+
+                    {/* Facial Features with Head Direction Look Shift & In-Place State Morphing */}
+                    <g transform={`translate(${headLookShiftX}, 0)`}>
+                      {/* Defined Facial Contours & Expression Micro-Features */}
+                      {renderFacialSculptAndExpressionDetails(
+                        config.skinTone,
+                        resolvedExpression
+                      )}
+
+                      {/* Eyebrows (Single pair that morphs in-place for expressions) */}
+                      {renderEyebrows(
+                        config.eyebrowStyle,
+                        config.hairColor,
+                        resolvedExpression,
+                        isSpeakingNow,
+                        animTime
+                      )}
+
+                      {/* Eyes (Single pair that shifts pupils & morphs eyelids in-place) */}
+                      {renderEyes(
+                        config.eyeStyle,
+                        config.eyeColor,
+                        config.skinTone,
+                        resolvedExpression,
+                        headDirection,
+                        animTime,
+                        proceduralBlink
+                      )}
+
+                      {/* Mouth / Full Beard (drawn before nose so rounded nose overlaps top of mustache like Image 3!) */}
+                      {renderMouth(
+                        config.mouthStyle,
+                        config.lipColor,
+                        config.hairColor,
+                        config.skinTone,
+                        resolvedExpression,
+                        Boolean(config.lipSyncEnabled),
+                        animTime,
+                        headDirection,
+                        config.ttsScript,
+                        isFemaleCharacter(config),
+                        config.lipSyncAudioUrl,
+                        config.lipSyncAudioStartTime
+                      )}
+
+                      {/* Nose (Angled 3/4 profile when headDirection is left/right) */}
+                      {renderNose(config.noseStyle, config.skinTone, headDirection)}
+
+                      {/* Classic Glasses (sit neatly behind front bangs) */}
+                      {(config.accessory === 'tortoise-glasses' ||
+                        config.accessory === 'wire-glasses' ||
+                        config.accessory === 'round-glasses' ||
+                        config.accessory === 'square-glasses' ||
+                        config.accessory === 'sunglasses') &&
+                        renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
+                    </g>
+
+                    {/* Front Hair */}
+                    {renderHairFront(config.hairStyle, config.hairColor, headDirection)}
+
+                    {/* Headwear, Jewelry, Neck & Wearable Tech (always visible on top of front hair) */}
+                    {config.accessory !== 'none' &&
+                      config.accessory !== 'tortoise-glasses' &&
+                      config.accessory !== 'wire-glasses' &&
+                      config.accessory !== 'round-glasses' &&
+                      config.accessory !== 'square-glasses' &&
+                      config.accessory !== 'sunglasses' &&
+                      renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
+                  </>
+                )}
+
+                {/* Head Tilt 2D Bone Handle */}
+                {renderBoneOverlay('headTilt', 110, 114, 110, 42, 0, 'Baş Eğimi (Boyun Eklemi)', true)}
+              </g>
             </g>
-
-            {config.photoAvatarMode === 'hybrid-head' && config.photoAvatarUrl ? (
-              renderHybridPhotoHead()
-            ) : useDicebear ? (
-              <>
-                {renderDicebearHead()}
-                {config.accessory !== 'none' &&
-                  config.accessory !== 'tortoise-glasses' &&
-                  config.accessory !== 'wire-glasses' &&
-                  config.accessory !== 'round-glasses' &&
-                  config.accessory !== 'square-glasses' &&
-                  config.accessory !== 'sunglasses' &&
-                  renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
-              </>
-            ) : (
-              <>
-                {/* 3/4 Perspective Ears */}
-                {renderHeadEars(config.skinTone, earInnerTone, headDirection)}
-
-                {/* Sculpted Face Base (with 3/4 angled head contour when turned left/right) */}
-                <g fill={config.skinTone}>
-                  {renderFaceShapePath(config.faceShape, headDirection)}
-                </g>
-
-                {/* Facial Features with Head Direction Look Shift & In-Place State Morphing */}
-                <g transform={`translate(${headLookShiftX}, 0)`}>
-                  {/* Defined Facial Contours & Expression Micro-Features */}
-                  {renderFacialSculptAndExpressionDetails(
-                    config.skinTone,
-                    resolvedExpression
-                  )}
-
-                  {/* Eyebrows (Single pair that morphs in-place for expressions) */}
-                  {renderEyebrows(
-                    config.eyebrowStyle,
-                    config.hairColor,
-                    resolvedExpression,
-                    isSpeakingNow,
-                    animTime
-                  )}
-
-                  {/* Eyes (Single pair that shifts pupils & morphs eyelids in-place) */}
-                  {renderEyes(
-                    config.eyeStyle,
-                    config.eyeColor,
-                    config.skinTone,
-                    resolvedExpression,
-                    headDirection,
-                    animTime,
-                    proceduralBlink
-                  )}
-
-                  {/* Mouth / Full Beard (drawn before nose so rounded nose overlaps top of mustache like Image 3!) */}
-                  {renderMouth(
-                    config.mouthStyle,
-                    config.lipColor,
-                    config.hairColor,
-                    config.skinTone,
-                    resolvedExpression,
-                    Boolean(config.lipSyncEnabled),
-                    animTime,
-                    headDirection,
-                    config.ttsScript,
-                    isFemaleCharacter(config),
-                    config.lipSyncAudioUrl,
-                    config.lipSyncAudioStartTime
-                  )}
-
-                  {/* Nose (Angled 3/4 profile when headDirection is left/right) */}
-                  {renderNose(config.noseStyle, config.skinTone, headDirection)}
-
-                  {/* Classic Glasses (sit neatly behind front bangs) */}
-                  {(config.accessory === 'tortoise-glasses' ||
-                    config.accessory === 'wire-glasses' ||
-                    config.accessory === 'round-glasses' ||
-                    config.accessory === 'square-glasses' ||
-                    config.accessory === 'sunglasses') &&
-                    renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
-                </g>
-
-                {/* Front Hair */}
-                {renderHairFront(config.hairStyle, config.hairColor, headDirection)}
-
-                {/* Headwear, Jewelry, Neck & Wearable Tech (always visible on top of front hair) */}
-                {config.accessory !== 'none' &&
-                  config.accessory !== 'tortoise-glasses' &&
-                  config.accessory !== 'wire-glasses' &&
-                  config.accessory !== 'round-glasses' &&
-                  config.accessory !== 'square-glasses' &&
-                  config.accessory !== 'sunglasses' &&
-                  renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
-              </>
-            )}
-
-            {/* Head Tilt 2D Bone Handle */}
-            {renderBoneOverlay('headTilt', 110, 114, 110, 42, 0, 'Baş Eğimi (Boyun Eklemi)', true)}
           </g>
 
           {/* Action Props Overlay (Laptop, Phone, Idea Bulb, Presentation Pointer, Medical Tool, Dumbbells) */}
@@ -6207,7 +6428,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
         <ellipse cx="110" cy="322" rx="40" ry="6" fill="rgba(0,0,0,0.10)" />
       )}
 
-      <g transform={`${config.flipHorizontal ? 'translate(110, 0) scale(-1, 1) translate(-110, 0) ' : ''}translate(0, ${prop.translateY + angles.bodyBobY})`}>
+      <g transform={`${config.flipHorizontal ? 'translate(110, 0) scale(-1, 1) translate(-110, 0) ' : ''}translate(0, ${prop.translateY + bodyBobY})`}>
         {/* ============================================================
             1. SEAMLESS LINELESS LOWER BODY: HIPS, THIGHS, KNEES, CALVES & FEET
            ============================================================ */}
@@ -6215,6 +6436,10 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
           <g
             transform={`translate(110, 200) scale(${prop.bodyScaleX}, ${prop.bodyScaleY}) translate(-110, -200)`}
           >
+            <g
+              data-rig-adapter="pelvis-lower"
+              transform={pelvisAngle !== 0 ? `rotate(${pelvisAngle} 110 202)` : undefined}
+            >
             {/* Pelvis / Hip Bridge (rounded seamlessly around hip pivots so no square corners show during walk/run) */}
             <path
               d="M84 192 L136 192 L136 202 C136 209, 122 211, 110 211 C98 211, 84 209, 84 202 Z"
@@ -6222,7 +6447,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
             />
 
             {/* LEFT LEG (Hip Pivot at 96, 202 inside Pelvis so running never opens a gap) */}
-            <g transform={`rotate(${angles.leftHip} 96 202)`}>
+            <g transform={`rotate(${leftHipAngle} 96 202)`}>
               {/* Upper Leg (Thigh) - Tapered seamless capsule */}
               <path
                 d="M84 202 A12 12 0 0 1 108 202 L106 256 A10 10 0 0 1 86 256 Z"
@@ -6248,7 +6473,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
               )}
               {renderBoneOverlay('leftHip', 96, 202, 96, 252, 0, 'Sol Kalça (Üst Bacak)')}
               {/* KNEE PIVOT (at 96, 256) - Overlaps exact 10px radius circle so joint seam is INVISIBLE */}
-              <g transform={`rotate(${angles.leftKnee} 96 256)`}>
+              <g transform={`rotate(${leftKneeAngle} 96 256)`}>
                 <path
                   d="M86 256 A10 10 0 0 1 106 256 L103 306 A7 7 0 0 1 89 306 Z"
                   fill={lowerLegColor}
@@ -6263,8 +6488,13 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   <rect x="88" y="300" width="16" height="4.5" rx="1.5" fill={shadeColor(config.bottomColor, 18)} />
                 )}
                 {/* Left Shoe / Foot (Style & Direction-aware) */}
-                <g transform="translate(86, 303)">
-                  {renderShoeShape('left')}
+                <g
+                  data-canonical-bone="leftAnkle"
+                  transform={leftAnkleAngle !== 0 ? `rotate(${leftAnkleAngle} 96 303)` : undefined}
+                >
+                  <g transform="translate(86, 303)">
+                    {renderShoeShape('left')}
+                  </g>
                 </g>
                 {renderBoneOverlay(
                   'leftKnee',
@@ -6272,14 +6502,14 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   256,
                   96,
                   308,
-                  angles.leftHip,
+                  leftHipAngle,
                   'Sol Diz (Alt Bacak)'
                 )}
               </g>
             </g>
 
             {/* RIGHT LEG (Hip Pivot at 124, 202 inside Pelvis) */}
-            <g transform={`rotate(${angles.rightHip} 124 202)`}>
+            <g transform={`rotate(${rightHipAngle} 124 202)`}>
               {/* Upper Leg (Thigh) */}
               <path
                 d="M112 202 A12 12 0 0 1 136 202 L134 256 A10 10 0 0 1 114 256 Z"
@@ -6305,7 +6535,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
               )}
               {renderBoneOverlay('rightHip', 124, 202, 124, 252, 0, 'Sağ Kalça (Üst Bacak)')}
               {/* KNEE PIVOT (at 124, 256) - Invisible seamless joint */}
-              <g transform={`rotate(${angles.rightKnee} 124 256)`}>
+              <g transform={`rotate(${rightKneeAngle} 124 256)`}>
                 <path
                   d="M114 256 A10 10 0 0 1 134 256 L131 306 A7 7 0 0 1 117 306 Z"
                   fill={lowerLegColor}
@@ -6320,8 +6550,13 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   <rect x="116" y="300" width="16" height="4.5" rx="1.5" fill={shadeColor(config.bottomColor, 18)} />
                 )}
                 {/* Right Shoe / Foot (Style & Direction-aware) */}
-                <g transform="translate(114, 303)">
-                  {renderShoeShape('right')}
+                <g
+                  data-canonical-bone="rightAnkle"
+                  transform={rightAnkleAngle !== 0 ? `rotate(${rightAnkleAngle} 124 303)` : undefined}
+                >
+                  <g transform="translate(114, 303)">
+                    {renderShoeShape('right')}
+                  </g>
                 </g>
                 {renderBoneOverlay(
                   'rightKnee',
@@ -6329,7 +6564,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   256,
                   124,
                   308,
-                  angles.rightHip,
+                  rightHipAngle,
                   'Sağ Diz (Alt Bacak)'
                 )}
               </g>
@@ -6350,17 +6585,29 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                 />
               </g>
             )}
+            </g>
           </g>
         )}
 
         {/* Back hair behind torso & neck */}
         {useDicebear && (
           <g
-            transform={`translate(110, ${
-              (portraitMode ? 114 : 155 + (114 - 155) * prop.bodyScaleY) + speechHeadBobY
-            }) scale(${prop.headScale}) rotate(${angles.headTilt + speechHeadTilt}) translate(-110, -114)`}
+            data-rig-group="back-hair-collar-base"
+            transform={`translate(${collarAnchorInRootSpace.x}, ${
+              collarAnchorInRootSpace.y + speechHeadBobY
+            }) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
           >
-            {renderDicebearBackHair()}
+            <g
+              data-rig-group="back-hair-neck-carrier"
+              transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 122)` : undefined}
+            >
+              <g
+                data-rig-group="back-hair-head-carrier"
+                transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
+              >
+                {renderDicebearBackHair()}
+              </g>
+            </g>
           </g>
         )}
 
@@ -6370,6 +6617,18 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
         <g
           transform={`translate(110, 155) scale(${prop.bodyScaleX}, ${prop.bodyScaleY}) translate(-110, -155)`}
         >
+          <g
+            data-canonical-bone="pelvis"
+            transform={pelvisAngle !== 0 ? `rotate(${pelvisAngle} 110 ${classicUpperPelvisPivotY})` : undefined}
+          >
+            <g
+              data-canonical-bone="spine"
+              transform={spineAngle !== 0 ? `rotate(${spineAngle} 110 196)` : undefined}
+            >
+              <g
+                data-canonical-bone="chest"
+                transform={chestAngle !== 0 ? `rotate(${chestAngle} 110 155)` : undefined}
+              >
           {/* TORSO BASE SILHOUETTE (Lineless) */}
           <path
             d={
@@ -6682,7 +6941,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
 
           {/* LEFT ARM (Rendered AFTER torso & belt so arm/props stay in front!) */}
           {!portraitMode && (
-            <g transform={`rotate(${angles.leftShoulder} 77 129)`}>
+            <g transform={`rotate(${leftShoulderAngle} 77 129)`}>
               <path
                 d="M69 129 A8.5 8.5 0 0 1 86 129 L85 166 A7.5 7.5 0 0 1 70 166 Z"
                 fill={upperSleeveColor}
@@ -6701,7 +6960,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                 <line x1="71" y1="131" x2="72" y2="165" stroke={secondaryTop} strokeWidth="2.8" strokeLinecap="round" />
               )}
               {renderBoneOverlay('leftShoulder', 77, 129, 77.5, 162, 0, 'Sol Omuz (Üst Kol)')}
-              <g transform={`rotate(${angles.leftElbow} 77.5 166)`}>
+              <g transform={`rotate(${leftElbowAngle} 77.5 166)`}>
                 <path
                   d="M70 166 A7.5 7.5 0 0 1 85 166 L83.5 202 A6 6 0 0 1 71.5 202 Z"
                   fill={forearmColor}
@@ -6718,14 +6977,14 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   166,
                   77.5,
                   199,
-                  angles.leftShoulder,
+                  leftShoulderAngle,
                   'Sol Dirsek (Ön Kol)'
                 )}
                 {renderArticulatedHand(
                   'left',
                   config.skinTone,
                   leftHandGesture,
-                  angles.leftWrist,
+                  leftWristAngle,
                   77.5,
                   202,
                   1.0
@@ -6736,18 +6995,18 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                     'left',
                     77.5,
                     202,
-                    angles.leftWrist,
-                    angles.leftShoulder + angles.leftElbow,
+                    leftWristAngle,
+                    leftShoulderAngle + leftElbowAngle,
                     { skinTone: config.skinTone, isSpeaking: Boolean(config.lipSyncEnabled), animTime, calibrationDebug }
                   )}
-                <g transform={`rotate(${angles.leftWrist} 77.5 202)`}>
+                <g transform={`rotate(${leftWristAngle} 77.5 202)`}>
                   {renderBoneOverlay(
                     'leftWrist',
                     77.5,
                     202,
                     77.5,
                     216,
-                    angles.leftShoulder + angles.leftElbow,
+                    leftShoulderAngle + leftElbowAngle,
                     'Sol Bilek & El'
                   )}
                 </g>
@@ -6757,7 +7016,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
 
           {/* RIGHT ARM (Rendered AFTER torso & belt so arm/props stay in front!) */}
           {!portraitMode && (
-            <g transform={`rotate(${angles.rightShoulder} 143 129)`}>
+            <g transform={`rotate(${rightShoulderAngle} 143 129)`}>
               <path
                 d="M134 129 A8.5 8.5 0 0 1 151 129 L150 166 A7.5 7.5 0 0 1 135 166 Z"
                 fill={upperSleeveColor}
@@ -6776,7 +7035,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                 <line x1="149" y1="131" x2="148" y2="165" stroke={secondaryTop} strokeWidth="2.8" strokeLinecap="round" />
               )}
               {renderBoneOverlay('rightShoulder', 143, 129, 142.5, 162, 0, 'Sağ Omuz (Üst Kol)')}
-              <g transform={`rotate(${angles.rightElbow} 142.5 166)`}>
+              <g transform={`rotate(${rightElbowAngle} 142.5 166)`}>
                 <path
                   d="M135 166 A7.5 7.5 0 0 1 150 166 L148.5 202 A6 6 0 0 1 136.5 202 Z"
                   fill={forearmColor}
@@ -6793,14 +7052,14 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   166,
                   142.5,
                   199,
-                  angles.rightShoulder,
+                  rightShoulderAngle,
                   'Sağ Dirsek (Ön Kol)'
                 )}
                 {renderArticulatedHand(
                   'right',
                   config.skinTone,
                   rightHandGesture,
-                  angles.rightWrist,
+                  rightWristAngle,
                   142.5,
                   202,
                   1.0
@@ -6811,161 +7070,182 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                     'right',
                     142.5,
                     202,
-                    angles.rightWrist,
-                    angles.rightShoulder + angles.rightElbow,
+                    rightWristAngle,
+                    rightShoulderAngle + rightElbowAngle,
                     { skinTone: config.skinTone, isSpeaking: Boolean(config.lipSyncEnabled), animTime, calibrationDebug }
                   )}
-                <g transform={`rotate(${angles.rightWrist} 142.5 202)`}>
+                <g transform={`rotate(${rightWristAngle} 142.5 202)`}>
                   {renderBoneOverlay(
                     'rightWrist',
                     142.5,
                     202,
                     142.5,
                     216,
-                    angles.rightShoulder + angles.rightElbow,
+                    rightShoulderAngle + rightElbowAngle,
                     'Sağ Bilek & El'
                   )}
                 </g>
               </g>
             </g>
           )}
+              </g>
+            </g>
+          </g>
         </g>
 
         {/* ============================================================
             3. LINELESS NECK & HEAD WITH FACIAL FEATURES (BAŞ & UZUVLAR)
            ============================================================ */}
         <g
-          transform={`translate(110, ${
-            (portraitMode ? 114 : 155 + (114 - 155) * prop.bodyScaleY) + speechHeadBobY
-          }) scale(${prop.headScale}) rotate(${angles.headTilt + speechHeadTilt}) translate(-110, -114)`}
+          data-rig-group="head-collar-base"
+          transform={`translate(${collarAnchorInRootSpace.x}, ${
+            collarAnchorInRootSpace.y + speechHeadBobY
+          }) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
         >
-          {/* Back Hair Layer */}
-          {!useDicebear && renderHairBack(config.hairStyle, config.hairColor)}
-
-          {/* Neck (Lineless with soft chin shadow) */}
-          <g transform={`translate(110, 122) scale(${neckScaleX}, ${neckScaleY}) translate(-110, -122)`}>
-            <rect x="100" y="98" width="20" height="28" rx="6" fill={config.skinTone} />
+          <g
+            data-canonical-bone="neck"
+            transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 122)` : undefined}
+          >
+            {/* Back Hair Layer */}
             {!useDicebear && (
-              <path
-                d="M100 104 Q110 113 120 104 L120 114 Q110 120 100 114 Z"
-                fill={neckShadowTone}
-              />
-            )}
-          </g>
-
-          {config.photoAvatarMode === 'hybrid-head' && config.photoAvatarUrl ? (
-            renderHybridPhotoHead()
-          ) : useDicebear ? (
-            <>
-              {renderDicebearHead()}
-              {config.accessory !== 'none' &&
-                config.accessory !== 'tortoise-glasses' &&
-                config.accessory !== 'wire-glasses' &&
-                config.accessory !== 'round-glasses' &&
-                config.accessory !== 'square-glasses' &&
-                config.accessory !== 'sunglasses' &&
-                renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
-            </>
-          ) : (
-            <>
-              {/* Expressive Ears with 3/4 Perspective */}
-              {renderHeadEars(config.skinTone, earInnerTone, headDirection)}
-
-              {/* Sculpted Lineless Face Base with 3/4 Angled Head Turn */}
-              <g fill={config.skinTone}>
-                {renderFaceShapePath(config.faceShape, headDirection)}
+              <g
+                data-rig-group="vector-back-hair-head-carrier"
+                transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
+              >
+                {renderHairBack(config.hairStyle, config.hairColor)}
               </g>
+            )}
 
-              {/* Senior / Adult subtle wisdom & smile lines (from Image 2 Characters 5, 6, 7) */}
-              {(config.genderAge === 'senior' || config.hairStyle === 'executive-side') && (
-                <g stroke={wisdomLineTone} strokeWidth="1.4" strokeLinecap="round" fill="none">
-                  <path d="M92 88 Q89 93 92 98" />
-                  <path d="M128 88 Q131 93 128 98" />
-                  {config.genderAge === 'senior' && (
-                    <>
-                      <path d="M96 48 Q110 50 124 48" />
-                      <path d="M88 80 Q94 82 99 80" />
-                      <path d="M121 80 Q126 82 132 80" />
-                    </>
+            {/* Neck (Lineless with soft chin shadow) */}
+            <g transform={`translate(110, 122) scale(${neckScaleX}, ${neckScaleY}) translate(-110, -122)`}>
+              <rect x="100" y="98" width="20" height="28" rx="6" fill={config.skinTone} />
+              {!useDicebear && (
+                <path
+                  d="M100 104 Q110 113 120 104 L120 114 Q110 120 100 114 Z"
+                  fill={neckShadowTone}
+                />
+              )}
+            </g>
+
+            <g
+              data-canonical-bone="head"
+              transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
+            >
+              {config.photoAvatarMode === 'hybrid-head' && config.photoAvatarUrl ? (
+                renderHybridPhotoHead()
+              ) : useDicebear ? (
+                <>
+                  {renderDicebearHead()}
+                  {config.accessory !== 'none' &&
+                    config.accessory !== 'tortoise-glasses' &&
+                    config.accessory !== 'wire-glasses' &&
+                    config.accessory !== 'round-glasses' &&
+                    config.accessory !== 'square-glasses' &&
+                    config.accessory !== 'sunglasses' &&
+                    renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
+                </>
+              ) : (
+                <>
+                  {/* Expressive Ears with 3/4 Perspective */}
+                  {renderHeadEars(config.skinTone, earInnerTone, headDirection)}
+
+                  {/* Sculpted Lineless Face Base with 3/4 Angled Head Turn */}
+                  <g fill={config.skinTone}>
+                    {renderFaceShapePath(config.faceShape, headDirection)}
+                  </g>
+
+                  {/* Senior / Adult subtle wisdom & smile lines (from Image 2 Characters 5, 6, 7) */}
+                  {(config.genderAge === 'senior' || config.hairStyle === 'executive-side') && (
+                    <g stroke={wisdomLineTone} strokeWidth="1.4" strokeLinecap="round" fill="none">
+                      <path d="M92 88 Q89 93 92 98" />
+                      <path d="M128 88 Q131 93 128 98" />
+                      {config.genderAge === 'senior' && (
+                        <>
+                          <path d="M96 48 Q110 50 124 48" />
+                          <path d="M88 80 Q94 82 99 80" />
+                          <path d="M121 80 Q126 82 132 80" />
+                        </>
+                      )}
+                    </g>
                   )}
-                </g>
+
+                  {/* Facial Features with Head Direction Look Shift & In-Place State Morphing */}
+                  <g transform={`translate(${headLookShiftX}, 0)`}>
+                    {/* Defined Facial Contours & Expression Micro-Features */}
+                    {renderFacialSculptAndExpressionDetails(
+                      config.skinTone,
+                      resolvedExpression
+                    )}
+
+                    {/* Eyebrows (Single pair that morphs in-place for expressions) */}
+                    {renderEyebrows(
+                      config.eyebrowStyle,
+                      config.hairStyle === 'bald' || config.hairStyle === 'senior-silver'
+                        ? '#71717a'
+                        : config.hairColor,
+                      resolvedExpression,
+                      isSpeakingNow,
+                      animTime
+                    )}
+
+                    {/* Lineless Eyes (Single pair that shifts pupils & morphs eyelids in-place) */}
+                    {renderEyes(
+                      config.eyeStyle,
+                      config.eyeColor,
+                      config.skinTone,
+                      resolvedExpression,
+                      headDirection,
+                      animTime,
+                      proceduralBlink
+                    )}
+
+                    {/* Lineless Nose (Angled 3/4 profile when headDirection is left/right) */}
+                    {renderNose(config.noseStyle, config.skinTone, headDirection)}
+
+                    {/* Lineless Mouth / Lips / Beard (Single mouth that morphs in-place) */}
+                    {renderMouth(
+                      config.mouthStyle,
+                      config.lipColor,
+                      config.hairColor,
+                      config.skinTone,
+                      resolvedExpression,
+                      Boolean(config.lipSyncEnabled),
+                      animTime,
+                      headDirection,
+                      config.ttsScript,
+                      isFemaleCharacter(config),
+                      config.lipSyncAudioUrl,
+                      config.lipSyncAudioStartTime
+                    )}
+
+                    {/* Classic Glasses (sit neatly behind front bangs) */}
+                    {(config.accessory === 'tortoise-glasses' ||
+                      config.accessory === 'wire-glasses' ||
+                      config.accessory === 'round-glasses' ||
+                      config.accessory === 'square-glasses' ||
+                      config.accessory === 'sunglasses') &&
+                      renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
+                  </g>
+
+                  {/* Front Hair Layer */}
+                  {renderHairFront(config.hairStyle, config.hairColor, headDirection)}
+
+                  {/* Headwear, Jewelry, Neck & Wearable Tech (always visible on top of front hair) */}
+                  {config.accessory !== 'none' &&
+                    config.accessory !== 'tortoise-glasses' &&
+                    config.accessory !== 'wire-glasses' &&
+                    config.accessory !== 'round-glasses' &&
+                    config.accessory !== 'square-glasses' &&
+                    config.accessory !== 'sunglasses' &&
+                    renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
+                </>
               )}
 
-              {/* Facial Features with Head Direction Look Shift & In-Place State Morphing */}
-              <g transform={`translate(${headLookShiftX}, 0)`}>
-                {/* Defined Facial Contours & Expression Micro-Features */}
-                {renderFacialSculptAndExpressionDetails(
-                  config.skinTone,
-                  resolvedExpression
-                )}
-
-                {/* Eyebrows (Single pair that morphs in-place for expressions) */}
-                {renderEyebrows(
-                  config.eyebrowStyle,
-                  config.hairStyle === 'bald' || config.hairStyle === 'senior-silver'
-                    ? '#71717a'
-                    : config.hairColor,
-                  resolvedExpression,
-                  isSpeakingNow,
-                  animTime
-                )}
-
-                {/* Lineless Eyes (Single pair that shifts pupils & morphs eyelids in-place) */}
-                {renderEyes(
-                  config.eyeStyle,
-                  config.eyeColor,
-                  config.skinTone,
-                  resolvedExpression,
-                  headDirection,
-                  animTime,
-                  proceduralBlink
-                )}
-
-                {/* Lineless Nose (Angled 3/4 profile when headDirection is left/right) */}
-                {renderNose(config.noseStyle, config.skinTone, headDirection)}
-
-                {/* Lineless Mouth / Lips / Beard (Single mouth that morphs in-place) */}
-                {renderMouth(
-                  config.mouthStyle,
-                  config.lipColor,
-                  config.hairColor,
-                  config.skinTone,
-                  resolvedExpression,
-                  Boolean(config.lipSyncEnabled),
-                  animTime,
-                  headDirection,
-                  config.ttsScript,
-                  isFemaleCharacter(config),
-                  config.lipSyncAudioUrl,
-                  config.lipSyncAudioStartTime
-                )}
-
-                {/* Classic Glasses (sit neatly behind front bangs) */}
-                {(config.accessory === 'tortoise-glasses' ||
-                  config.accessory === 'wire-glasses' ||
-                  config.accessory === 'round-glasses' ||
-                  config.accessory === 'square-glasses' ||
-                  config.accessory === 'sunglasses') &&
-                  renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
-              </g>
-
-              {/* Front Hair Layer */}
-              {renderHairFront(config.hairStyle, config.hairColor, headDirection)}
-
-              {/* Headwear, Jewelry, Neck & Wearable Tech (always visible on top of front hair) */}
-              {config.accessory !== 'none' &&
-                config.accessory !== 'tortoise-glasses' &&
-                config.accessory !== 'wire-glasses' &&
-                config.accessory !== 'round-glasses' &&
-                config.accessory !== 'square-glasses' &&
-                config.accessory !== 'sunglasses' &&
-                renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
-            </>
-          )}
-
-          {/* Head Tilt 2D Bone Handle */}
-          {!portraitMode &&
-            renderBoneOverlay('headTilt', 110, 114, 110, 42, 0, 'Baş Eğimi (Boyun Eklemi)', true)}
+              {/* Head Tilt 2D Bone Handle */}
+              {!portraitMode &&
+                renderBoneOverlay('headTilt', 110, 114, 110, 42, 0, 'Baş Eğimi (Boyun Eklemi)', true)}
+            </g>
+          </g>
         </g>
 
         {/* Action Props Overlay (Laptop, Phone, Idea Bulb, Presentation Pointer, Medical Tool, Dumbbells) */}

@@ -301,8 +301,15 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
       return;
     }
 
-    const dur = Math.max(0.4, Math.min(sceneDuration, durationPreset || preset.defaultDuration));
-    const start = Math.max(0, Math.min(sceneDuration - 0.3, Number(currentTime.toFixed(2))));
+    const activePath = selectedObject.motionPath?.enabled ? selectedObject.motionPath : null;
+    const matchPath = Boolean(activePath && preset.category === 'locomotion' && !preset.oneShot);
+    const start = matchPath && activePath
+      ? Math.max(0, Math.min(sceneDuration - 0.3, Number(activePath.startTime.toFixed(2))))
+      : Math.max(0, Math.min(sceneDuration - 0.3, Number(currentTime.toFixed(2))));
+    const rawDur = matchPath && activePath
+      ? activePath.duration
+      : (durationPreset || preset.defaultDuration);
+    const dur = Math.max(0.4, Math.min(sceneDuration - start, rawDur));
 
     const newClip: CharacterMotionClip = {
       id: `mclip-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -664,6 +671,59 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
                       <span className="ml-auto text-[9.5px] text-slate-500">
                         Hız {(clip.speed ?? 1).toFixed(1)}x
                       </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 pt-0.5 border-t border-slate-200/70">
+                      <label className="text-[9.5px] text-slate-500 flex items-center gap-1">
+                        <span>Süre (sn):</span>
+                        <input
+                          type="number"
+                          min={0.4}
+                          max={Math.max(0.5, sceneDuration - clip.startTime)}
+                          step={0.5}
+                          value={Number(clip.duration.toFixed(1))}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value);
+                            if (!Number.isFinite(val)) return;
+                            handleUpdateClip(clip.id, {
+                              duration: Math.max(0.4, Math.min(sceneDuration - clip.startTime, val)),
+                            });
+                          }}
+                          className="w-12 rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] font-mono text-slate-800 text-center"
+                        />
+                      </label>
+                      {selectedObject.motionPath?.enabled && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const mp = selectedObject.motionPath!;
+                            const nextStart = Math.max(0, Math.min(sceneDuration - 0.4, mp.startTime));
+                            const nextDur = Math.max(0.4, Math.min(sceneDuration - nextStart, mp.duration));
+                            handleUpdateClip(clip.id, {
+                              startTime: nextStart,
+                              duration: nextDur,
+                              repeatMode: 'loop',
+                            });
+                          }}
+                          className="px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[9.5px] font-semibold cursor-pointer"
+                          title="Hareketin başlangıç ve süresini Hareket Yolu ile eşitle"
+                        >
+                          Yola Eşitle
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleUpdateClip(clip.id, {
+                            startTime: 0,
+                            duration: sceneDuration,
+                            repeatMode: 'loop',
+                          })
+                        }
+                        className="ml-auto px-1.5 py-0.5 rounded border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 text-[9.5px] font-semibold cursor-pointer"
+                        title="Hareketi tüm sahne süresine yay"
+                      >
+                        Sahneye Yay
+                      </button>
                     </div>
                   </div>
                 ))}

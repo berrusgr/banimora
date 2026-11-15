@@ -341,6 +341,11 @@ export function resolveDicebearOptions(
   // Expression overrides
   if (resolvedExpression === 'happy') {
     if (!isBlinking) eyesVal = 'happy';
+    eyebrowsVal = 'defaultNatural';
+    mouthVal = 'smile';
+  } else if (resolvedExpression === 'excited') {
+    if (!isBlinking) eyesVal = 'surprised';
+    eyebrowsVal = 'raisedExcitedNatural';
     mouthVal = 'smile';
   } else if (resolvedExpression === 'sad') {
     eyebrowsVal = 'sadConcernedNatural';
@@ -350,11 +355,31 @@ export function resolveDicebearOptions(
     eyebrowsVal = 'raisedExcitedNatural';
     mouthVal = 'screamOpen';
   } else if (resolvedExpression === 'angry') {
+    if (!isBlinking) eyesVal = 'squint';
     eyebrowsVal = 'angryNatural';
-    mouthVal = 'serious';
+    mouthVal = 'grimace';
+  } else if (resolvedExpression === 'worried') {
+    eyebrowsVal = 'sadConcernedNatural';
+    mouthVal = 'concerned';
   } else if (resolvedExpression === 'thinking') {
     if (!isBlinking) eyesVal = requestedEyeStyle.startsWith('iris-') ? 'iris-side' : 'side';
     eyebrowsVal = 'upDownNatural';
+    mouthVal = 'serious';
+  } else if (resolvedExpression === 'confused') {
+    if (!isBlinking) eyesVal = 'eyeRoll';
+    eyebrowsVal = 'upDownNatural';
+    mouthVal = 'disbelief';
+  } else if (resolvedExpression === 'serious') {
+    eyebrowsVal = 'flatNatural';
+    mouthVal = 'serious';
+  } else if (resolvedExpression === 'wink') {
+    if (!isBlinking) eyesVal = 'wink';
+    eyebrowsVal = 'raisedExcitedNatural';
+    mouthVal = 'twinkle';
+  } else if (resolvedExpression === 'sleepy') {
+    eyesVal = 'closed';
+    eyebrowsVal = 'flatNatural';
+    mouthVal = 'default';
   }
 
   const customIrisStyle = !isBlinking && eyesVal.startsWith('iris-') ? eyesVal : undefined;

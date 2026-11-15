@@ -653,9 +653,12 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
         {/* Active Scene Content Wrapper with Real-Time Transition Effect */}
         <div
           style={{
-            ...(scene.background.style.includes('url(') ||
-            scene.background.style.includes('gradient(')
+            ...(scene.background.imageUrl
+              ? { backgroundImage: `url("${scene.background.imageUrl}")` }
+              : scene.background.style.includes('gradient(')
               ? { backgroundImage: scene.background.style }
+              : scene.background.style.includes('url(')
+              ? { background: scene.background.style }
               : { backgroundColor: scene.background.style }),
             backgroundSize: 'cover',
             backgroundPosition: 'center',
@@ -677,9 +680,12 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
             style={{
               width: `${LOGICAL_WIDTH}px`,
               height: `${LOGICAL_HEIGHT}px`,
-              ...(scene.background.style.includes('url(') ||
-              scene.background.style.includes('gradient(')
+              ...(scene.background.imageUrl
+                ? { backgroundImage: `url("${scene.background.imageUrl}")` }
+                : scene.background.style.includes('gradient(')
                 ? { backgroundImage: scene.background.style }
+                : scene.background.style.includes('url(')
+                ? { background: scene.background.style }
                 : { backgroundColor: scene.background.style }),
               backgroundSize: 'cover',
               backgroundPosition: 'center',

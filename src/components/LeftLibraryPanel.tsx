@@ -827,8 +827,12 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
                     <div
                       className="w-full aspect-video rounded-lg mb-1.5 border border-slate-200 shadow-inner bg-cover bg-center"
                       style={{
-                        ...(bg.style.includes('url(') || bg.style.includes('gradient(')
+                        ...(bg.imageUrl
+                          ? { backgroundImage: `url("${bg.imageUrl}")` }
+                          : bg.style.includes('gradient(')
                           ? { backgroundImage: bg.style }
+                          : bg.style.includes('url(')
+                          ? { background: bg.style }
                           : { backgroundColor: bg.style }),
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',

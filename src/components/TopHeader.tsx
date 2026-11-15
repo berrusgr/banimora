@@ -124,9 +124,9 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
     }
   };
   return (
-    <header className="h-12 border-b border-slate-200 bg-white/95 backdrop-blur-md px-2.5 flex items-center justify-between gap-2 shrink-0 z-30 shadow-2xs overflow-visible">
+    <header className="min-h-12 py-1.5 border-b border-slate-200 bg-white/95 backdrop-blur-md px-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-30 shadow-2xs overflow-visible">
       {/* LEFT: Logo, Editable Project Name & 10-Min Total Duration Badge */}
-      <div className="flex items-center gap-2 min-w-0 shrink">
+      <div className="flex flex-wrap items-center gap-2 min-w-0">
         <div className="flex items-center gap-2 pr-2.5 border-r border-slate-200 shrink-0">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-500 flex items-center justify-center shadow-md shadow-indigo-500/20">
             <Sparkles className="w-3.5 h-3.5 text-white" />
@@ -142,7 +142,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </div>
 
         {/* Editable Project Name Input */}
-        <div className="relative flex items-center gap-1.5 min-w-0">
+        <div className="relative flex flex-wrap items-center gap-1.5 min-w-0">
           <input
             type="text"
             value={projectName}

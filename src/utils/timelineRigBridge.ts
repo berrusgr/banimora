@@ -3,6 +3,7 @@ import type {
   ChannelKeyframe,
   ChannelKeyframeValue,
   CharacterChannelId,
+  CharacterConfig,
   CharacterExpressionType,
   CharacterMotionClip,
   CharacterTimelineData,
@@ -18,6 +19,7 @@ import type {
 import { getMotionPresetById } from '../data/motionPresets.ts';
 import { mirrorMask, retargetMotionSample } from '../rig/motionRetarget.ts';
 import { solveTwoBoneArmIK } from '../rig/rigKinematics.ts';
+import { evaluateCharacterRigForRenderer } from '../rig/rigEvaluator.ts';
 
 export interface TimelineRootTransformOverride {
   x?: number;
@@ -95,9 +97,20 @@ export function evaluateChannelKeyframes(
 ): ChannelKeyframeValue | null {
   if (!keyframes || keyframes.length === 0) return null;
 
-  const sorted = [...keyframes].sort((a, b) =>
-    a.time !== b.time ? a.time - b.time : a.id.localeCompare(b.id)
-  );
+  let needsSort = false;
+  for (let i = 1; i < keyframes.length; i++) {
+    const prev = keyframes[i - 1];
+    const curr = keyframes[i];
+    if (prev.time > curr.time || (prev.time === curr.time && prev.id.localeCompare(curr.id) > 0)) {
+      needsSort = true;
+      break;
+    }
+  }
+  const sorted = needsSort
+    ? [...keyframes].sort((a, b) =>
+        a.time !== b.time ? a.time - b.time : a.id.localeCompare(b.id)
+      )
+    : keyframes;
 
   if (currentTime <= sorted[0].time) {
     return {
@@ -423,4 +436,149 @@ export function evaluateCharacterTimelineForRig(
     leftArmIKWeight,
     rightArmIKWeight,
   };
+}
+
+
+export const CHANNEL_BONE_KEYS: Record<CharacterChannelId, readonly CanonicalBoneId[]> = {
+  root: [],
+  torso: ['pelvis', 'spine', 'chest'],
+  headNeck: ['neck', 'head'],
+  leftArm: ['leftShoulder', 'leftElbow', 'leftWrist'],
+  rightArm: ['rightShoulder', 'rightElbow', 'rightWrist'],
+  leftLeg: ['leftHip', 'leftKnee', 'leftAnkle'],
+  rightLeg: ['rightHip', 'rightKnee', 'rightAnkle'],
+  expression: [],
+  lipSync: [],
+  ikTargets: [],
+  socketAttachments: [],
+};
+
+export const DEFAULT_CAPTURE_CHARACTER_CONFIG: CharacterConfig = {
+  genderAge: 'male',
+  bodyStyle: 'classic',
+  skinTone: '#f1c27d',
+  faceShape: 'oval',
+  hairStyle: 'short-modern',
+  hairColor: '#2c1810',
+  eyeStyle: 'normal',
+  eyeColor: '#1f2937',
+  eyebrowStyle: 'natural',
+  noseStyle: 'button',
+  mouthStyle: 'smile',
+  lipColor: '#d97757',
+  accessory: 'none',
+  outfitStyle: 'raglan-tee',
+  topColor: '#3b82f6',
+  bottomColor: '#1e293b',
+  shoeColor: '#111827',
+  pose: 'idle',
+  expression: 'neutral',
+  headDirection: 'center',
+  lipSyncEnabled: false,
+};
+
+function round1(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value * 10) / 10;
+}
+
+/**
+ * Verilen zamanda karakterin değerlendirilmiş gerçek animasyon değerlerini yalnızca
+ * hedeflenen kanal kapsamıyla yakalar. Boş `{ bones: {} }` keyframe üretmez.
+ */
+export function captureEvaluatedChannelKeyframeValue(
+  charObj: Pick<
+    CanvasObject,
+    'assetId' | 'characterConfig' | 'timelineData' | 'x' | 'y' | 'rotation' | 'scale' | 'scaleX' | 'scaleY'
+  >,
+  channelId: CharacterChannelId,
+  currentTime: number,
+  profile: CharacterRigProfile
+): ChannelKeyframeValue {
+  const bridge = evaluateCharacterTimelineForRig(charObj, currentTime, profile);
+  const cfg = charObj.characterConfig ?? DEFAULT_CAPTURE_CHARACTER_CONFIG;
+
+  if (channelId === 'root') {
+    const scaleFallback = typeof charObj.scale === 'number' ? charObj.scale : 1;
+    return {
+      x: round1(bridge.rootTransformOverride?.x ?? charObj.x),
+      y: round1(bridge.rootTransformOverride?.y ?? charObj.y),
+      rotation: round1(bridge.rootTransformOverride?.rotation ?? charObj.rotation),
+      scaleX: Number((bridge.rootTransformOverride?.scaleX ?? charObj.scaleX ?? scaleFallback).toFixed(2)),
+      scaleY: Number((bridge.rootTransformOverride?.scaleY ?? charObj.scaleY ?? scaleFallback).toFixed(2)),
+    };
+  }
+
+  if (channelId === 'expression') {
+    return {
+      expression: bridge.expressionOverride ?? cfg.expression ?? 'neutral',
+      lookDirection: bridge.lookDirectionOverride ?? cfg.headDirection ?? 'center',
+    };
+  }
+
+  if (channelId === 'lipSync') {
+    return {
+      talking: bridge.lipSyncTalkingOverride ?? Boolean(cfg.lipSyncEnabled),
+    };
+  }
+
+  if (channelId === 'ikTargets') {
+    const existing = evaluateChannelKeyframes(charObj.timelineData?.channelKeyframes?.ikTargets, currentTime);
+    return {
+      targetX: round1(existing?.targetX ?? 145),
+      targetY: round1(existing?.targetY ?? 165),
+      ikHand: existing?.ikHand ?? 'right',
+      ikWeight: Number((existing?.ikWeight ?? 1).toFixed(2)),
+    };
+  }
+
+  if (channelId === 'socketAttachments') {
+    const existing = evaluateChannelKeyframes(
+      charObj.timelineData?.channelKeyframes?.socketAttachments,
+      currentTime
+    );
+    return {
+      attachmentParentId: existing?.attachmentParentId ?? null,
+      attachmentSocketId: existing?.attachmentSocketId ?? null,
+    };
+  }
+
+  const rigState = evaluateCharacterRigForRenderer({
+    config: cfg,
+    assetId: charObj.assetId,
+    layers: bridge.layers,
+    canonicalBoneAngles: bridge.userCanonicalBoneOverrides,
+    userBodyBobYOverride: bridge.userBodyBobYOverride,
+    leftArmIK: bridge.leftArmIK,
+    rightArmIK: bridge.rightArmIK,
+    leftArmIKWeight: bridge.leftArmIKWeight,
+    rightArmIKWeight: bridge.rightArmIKWeight,
+  });
+
+  const channelBones = CHANNEL_BONE_KEYS[channelId];
+  const bones: Partial<Record<CanonicalBoneId, number>> = {};
+  for (const boneId of channelBones) {
+    if (profile.isSupported && !profile.supportedBones.includes(boneId)) continue;
+    bones[boneId] = round1(rigState.svgBoneAngles[boneId] ?? 0);
+  }
+  // Desteklenmeyen riglerde bile boş {} yerine güvenli ilk kemik değerini koru
+  if (Object.keys(bones).length === 0 && channelBones.length > 0) {
+    bones[channelBones[0]] = 0;
+  }
+
+  if (channelId === 'torso') {
+    return {
+      bones,
+      bodyBobY: round1(rigState.bodyBobY ?? 0),
+    };
+  }
+
+  if (channelId === 'headNeck') {
+    return {
+      bones,
+      lookDirection: bridge.lookDirectionOverride ?? cfg.headDirection ?? 'center',
+    };
+  }
+
+  return { bones };
 }

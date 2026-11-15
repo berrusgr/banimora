@@ -10,6 +10,7 @@ import {
   SceneBackground,
   SceneCamera,
   SceneTransitionConfig,
+  StageMotionPreviewRequest,
 } from './types/studio';
 import { INITIAL_SCENES, SCENE_BACKGROUNDS } from './data/libraryAssets';
 import { getMathAssetDefinition, createDefaultPartStates } from './data/mathAssetsRegistry';
@@ -25,12 +26,26 @@ import { CharacterStudioModal } from './components/CharacterStudioModal';
 import { soundEngine } from './utils/soundEffects';
 import { MAX_TOTAL_PROJECT_DURATION } from './utils/animationEngine';
 import {
+  BanimoraProjectFile,
+  clearAutoSaveProject,
   downloadProjectJson,
+  loadAutoSaveProject,
   parseProjectJsonFile,
+  saveAutoSaveProject,
 } from './utils/projectStorage';
+import {
+  applyWorkspaceMode,
+  clampRightPanelWidth,
+  clampTimelineHeight,
+  deriveWorkspaceMode,
+  loadWorkspaceLayout,
+  saveWorkspaceLayout,
+  type WorkspaceLayoutState,
+  type WorkspaceMode,
+} from './utils/workspaceLayoutStorage';
 
 export function App() {
-  const [projectName, setProjectName] = useState('Astronomi & Bilim Serisi #01');
+  const [projectName, setProjectName] = useState('Yeni Proje');
   const [history, setHistory] = useState<Scene[][]>([INITIAL_SCENES]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
@@ -59,9 +74,12 @@ export function App() {
     setSelectedPartId(null);
   }, [selectedObjectId, activeSceneId]);
 
-  // Warn user before closing or refreshing the browser tab so unsaved work isn't lost
+  const hasUnsavedChangesRef = useRef(false);
+
+  // Warn user before closing or refreshing the browser tab only when there are un-autosaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!hasUnsavedChangesRef.current) return;
       e.preventDefault();
       e.returnValue = '';
     };
@@ -110,7 +128,13 @@ export function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [loopPlayback, setLoopPlayback] = useState(true);
   const [playAllScenes, setPlayAllScenes] = useState(true);
+  const [projectFps, setProjectFps] = useState<24 | 30 | 60>(30);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [recoveredAutoSave, setRecoveredAutoSave] = useState<BanimoraProjectFile | null>(() =>
+    loadAutoSaveProject()
+  );
+  const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
+  const isInitialAutoSaveMountRef = useRef(true);
 
   // Commit or replace scene state in Undo/Redo history
   const updateScenesState = useCallback(
@@ -146,6 +170,64 @@ export function App() {
   }, [historyIndex, history.length]);
 
   // Real-time 60fps playback loop via requestAnimationFrame
+  const [workspaceLayout, setWorkspaceLayout] = useState<WorkspaceLayoutState>(() =>
+    loadWorkspaceLayout()
+  );
+  useEffect(() => {
+    saveWorkspaceLayout(workspaceLayout);
+  }, [workspaceLayout]);
+
+  const handleChangeWorkspaceMode = useCallback((mode: WorkspaceMode) => {
+    setWorkspaceLayout((prev) => applyWorkspaceMode(prev, mode));
+  }, []);
+
+  const handleToggleLeftCollapsed = useCallback(() => {
+    setWorkspaceLayout((prev) => {
+      const leftCollapsed = !prev.leftCollapsed;
+      return {
+        ...prev,
+        leftCollapsed,
+        mode: deriveWorkspaceMode({
+          leftCollapsed,
+          rightCollapsed: prev.rightCollapsed,
+          timelineCollapsed: prev.timelineCollapsed,
+        }),
+      };
+    });
+  }, []);
+
+  const handleToggleRightCollapsed = useCallback(() => {
+    setWorkspaceLayout((prev) => {
+      const rightCollapsed = !prev.rightCollapsed;
+      return {
+        ...prev,
+        rightCollapsed,
+        mode: deriveWorkspaceMode({
+          leftCollapsed: prev.leftCollapsed,
+          rightCollapsed,
+          timelineCollapsed: prev.timelineCollapsed,
+        }),
+      };
+    });
+  }, []);
+
+  const handleToggleTimelineCollapsed = useCallback(() => {
+    setWorkspaceLayout((prev) => {
+      const timelineCollapsed = !prev.timelineCollapsed;
+      return {
+        ...prev,
+        timelineCollapsed,
+        mode: deriveWorkspaceMode({
+          leftCollapsed: prev.leftCollapsed,
+          rightCollapsed: prev.rightCollapsed,
+          timelineCollapsed,
+        }),
+      };
+    });
+  }, []);
+
+  const [stageMotionPreview, setStageMotionPreview] =
+    useState<StageMotionPreviewRequest | null>(null);
   const lastFrameRef = useRef<number | null>(null);
   const triggeredClipsRef = useRef<Set<string>>(new Set());
   const currentTimeRef = useRef<number>(currentTime);
@@ -168,6 +250,13 @@ export function App() {
       });
     });
   }, [scenes]);
+
+  useEffect(() => {
+    if (!stageMotionPreview) return;
+    if (isPlaying || selectedObjectId !== stageMotionPreview.objectId) {
+      setStageMotionPreview(null);
+    }
+  }, [isPlaying, selectedObjectId, stageMotionPreview]);
 
   useEffect(() => {
     if (!isPlaying) {
@@ -319,40 +408,15 @@ export function App() {
     const newSceneId = `scene-${Date.now()}`;
     const newScene: Scene = {
       id: newSceneId,
-      name: `Sahne ${newIndex}: Yeni Eğitim Sahnesi`,
+      name: `Sahne ${newIndex}`,
       duration: newSceneDuration,
-      background: SCENE_BACKGROUNDS[newIndex % SCENE_BACKGROUNDS.length],
+      background: SCENE_BACKGROUNDS[0],
       transition: {
         type: 'dissolve',
         duration: 0.9,
       },
       audioClips: [],
-      objects: [
-        {
-          id: `obj-${Date.now()}`,
-          name: 'Ana Başlık Metni',
-          assetId: 'text-heading',
-          category: 'text',
-          x: 80,
-          y: 50,
-          width: 480,
-          height: 70,
-          rotation: 0,
-          opacity: 100,
-          color: '#18181b',
-          secondaryColor: '#6366f1',
-          text: `SAHNE ${newIndex}: YENİ KONU ANLATIMI`,
-          fontSize: 26,
-          startTime: 0,
-          duration: Math.max(1, Number((newSceneDuration - 0.5).toFixed(1))),
-          trackColor: '#6366f1',
-          animations: {
-            enter: { type: 'typewriter', duration: 1.2, delay: 0, easing: 'linear' },
-            emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'linear' },
-            exit: { type: 'fade-out', duration: 0.5, delay: 0, easing: 'ease-out' },
-          },
-        },
-      ],
+      objects: [],
     };
 
     setPreviousSceneBg(
@@ -380,6 +444,12 @@ export function App() {
     const newIndex = scenes.length + 1;
     const newSceneId = `scene-${Date.now()}`;
 
+    const idBatch = Date.now();
+    const idMap = new Map<string, string>();
+    activeScene.objects.forEach((obj, idx) => {
+      idMap.set(obj.id, `obj-${idBatch}-${idx}`);
+    });
+
     const continuedObjects: CanvasObject[] = activeScene.objects.map((obj, idx) => {
       const finalX = obj.motionPath?.enabled ? obj.motionPath.endX : obj.x;
       const finalY = obj.motionPath?.enabled ? obj.motionPath.endY : obj.y;
@@ -397,9 +467,17 @@ export function App() {
         }
       }
 
+      const remappedAttachment = obj.attachment
+        ? {
+            ...obj.attachment,
+            parentObjectId: idMap.get(obj.attachment.parentObjectId) ?? obj.attachment.parentObjectId,
+          }
+        : undefined;
+
       return {
         ...obj,
-        id: `obj-${Date.now()}-${idx}`,
+        id: idMap.get(obj.id) ?? `obj-${idBatch}-${idx}`,
+        attachment: remappedAttachment,
         x: finalX,
         y: finalY,
         startTime: 0,
@@ -516,7 +594,24 @@ export function App() {
     item: LibraryAssetItem,
     customPos?: { x: number; y: number }
   ) => {
-    const offset = (activeScene.objects.length % 5) * 24;
+    let spawnX = customPos ? customPos.x : item.category === 'characters' ? 220 : 420;
+    let spawnY = customPos ? customPos.y : item.category === 'characters' ? 150 : 180;
+    if (!customPos) {
+      const maxX = Math.max(24, 936 - item.defaultWidth);
+      const maxY = Math.max(24, 516 - item.defaultHeight);
+      for (let attempt = 0; attempt < 12; attempt++) {
+        const overlaps = activeScene.objects.some(
+          (o) => Math.abs(o.x - spawnX) < 48 && Math.abs(o.y - spawnY) < 48
+        );
+        if (!overlaps) break;
+        spawnX = 80 + ((spawnX - 80 + 130) % Math.max(130, maxX - 80));
+        if (attempt % 4 === 3) {
+          spawnY = 48 + ((spawnY - 48 + 70) % Math.max(70, maxY - 48));
+        }
+      }
+      spawnX = Math.max(24, Math.min(maxX, Math.round(spawnX)));
+      spawnY = Math.max(24, Math.min(maxY, Math.round(spawnY)));
+    }
     const isStaticItem =
       item.category === 'text' ||
       item.category === 'objects' ||
@@ -563,8 +658,8 @@ export function App() {
       assetId: item.id,
       category: item.category,
       assetClass: item.assetClass || mathDef?.assetClass,
-      x: customPos ? customPos.x : 290 + offset,
-      y: customPos ? customPos.y : 160 + offset,
+      x: spawnX,
+      y: spawnY,
       width: item.defaultWidth,
       height: item.defaultHeight,
       rotation: 0,
@@ -1177,8 +1272,78 @@ export function App() {
       zoom,
       showGrid,
       loopPlayback,
+      fps: projectFps,
     });
   }, [
+    projectName,
+    activeSceneId,
+    scenes,
+    customCharacters,
+    uploadedObjects,
+    customBackgrounds,
+    customAudioClips,
+    zoom,
+    showGrid,
+    loopPlayback,
+    projectFps,
+  ]);
+
+  const applyLoadedProject = useCallback((loaded: BanimoraProjectFile) => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setProjectName(loaded.projectName);
+    setHistory([loaded.scenes]);
+    setHistoryIndex(0);
+    setActiveSceneId(loaded.activeSceneId);
+    setSelectedObjectId(null);
+    setSelectedPartId(null);
+    setIsCameraSelected(false);
+    setSelectedCameraMovementId(null);
+    setCustomCharacters(loaded.customCharacters);
+    setUploadedObjects(loaded.uploadedObjects);
+    setCustomBackgrounds(loaded.customBackgrounds);
+    setCustomAudioClips(loaded.customAudioClips);
+    if (typeof loaded.zoom === 'number') setZoom(loaded.zoom);
+    if (typeof loaded.showGrid === 'boolean') setShowGrid(loaded.showGrid);
+    if (typeof loaded.loopPlayback === 'boolean') setLoopPlayback(loaded.loopPlayback);
+    if (loaded.fps === 24 || loaded.fps === 30 || loaded.fps === 60) setProjectFps(loaded.fps);
+    hasUnsavedChangesRef.current = false;
+  }, []);
+
+  useEffect(() => {
+    if (isInitialAutoSaveMountRef.current) {
+      isInitialAutoSaveMountRef.current = false;
+      return;
+    }
+    hasUnsavedChangesRef.current = true;
+    // Keep existing recovery snapshot intact until user either restores or discards it.
+    if (recoveredAutoSave) return;
+
+    const timer = window.setTimeout(() => {
+      const result = saveAutoSaveProject({
+        projectName,
+        activeSceneId,
+        scenes,
+        customCharacters,
+        uploadedObjects,
+        customBackgrounds,
+        customAudioClips,
+        zoom,
+        showGrid,
+        loopPlayback,
+        fps: projectFps,
+      });
+      if (!result.ok) {
+        setAutoSaveError(result.error || 'Otomatik kayıt başarısız oldu.');
+      } else {
+        hasUnsavedChangesRef.current = false;
+        setAutoSaveError(null);
+      }
+    }, 2500);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    recoveredAutoSave,
     projectName,
     activeSceneId,
     scenes,
@@ -1194,23 +1359,8 @@ export function App() {
   const handleLoadProjectJson = useCallback(async (file: File): Promise<boolean> => {
     try {
       const loaded = await parseProjectJsonFile(file);
-      setIsPlaying(false);
-      setCurrentTime(0);
-      setProjectName(loaded.projectName);
-      setHistory([loaded.scenes]);
-      setHistoryIndex(0);
-      setActiveSceneId(loaded.activeSceneId);
-      setSelectedObjectId(null);
-      setSelectedPartId(null);
-      setIsCameraSelected(false);
-      setSelectedCameraMovementId(null);
-      setCustomCharacters(loaded.customCharacters);
-      setUploadedObjects(loaded.uploadedObjects);
-      setCustomBackgrounds(loaded.customBackgrounds);
-      setCustomAudioClips(loaded.customAudioClips);
-      if (typeof loaded.zoom === 'number') setZoom(loaded.zoom);
-      if (typeof loaded.showGrid === 'boolean') setShowGrid(loaded.showGrid);
-      if (typeof loaded.loopPlayback === 'boolean') setLoopPlayback(loaded.loopPlayback);
+      applyLoadedProject(loaded);
+      setRecoveredAutoSave(null);
       return true;
     } catch (err) {
       const message =
@@ -1218,7 +1368,7 @@ export function App() {
       window.alert(message);
       return false;
     }
-  }, []);
+  }, [applyLoadedProject]);
 
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col select-none bg-slate-100 text-slate-900">
@@ -1253,7 +1403,59 @@ export function App() {
         }}
         onSaveProjectJson={handleSaveProjectJson}
         onLoadProjectJson={handleLoadProjectJson}
+        workspaceMode={workspaceLayout.mode}
+        onChangeWorkspaceMode={handleChangeWorkspaceMode}
       />
+
+      {recoveredAutoSave && (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 bg-indigo-50 border-b border-indigo-200 px-4 py-1.5 text-xs text-indigo-900"
+        >
+          <span>
+            Önceki oturumdan otomatik kaydedilmiş bir proje bulundu (
+            <strong>{recoveredAutoSave.projectName}</strong>). Kurtarmak ister misiniz?
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                applyLoadedProject(recoveredAutoSave);
+                setRecoveredAutoSave(null);
+              }}
+              className="rounded bg-indigo-600 px-2.5 py-1 font-medium text-white hover:bg-indigo-700"
+            >
+              Kurtar
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                clearAutoSaveProject();
+                setRecoveredAutoSave(null);
+              }}
+              className="rounded border border-indigo-300 bg-white px-2.5 py-1 font-medium text-indigo-700 hover:bg-indigo-100"
+            >
+              Yoksay
+            </button>
+          </div>
+        </div>
+      )}
+
+      {autoSaveError && (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 bg-amber-50 border-b border-amber-200 px-4 py-1.5 text-xs text-amber-900"
+        >
+          <span>Otomatik kayıt uyarısı: {autoSaveError}</span>
+          <button
+            type="button"
+            onClick={() => setAutoSaveError(null)}
+            className="rounded border border-amber-300 bg-white px-2 py-0.5 font-medium text-amber-800 hover:bg-amber-100"
+          >
+            Kapat
+          </button>
+        </div>
+      )}
 
       {/* MIDDLE WORKSPACE: Left Library + Center 16:9 Canvas + Right Inspector */}
       <div className="flex-1 flex overflow-hidden min-h-0">
@@ -1277,6 +1479,8 @@ export function App() {
           selectedObjectId={selectedObjectId}
           onApplyAnimationPreset={handleApplyAnimationPreset}
           onAddAudioClip={handleAddAudioClip}
+          collapsed={workspaceLayout.leftCollapsed}
+          onToggleCollapsed={handleToggleLeftCollapsed}
         />
 
         {/* 3. CENTER 16:9 CANVAS WORKSPACE */}
@@ -1313,6 +1517,7 @@ export function App() {
           onEditCharacterInStudio={handleEditCanvasCharacter}
           currentTime={currentTime}
           isPlaying={isPlaying}
+          stageMotionPreview={stageMotionPreview}
           zoom={zoom}
           showGrid={showGrid}
         />
@@ -1357,12 +1562,32 @@ export function App() {
           onDuplicateObject={handleDuplicateObject}
           onDeleteObject={handleDeleteObject}
           onEditCharacterInStudio={handleEditCanvasCharacter}
+          stageMotionPreview={stageMotionPreview}
+          onStageMotionPreviewChange={setStageMotionPreview}
+          collapsed={workspaceLayout.rightCollapsed}
+          onToggleCollapsed={handleToggleRightCollapsed}
+          widthPx={workspaceLayout.rightWidthPx}
+          onChangeWidthPx={(w) =>
+            setWorkspaceLayout((prev) => ({
+              ...prev,
+              rightWidthPx: clampRightPanelWidth(w),
+            }))
+          }
         />
       </div>
 
       {/* 5. BOTTOM MULTI-TRACK TIMELINE (With Scene Selector, Camera Track & + Sahne Ekle Strip on top!) */}
       <BottomTimeline
         scenes={scenes}
+        collapsed={workspaceLayout.timelineCollapsed}
+        onToggleCollapsed={handleToggleTimelineCollapsed}
+        heightPx={workspaceLayout.timelineHeightPx}
+        onChangeHeightPx={(h) =>
+          setWorkspaceLayout((prev) => ({
+            ...prev,
+            timelineHeightPx: clampTimelineHeight(h),
+          }))
+        }
         activeSceneId={activeScene.id}
         onSelectScene={(id) => {
           setPreviousSceneBg(
@@ -1381,6 +1606,8 @@ export function App() {
         onContinueScene={handleContinueScene}
         onDeleteScene={handleDeleteScene}
         totalProjectDuration={totalProjectDuration}
+        fps={projectFps}
+        onFpsChange={setProjectFps}
         scene={activeScene}
         selectedObjectId={selectedObjectId}
         selectedPartId={selectedPartId}
@@ -1476,6 +1703,8 @@ export function App() {
         projectName={projectName}
         scene={activeScene}
         scenes={scenes}
+        fps={projectFps}
+        onFpsChange={setProjectFps}
       />
     </div>
   );

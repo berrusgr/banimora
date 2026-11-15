@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  ChevronDown,
   Copy,
   Film,
   Magnet,
@@ -37,6 +38,7 @@ interface TimelineToolbarProps {
   canRedo?: boolean;
   onSelectScene: (id: string) => void;
   onAddScene: () => void;
+  onContinueScene?: () => void;
   onDeleteScene: (id: string) => void;
   onChangeViewMode: (mode: TimelineViewMode) => void;
   onTogglePlay: () => void;
@@ -50,6 +52,7 @@ interface TimelineToolbarProps {
   onRedo?: () => void;
   onChangeZoom: (nextZoom: number) => void;
   onFitZoom: () => void;
+  onToggleCollapsed?: () => void;
 }
 
 export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
@@ -68,6 +71,7 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
   canRedo,
   onSelectScene,
   onAddScene,
+  onContinueScene,
   onDeleteScene,
   onChangeViewMode,
   onTogglePlay,
@@ -75,6 +79,7 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
   onToggleLoop,
   onToggleSnap,
   onSplitSelected,
+  onToggleCollapsed,
   onDuplicateSelected,
   onDeleteSelected,
   onUndo,
@@ -139,10 +144,24 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
             onClick={onAddScene}
             disabled={!canAddScene}
             className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 disabled:opacity-45 text-indigo-700 border border-indigo-200 text-xs font-bold cursor-pointer shrink-0"
+            title="Boş yeni sahne ekle"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Sahne Ekle</span>
+            <span>Boş Sahne</span>
           </button>
+
+          {onContinueScene && (
+            <button
+              type="button"
+              onClick={onContinueScene}
+              disabled={!canAddScene}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 disabled:opacity-45 text-emerald-700 border border-emerald-200 text-xs font-bold cursor-pointer shrink-0"
+              title="Önceki sahnenin arka planı, karakterleri ve nesneleriyle devam eden yeni sahne ekle"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Öncekinden Devam Et</span>
+            </button>
+          )}
         </div>
 
         {/* Basit / Gelişmiş Görünüm Anahtarı */}
@@ -309,6 +328,18 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
           <span className="text-[10px] font-mono text-slate-500 w-10 text-right">
             {Math.round(zoomPxPerSec)}px
           </span>
+          {onToggleCollapsed && (
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              data-testid="toggle-timeline-collapse-btn"
+              className="ml-1 flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 border border-slate-200 cursor-pointer"
+              title="Zaman Çizelgesini Daralt"
+            >
+              <ChevronDown className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Daralt</span>
+            </button>
+          )}
         </div>
       </div>
     </>

@@ -40,6 +40,8 @@ interface ExportModalProps {
   projectName: string;
   scene: Scene;
   scenes: Scene[];
+  fps?: 24 | 30 | 60;
+  onFpsChange?: (fps: 24 | 30 | 60) => void;
 }
 
 interface RasterizedCache {
@@ -633,10 +635,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   projectName,
   scene,
   scenes,
+  fps: projectFps = 30,
+  onFpsChange,
 }) => {
   const [exportScope, setExportScope] = useState<'all' | 'active'>('all');
   const [resolution, setResolution] = useState<'720p' | '1080p'>('1080p');
-  const [fps, setFps] = useState<'30' | '60'>('30');
+  const [localFps, setLocalFps] = useState<'24' | '30' | '60'>(String(projectFps) as '24' | '30' | '60');
+  const fps = onFpsChange ? (String(projectFps) as '24' | '30' | '60') : localFps;
+  const setFps = (next: '24' | '30' | '60') => {
+    setLocalFps(next);
+    onFpsChange?.(Number(next) as 24 | 30 | 60);
+  };
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<'idle' | 'rendering' | 'done' | 'error'>('idle');
   const [statusMessage, setStatusMessage] = useState('');
@@ -680,6 +689,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   const handleStartMp4Render = async () => {
+    let cacheRef: Awaited<ReturnType<typeof buildRasterCache>> | null = null;
     try {
       cancelRef.current = false;
       setStatus('rendering');
@@ -693,6 +703,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
       // 1. Pre-rasterize all SVGs and characters for fast synchronous frame rendering
       const cache = await buildRasterCache(targetScenes);
+      cacheRef = cache;
       if (cancelRef.current) return;
 
       // Offscreen canvases for current & previous scenes (for transitions like Dissolve)
@@ -921,11 +932,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
         const frameDurationMicros = Math.round(1_000_000 / fpsNum);
 
-        for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
-          if (cancelRef.current) {
-            encoder.close();
-            return;
-          }
+        try {
+          for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
+            if (cancelRef.current) {
+              return;
+            }
 
           const globalTime = frameIdx / fpsNum;
           await renderCompositeFrame(globalTime);
@@ -962,9 +973,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           }
         }
 
-        setStatusMessage('MP4 kapsayıcısı tamamlanıyor...');
-        await encoder.flush();
-        encoder.close();
+          setStatusMessage('MP4 kapsayıcısı tamamlanıyor...');
+          await encoder.flush();
+        } finally {
+          if (encoder.state !== 'closed') {
+            encoder.close();
+          }
+        }
 
         if (mixedAudio && audioEncoderConfig) {
           setStatusMessage('Ses kanalı MP4 dosyasına ekleniyor...');
@@ -1073,9 +1088,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     } catch (err) {
       console.error('MP4 Export Error:', err);
       setStatus('error');
+      const detail = err instanceof Error && err.message ? ` (${err.message})` : '';
       setStatusMessage(
-        'Video oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.'
+        `Video oluşturulurken bir hata oluştu${detail}. Lütfen tekrar deneyin.`
       );
+    } finally {
+      if (cacheRef) {
+        cacheRef.bgImages.clear();
+        cacheRef.staticObjectImages.clear();
+        cacheRef.liveFrameImages.clear();
+        cacheRef = null;
+      }
     }
   };
 
@@ -1185,9 +1208,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               <select
                 disabled={status === 'rendering'}
                 value={fps}
-                onChange={(e) => setFps(e.target.value as '30' | '60')}
+                onChange={(e) => setFps(e.target.value as '24' | '30' | '60')}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none"
               >
+                <option value="24">24 FPS (Sinematik / Tasarruflu)</option>
                 <option value="30">30 FPS (Standart Hızlı Render)</option>
                 <option value="60">60 FPS (Ultra Akıcı Eğitim)</option>
               </select>

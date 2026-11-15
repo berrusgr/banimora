@@ -110,6 +110,7 @@ const {
 
 const baselinePath = path.join(__dirname, 'fixtures/legacyRendererBaseline.json');
 const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
+const UPDATE_BASELINE = process.env.UPDATE_SVG_BASELINE === '1';
 
 const ALL_21_POSES: CharacterPoseType[] = [
   'idle',
@@ -319,28 +320,36 @@ describe('Faz 3B-1 — Değişiklik Öncesi Frozen Baseline Regresyonu (16 Karak
         const leavesT0 = extractLeafTransformChains(svgT0);
         const expT0 = baseline.matrix336_t0[charId][poseId];
 
-        assert.equal(
-          leavesT0.length,
-          expT0.leafCount,
-          `${charId}/${poseId} (t=0) yaprak eleman sayısı değişmemeli`
-        );
-        assert.deepEqual(
-          leavesT0.slice(0, 12),
-          expT0.first12LeafChains,
-          `${charId}/${poseId} (t=0) ilk 12 yaprak transform zinciri birebir aynı olmalı`
-        );
-        assert.deepEqual(
-          leavesT0.slice(-8),
-          expT0.last8LeafChains,
-          `${charId}/${poseId} (t=0) son 8 yaprak transform zinciri birebir aynı olmalı`
-        );
-
         const strippedT0 = stripZeroAngleCanonicalWrappers(svgT0);
-        assert.equal(
-          sha256(strippedT0),
-          expT0.sha256,
-          `${charId}/${poseId} (t=0) sıfır açılı kanonik sarmalayıcılar dışındaki tüm SVG metni bit-seviyesinde özdeş olmalı`
-        );
+        if (UPDATE_BASELINE) {
+          baseline.matrix336_t0[charId][poseId] = {
+            leafCount: leavesT0.length,
+            first12LeafChains: leavesT0.slice(0, 12),
+            last8LeafChains: leavesT0.slice(-8),
+            sha256: sha256(strippedT0),
+          };
+        } else {
+          assert.equal(
+            leavesT0.length,
+            expT0.leafCount,
+            `${charId}/${poseId} (t=0) yaprak eleman sayısı değişmemeli`
+          );
+          assert.deepEqual(
+            leavesT0.slice(0, 12),
+            expT0.first12LeafChains,
+            `${charId}/${poseId} (t=0) ilk 12 yaprak transform zinciri birebir aynı olmalı`
+          );
+          assert.deepEqual(
+            leavesT0.slice(-8),
+            expT0.last8LeafChains,
+            `${charId}/${poseId} (t=0) son 8 yaprak transform zinciri birebir aynı olmalı`
+          );
+          assert.equal(
+            sha256(strippedT0),
+            expT0.sha256,
+            `${charId}/${poseId} (t=0) sıfır açılı kanonik sarmalayıcılar dışındaki tüm SVG metni bit-seviyesinde özdeş olmalı`
+          );
+        }
 
         // 2. animTime = 0.65
         const svgT065 = normalizeDynamicIds(
@@ -348,18 +357,26 @@ describe('Faz 3B-1 — Değişiklik Öncesi Frozen Baseline Regresyonu (16 Karak
         );
         const leavesT065 = extractLeafTransformChains(svgT065);
         const expT065 = baseline.matrix336_t065[charId][poseId];
-
-        assert.equal(
-          leavesT065.length,
-          expT065.leafCount,
-          `${charId}/${poseId} (t=0.65) yaprak eleman sayısı değişmemeli`
-        );
         const strippedT065 = stripZeroAngleCanonicalWrappers(svgT065);
-        assert.equal(
-          sha256(strippedT065),
-          expT065.sha256,
-          `${charId}/${poseId} (t=0.65) sıfır açılı kanonik sarmalayıcılar dışındaki tüm SVG metni bit-seviyesinde özdeş olmalı`
-        );
+        if (UPDATE_BASELINE) {
+          baseline.matrix336_t065[charId][poseId] = {
+            leafCount: leavesT065.length,
+            first12LeafChains: leavesT065.slice(0, 12),
+            last8LeafChains: leavesT065.slice(-8),
+            sha256: sha256(strippedT065),
+          };
+        } else {
+          assert.equal(
+            leavesT065.length,
+            expT065.leafCount,
+            `${charId}/${poseId} (t=0.65) yaprak eleman sayısı değişmemeli`
+          );
+          assert.equal(
+            sha256(strippedT065),
+            expT065.sha256,
+            `${charId}/${poseId} (t=0.65) sıfır açılı kanonik sarmalayıcılar dışındaki tüm SVG metni bit-seviyesinde özdeş olmalı`
+          );
+        }
 
         verifiedCells += 2;
       }
@@ -397,8 +414,12 @@ describe('Faz 3B-1 — Değişiklik Öncesi Frozen Baseline Regresyonu (16 Karak
           renderToStaticMarkup(React.createElement(ArticulatedCharacterRig, { config: cfgSpeechOff, animTime: 0.45 }))
         )
       );
-      assert.equal(sha256(svgOn), baseline.speechLipSyncVariants[charId].onSha256, `${charId} speechOn`);
-      assert.equal(sha256(svgOff), baseline.speechLipSyncVariants[charId].offSha256, `${charId} speechOff`);
+      if (UPDATE_BASELINE) {
+        baseline.speechLipSyncVariants[charId] = { onSha256: sha256(svgOn), offSha256: sha256(svgOff) };
+      } else {
+        assert.equal(sha256(svgOn), baseline.speechLipSyncVariants[charId].onSha256, `${charId} speechOn`);
+        assert.equal(sha256(svgOff), baseline.speechLipSyncVariants[charId].offSha256, `${charId} speechOff`);
+      }
 
       // Portrait ON / OFF
       const svgPortraitOn = stripZeroAngleCanonicalWrappers(
@@ -415,8 +436,15 @@ describe('Faz 3B-1 — Değişiklik Öncesi Frozen Baseline Regresyonu (16 Karak
           )
         )
       );
-      assert.equal(sha256(svgPortraitOn), baseline.portraitModeVariants[charId].portraitOnSha256, `${charId} portraitOn`);
-      assert.equal(sha256(svgPortraitOff), baseline.portraitModeVariants[charId].portraitOffSha256, `${charId} portraitOff`);
+      if (UPDATE_BASELINE) {
+        baseline.portraitModeVariants[charId] = {
+          portraitOnSha256: sha256(svgPortraitOn),
+          portraitOffSha256: sha256(svgPortraitOff),
+        };
+      } else {
+        assert.equal(sha256(svgPortraitOn), baseline.portraitModeVariants[charId].portraitOnSha256, `${charId} portraitOn`);
+        assert.equal(sha256(svgPortraitOff), baseline.portraitModeVariants[charId].portraitOffSha256, `${charId} portraitOff`);
+      }
 
       // DiceBear vs Vector + headDirection center/left/right
       for (const useDb of [true, false]) {
@@ -433,9 +461,16 @@ describe('Faz 3B-1 — Değişiklik Öncesi Frozen Baseline Regresyonu (16 Karak
             )
           );
           const key = `${charId}__db_${useDb}__dir_${dir}__sad`;
-          assert.equal(sha256(svgVar), baseline.vectorVsDicebearVariants[key].sha256);
+          if (UPDATE_BASELINE) {
+            baseline.vectorVsDicebearVariants[key] = { sha256: sha256(svgVar) };
+          } else {
+            assert.equal(sha256(svgVar), baseline.vectorVsDicebearVariants[key].sha256);
+          }
         }
       }
+    }
+    if (UPDATE_BASELINE) {
+      fs.writeFileSync(baselinePath, JSON.stringify(baseline, null, 2) + '\n', 'utf8');
     }
   });
 });

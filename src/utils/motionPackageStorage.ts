@@ -8,11 +8,21 @@ import { getMotionPresetById } from '../data/motionPresets.ts';
 
 const PACKAGES_KEY = 'banimora.motionPackages.v1';
 const FAVORITES_KEY = 'banimora.motionFavorites.v1';
+const RECENT_MOTIONS_KEY = 'banimora.motionRecent.v1';
+
+function getStorage(): Storage | undefined {
+  if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
+  if (typeof globalThis !== 'undefined' && 'localStorage' in globalThis) {
+    return (globalThis as { localStorage?: Storage }).localStorage;
+  }
+  return undefined;
+}
 
 function safeReadJson<T>(key: string, fallback: T): T {
   try {
-    if (typeof window === 'undefined' || !window.localStorage) return fallback;
-    const raw = window.localStorage.getItem(key);
+    const storage = getStorage();
+    if (!storage) return fallback;
+    const raw = storage.getItem(key);
     if (!raw) return fallback;
     return JSON.parse(raw) as T;
   } catch {
@@ -22,8 +32,9 @@ function safeReadJson<T>(key: string, fallback: T): T {
 
 function safeWriteJson<T>(key: string, value: T): void {
   try {
-    if (typeof window === 'undefined' || !window.localStorage) return;
-    window.localStorage.setItem(key, JSON.stringify(value));
+    const storage = getStorage();
+    if (!storage) return;
+    storage.setItem(key, JSON.stringify(value));
   } catch {
     // Ignore storage quota errors
   }
@@ -44,6 +55,22 @@ export function toggleFavoritePresetId(presetId: string): string[] {
   else current.add(presetId);
   const next = Array.from(current);
   saveFavoritePresetIds(next);
+  return next;
+}
+
+export function loadRecentPresetIds(): string[] {
+  const list = safeReadJson<unknown>(RECENT_MOTIONS_KEY, []);
+  return Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string') : [];
+}
+
+export function saveRecentPresetIds(ids: readonly string[]): void {
+  safeWriteJson(RECENT_MOTIONS_KEY, Array.from(new Set(ids)));
+}
+
+export function recordRecentPresetId(presetId: string, limit = 12): string[] {
+  const filtered = loadRecentPresetIds().filter((id) => id !== presetId);
+  const next = [presetId, ...filtered].slice(0, Math.max(1, limit));
+  saveRecentPresetIds(next);
   return next;
 }
 

@@ -23,6 +23,8 @@ import {
   Route,
   FastForward,
   Volume2,
+  PanelRightClose,
+  PanelRightOpen,
   Video,
   Plus,
   Crosshair,
@@ -63,6 +65,7 @@ import {
   SceneCamera,
   SceneTransitionConfig,
   SceneTransitionType,
+  StageMotionPreviewRequest,
 } from '../types/studio';
 import {
   computePoseJointAngles,
@@ -117,11 +120,11 @@ const DesignAccordionSection: React.FC<{
   onToggle,
   title,
   titleClassName = 'text-xs font-bold text-slate-800',
-  containerClassName = 'p-3 rounded-xl bg-slate-50 border border-slate-200',
+  containerClassName = 'p-2.5 rounded-lg bg-slate-50 border border-slate-200',
   headerExtra,
   children,
 }) => (
-  <div className={`${containerClassName} ${isOpen ? 'space-y-2.5' : ''}`}>
+  <div className={`${containerClassName} ${isOpen ? 'space-y-2' : ''}`}>
     <div
       role="button"
       tabIndex={0}
@@ -184,6 +187,12 @@ interface RightInspectorProps {
   onDuplicateObject: (id: string) => void;
   onDeleteObject: (id: string) => void;
   onEditCharacterInStudio: (obj: CanvasObject) => void;
+  stageMotionPreview?: StageMotionPreviewRequest | null;
+  onStageMotionPreviewChange?: (preview: StageMotionPreviewRequest | null) => void;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
+  widthPx?: number;
+  onChangeWidthPx?: (width: number) => void;
 }
 
 const SCENE_TRANSITION_OPTIONS: {
@@ -443,6 +452,12 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
   onDuplicateObject,
   onDeleteObject,
   onEditCharacterInStudio,
+  stageMotionPreview,
+  onStageMotionPreviewChange,
+  collapsed = false,
+  onToggleCollapsed,
+  widthPx = 276,
+  onChangeWidthPx,
 }) => {
   const [activeTab, setActiveTab] = useState<'design' | 'animate'>('design');
   const [actionCat, setActionCat] = useState<'basic' | 'work' | 'emotion'>('basic');
@@ -514,6 +529,55 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
     onSelectCamera(newMov.id);
   };
 
+  const startRightResize = (e: React.MouseEvent) => {
+    if (!onChangeWidthPx) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = widthPx;
+    const onMove = (ev: MouseEvent) => {
+      const delta = startX - ev.clientX;
+      onChangeWidthPx(Math.max(240, Math.min(380, Math.round(startW + delta))));
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  if (collapsed) {
+    const collapsedLabel = !selectedObject
+      ? isCameraSelected
+        ? 'Kamera'
+        : 'Sahne'
+      : selectedObject.name;
+    return (
+      <aside
+        data-testid="right-inspector-collapsed"
+        className="w-10 border-l border-slate-200 bg-slate-50 flex flex-col items-center py-2.5 gap-3 shrink-0 select-none z-20"
+      >
+        {onToggleCollapsed && (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            data-testid="toggle-right-panel-btn"
+            className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:text-indigo-700 hover:border-indigo-300 shadow-2xs cursor-pointer"
+            title="Sağ Paneli Aç"
+          >
+            <PanelRightOpen className="w-4 h-4" />
+          </button>
+        )}
+        <span
+          style={{ writingMode: 'vertical-rl' }}
+          className="text-[10px] font-bold tracking-wider uppercase text-slate-500 rotate-180 truncate max-h-44"
+        >
+          {collapsedLabel}
+        </span>
+      </aside>
+    );
+  }
+
   // =========================================================================
   // WHEN NO OBJECT IS SELECTED: SHOW CAMERA TOOL, SCENE SETTINGS & TRANSITIONS
   // =========================================================================
@@ -530,7 +594,18 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
       null;
 
     return (
-      <aside className="w-80 border-l border-slate-200 bg-white p-4 overflow-y-auto shrink-0 select-none z-20 space-y-4">
+      <aside
+        data-testid="right-inspector-panel"
+        style={{ width: `${widthPx}px` }}
+        className="border-l border-slate-200 bg-white p-2.5 overflow-y-auto shrink-0 select-none z-20 space-y-2.5 relative"
+      >
+        {onChangeWidthPx && (
+          <div
+            onMouseDown={startRightResize}
+            title="Panel genişliğini sürükleyerek ayarla"
+            className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-indigo-400/50 transition-colors z-30"
+          />
+        )}
         <input
           ref={bgUploadInputRef}
           type="file"
@@ -546,16 +621,31 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
         />
 
         {/* Scene Inspector Header */}
-        <div className="pb-3 border-b border-slate-200">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-indigo-600 flex items-center gap-1">
-            <Layers className="w-3 h-3" />
-            {isCameraSelected
-              ? 'KAMERA ARACI (ZOOM & PAN)'
-              : 'AKTİF SAHNE, KAMERA & GEÇİŞ AYARLARI'}
-          </span>
-          <h2 className="text-sm font-bold text-slate-900 truncate mt-0.5">
-            {scene.name}
-          </h2>
+        <div className="pb-2 border-b border-slate-200 flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <span className="text-[9.5px] uppercase tracking-wider font-bold text-indigo-600 flex items-center gap-1">
+              <Layers className="w-3 h-3 shrink-0" />
+              <span className="truncate">
+                {isCameraSelected
+                  ? 'KAMERA ARACI'
+                  : 'SAHNE & GEÇİŞ'}
+              </span>
+            </span>
+            <h2 className="text-xs font-bold text-slate-900 truncate mt-0.5">
+              {scene.name}
+            </h2>
+          </div>
+          {onToggleCollapsed && (
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              data-testid="toggle-right-panel-btn"
+              className="p-1 rounded-md text-slate-400 hover:text-indigo-700 hover:bg-indigo-50 shrink-0 cursor-pointer"
+              title="Sağ Paneli Daralt"
+            >
+              <PanelRightClose className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* =================================================================
@@ -1236,9 +1326,20 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
   };
 
   return (
-    <aside className="w-80 border-l border-slate-200 bg-white p-4 overflow-y-auto shrink-0 select-none z-20">
+    <aside
+      data-testid="right-inspector-panel"
+      style={{ width: `${widthPx}px` }}
+      className="border-l border-slate-200 bg-white p-2.5 overflow-y-auto shrink-0 select-none z-20 relative"
+    >
+      {onChangeWidthPx && (
+        <div
+          onMouseDown={startRightResize}
+          title="Panel genişliğini sürükleyerek ayarla"
+          className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-indigo-400/50 transition-colors z-30"
+        />
+      )}
       {/* Selected Object Header */}
-      <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
+      <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] uppercase tracking-wider font-bold text-indigo-600">
@@ -1308,6 +1409,17 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
+          {onToggleCollapsed && (
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              data-testid="toggle-right-panel-btn"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-700 hover:bg-indigo-50 cursor-pointer"
+              title="Sağ Paneli Daralt"
+            >
+              <PanelRightClose className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -1350,17 +1462,22 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    const url = URL.createObjectURL(file);
-                    ensureAudioLipSyncAnalyzed(url);
-                    onUpdateObject(selectedObject.id, {
-                      characterConfig: {
-                        ...resolvedCharConfig,
-                        lipSyncEnabled: true,
-                        lipSyncAudioUrl: url,
-                        lipSyncAudioName: file.name,
-                        lipSyncAudioStartTime: 0,
-                      },
-                    });
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      if (typeof reader.result !== 'string') return;
+                      const dataUrl = reader.result;
+                      ensureAudioLipSyncAnalyzed(dataUrl);
+                      onUpdateObject(selectedObject.id, {
+                        characterConfig: {
+                          ...resolvedCharConfig,
+                          lipSyncEnabled: true,
+                          lipSyncAudioUrl: dataUrl,
+                          lipSyncAudioName: file.name,
+                          lipSyncAudioStartTime: 0,
+                        },
+                      });
+                    };
+                    reader.readAsDataURL(file);
                     e.target.value = '';
                   }
                 }}
@@ -2398,11 +2515,24 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                         }}
                         className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                       >
-                        {attachableChars.map((ch) => (
-                          <option key={ch.id} value={ch.id}>
-                            {ch.name}
-                          </option>
-                        ))}
+                        {(() => {
+                          const nameTotals = new Map<string, number>();
+                          attachableChars.forEach((c) => {
+                            nameTotals.set(c.name, (nameTotals.get(c.name) ?? 0) + 1);
+                          });
+                          const nameSeen = new Map<string, number>();
+                          return attachableChars.map((ch) => {
+                            const total = nameTotals.get(ch.name) ?? 1;
+                            const idx = (nameSeen.get(ch.name) ?? 0) + 1;
+                            nameSeen.set(ch.name, idx);
+                            const displayName = total > 1 ? `${ch.name} #${idx}` : ch.name;
+                            return (
+                              <option key={ch.id} value={ch.id}>
+                                {displayName}
+                              </option>
+                            );
+                          });
+                        })()}
                       </select>
                     </div>
 
@@ -3209,18 +3339,19 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 <span className="text-[11px] text-slate-500">Başlangıç</span>
                 <input
                   type="number"
-                  step={0.5}
+                  step={0.1}
                   min={0}
-                  max={Math.max(0, scene.duration - 0.5)}
-                  value={selectedObject.startTime}
-                  onChange={(e) =>
+                  max={Number(Math.max(0, scene.duration - 0.5).toFixed(2))}
+                  value={Number(selectedObject.startTime.toFixed(2))}
+                  onChange={(e) => {
+                    const parsed = Number(e.target.value);
+                    if (!Number.isFinite(parsed)) return;
                     onUpdateObject(selectedObject.id, {
-                      startTime: Math.max(
-                        0,
-                        Math.min(scene.duration - 0.5, Number(e.target.value))
+                      startTime: Number(
+                        Math.max(0, Math.min(scene.duration - 0.5, parsed)).toFixed(2)
                       ),
-                    })
-                  }
+                    });
+                  }}
                   className="w-14 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
                 />
               </label>
@@ -3228,21 +3359,22 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 <span className="text-[11px] text-slate-500">Süre (sn)</span>
                 <input
                   type="number"
-                  step={0.5}
+                  step={0.1}
                   min={0.5}
-                  max={scene.duration}
-                  value={selectedObject.duration}
-                  onChange={(e) =>
+                  max={Number(scene.duration.toFixed(2))}
+                  value={Number(selectedObject.duration.toFixed(2))}
+                  onChange={(e) => {
+                    const parsed = Number(e.target.value);
+                    if (!Number.isFinite(parsed)) return;
                     onUpdateObject(selectedObject.id, {
-                      duration: Math.max(
-                        0.5,
-                        Math.min(
-                          scene.duration - selectedObject.startTime,
-                          Number(e.target.value)
-                        )
+                      duration: Number(
+                        Math.max(
+                          0.5,
+                          Math.min(scene.duration - selectedObject.startTime, parsed)
+                        ).toFixed(2)
                       ),
-                    })
-                  }
+                    });
+                  }}
                   className="w-14 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
                 />
               </label>
@@ -3344,6 +3476,9 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               sceneDuration={scene.duration}
               currentTime={currentTime}
               onUpdateObject={onUpdateObject}
+              stageMotionPreview={stageMotionPreview}
+              onStageMotionPreviewChange={onStageMotionPreviewChange}
+              rightOffsetPx={widthPx + 12}
             />
           )}
 

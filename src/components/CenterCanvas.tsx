@@ -25,7 +25,9 @@ import {
   RigJointKey,
   Scene,
   SceneCamera,
+  StageMotionPreviewRequest,
 } from '../types/studio';
+import { getMotionPresetById } from '../data/motionPresets';
 import { VectorAssetRenderer } from '../data/libraryAssets';
 import { getMathAssetDefinition, resolveObjectAssetClass } from '../data/mathAssetsRegistry';
 import { resolveEffectiveCharacterConfig } from '../utils/audioLipSync';
@@ -63,6 +65,7 @@ interface CenterCanvasProps {
   onEditCharacterInStudio: (obj: CanvasObject) => void;
   currentTime: number;
   isPlaying: boolean;
+  stageMotionPreview?: StageMotionPreviewRequest | null;
   transitionTriggerKey: number;
   zoom: number;
   showGrid: boolean;
@@ -141,12 +144,15 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
   onEditCharacterInStudio,
   currentTime,
   isPlaying,
+  stageMotionPreview,
   transitionTriggerKey,
   zoom,
   showGrid,
 }) => {
+  const viewportRef = useRef<HTMLElement>(null);
   const stageContainerRef = useRef<HTMLDivElement>(null);
   const [scaleRatio, setScaleRatio] = useState(1);
+  const [fitStageWidth, setFitStageWidth] = useState<number>(820);
   const [interaction, setInteraction] = useState<InteractionMode>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -161,6 +167,22 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
 
   // Re-render when async lip-sync audio analysis completes (e.g. while paused/scrubbing)
   const [, setLipSyncReadyTick] = useState(0);
+  const [motionPreviewElapsed, setMotionPreviewElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!stageMotionPreview || isPlaying) {
+      setMotionPreviewElapsed(0);
+      return;
+    }
+    let rafId = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      setMotionPreviewElapsed((now - start) / 1000);
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [stageMotionPreview, isPlaying]);
   useEffect(() => {
     const onLipReady = () => setLipSyncReadyTick((n) => n + 1);
     window.addEventListener('banimora-lipsync-ready', onLipReady);
@@ -198,6 +220,25 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
     rafId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafId);
   }, [transitionTriggerKey, scene.transition.type, scene.transition.duration]);
+
+  useEffect(() => {
+    const vp = viewportRef.current;
+    if (!vp) return;
+
+    const updateFit = () => {
+      const rect = vp.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const availW = Math.max(320, rect.width - 28);
+      const availH = Math.max(180, rect.height - 48);
+      const nextWidth = Math.max(320, Math.floor(Math.min(availW, (availH * 16) / 9)));
+      setFitStageWidth(nextWidth);
+    };
+
+    updateFit();
+    const ro = new ResizeObserver(updateFit);
+    ro.observe(vp);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const el = stageContainerRef.current;
@@ -530,6 +571,7 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
 
   return (
     <main
+      ref={viewportRef}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) {
           onSelectObject(null);
@@ -575,10 +617,11 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
           }
         }}
         style={{
+          width: `${fitStageWidth}px`,
           transform: `scale(${zoom / 100})`,
           transformOrigin: 'center center',
         }}
-        className={`aspect-video w-[85%] max-w-4xl bg-slate-900 shadow-xl rounded-xl relative overflow-hidden transition-shadow ${
+        className={`aspect-video bg-slate-900 shadow-xl rounded-xl relative overflow-hidden transition-shadow ${
           isDragOver
             ? 'ring-4 ring-indigo-500 shadow-indigo-500/25'
             : isCameraSelected
@@ -592,9 +635,14 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
         {activeTransProgress !== null && (
           <div
             style={{
-              background:
-                previousSceneBackground ||
-                'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)',
+              ...(() => {
+                const bg =
+                  previousSceneBackground ||
+                  'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)';
+                const isImg =
+                  bg.includes('url(') || bg.includes('gradient(');
+                return isImg ? { backgroundImage: bg } : { backgroundColor: bg };
+              })(),
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}
@@ -605,7 +653,10 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
         {/* Active Scene Content Wrapper with Real-Time Transition Effect */}
         <div
           style={{
-            background: scene.background.style,
+            ...(scene.background.style.includes('url(') ||
+            scene.background.style.includes('gradient(')
+              ? { backgroundImage: scene.background.style }
+              : { backgroundColor: scene.background.style }),
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             ...getSceneTransitionStyle(),
@@ -626,7 +677,10 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
             style={{
               width: `${LOGICAL_WIDTH}px`,
               height: `${LOGICAL_HEIGHT}px`,
-              background: scene.background.style,
+              ...(scene.background.style.includes('url(') ||
+              scene.background.style.includes('gradient(')
+                ? { backgroundImage: scene.background.style }
+                : { backgroundColor: scene.background.style }),
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               transform:
@@ -975,6 +1029,63 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                 anim
               );
               const flipScaleX = (renderTransform.flipX ? -1 : 1) * renderTransform.scaleX;
+              const effectiveCharConfig =
+                obj.category === 'characters'
+                  ? resolveEffectiveCharacterConfig(obj, scene.audioClips)
+                  : undefined;
+              const previewPreset =
+                !isPlaying &&
+                stageMotionPreview &&
+                stageMotionPreview.objectId === obj.id
+                  ? getMotionPresetById(stageMotionPreview.presetId)
+                  : undefined;
+
+              const timelineRig =
+                obj.category === 'characters' && previewPreset
+                  ? evaluateCharacterTimelineForRig(
+                      {
+                        ...obj,
+                        timelineData: {
+                          ...(obj.timelineData ?? { keyframes: [] }),
+                          motionClips: [
+                            {
+                              id: `stage-preview-${previewPreset.id}`,
+                              presetId: previewPreset.id,
+                              name: previewPreset.name,
+                              channelId: previewPreset.defaultChannelId,
+                              mask: previewPreset.mask,
+                              stage: previewPreset.stage,
+                              startTime: 0,
+                              duration: Math.max(0.5, previewPreset.defaultDuration),
+                              speed: stageMotionPreview?.speed ?? 1,
+                              intensity: stageMotionPreview?.intensity ?? 1,
+                              weight: 1,
+                              mirrored: Boolean(stageMotionPreview?.mirrored),
+                              repeatMode: 'loop',
+                            },
+                          ],
+                        },
+                      },
+                      motionPreviewElapsed,
+                      buildCharacterRigProfile(
+                        effectiveCharConfig ||
+                          DEFAULT_CHARACTER_CONFIGS[obj.assetId] ||
+                          DEFAULT_CHARACTER_CONFIGS['char-pro-sinan'],
+                        obj.assetId
+                      )
+                    )
+                  : obj.category === 'characters' && obj.timelineData
+                    ? evaluateCharacterTimelineForRig(
+                        obj,
+                        currentTime,
+                        buildCharacterRigProfile(
+                          effectiveCharConfig ||
+                            DEFAULT_CHARACTER_CONFIGS[obj.assetId] ||
+                            DEFAULT_CHARACTER_CONFIGS['char-pro-sinan'],
+                          obj.assetId
+                        )
+                      )
+                    : undefined;
 
               return (
                 <div
@@ -1057,21 +1168,8 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                     fontFamily={obj.fontFamily}
                     textRevealRatio={!isPlaying && isSelected ? 1 : anim.textRevealRatio}
                     drawProgress={anim.drawProgress}
-                    characterConfig={resolveEffectiveCharacterConfig(obj, scene.audioClips)}
-                    timelineRig={
-                      obj.category === 'characters' && obj.timelineData
-                        ? evaluateCharacterTimelineForRig(
-                            obj,
-                            currentTime,
-                            buildCharacterRigProfile(
-                              resolveEffectiveCharacterConfig(obj, scene.audioClips) ||
-                                DEFAULT_CHARACTER_CONFIGS[obj.assetId] ||
-                                DEFAULT_CHARACTER_CONFIGS['char-pro-sinan'],
-                              obj.assetId
-                            )
-                          )
-                        : undefined
-                    }
+                    characterConfig={effectiveCharConfig}
+                    timelineRig={timelineRig}
                     imageUrl={obj.imageUrl}
                     animTime={currentTime}
                     chartData={obj.chartData}

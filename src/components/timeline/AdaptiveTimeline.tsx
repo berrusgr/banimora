@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronUp, Film, Pause, Play } from 'lucide-react';
+import { formatStudioTime } from '../../utils/animationEngine';
 import type { AudioClip, CanvasObject, Scene } from '../../types/studio';
 import type {
   TimelineClipKind,
@@ -15,6 +17,7 @@ import {
   computeFitZoom,
   computeSnapTime,
   computeZoomPreservingPlayhead,
+  DEFAULT_TIMELINE_FPS,
   DEFAULT_TIMELINE_HEIGHT,
   DEFAULT_ZOOM_PX_PER_SEC,
   duplicateSelectedClipsInScene,
@@ -23,6 +26,7 @@ import {
   pixelXToTime,
   splitAudioClipAtTime,
   splitObjectAtTime,
+  stepTimeByFrames,
   timeToPixelX,
 } from './timelineUtils';
 import { TimelineSplitter } from './TimelineSplitter';
@@ -74,6 +78,12 @@ export interface AdaptiveTimelineProps {
   canUndo?: boolean;
   canRedo?: boolean;
   disableGlobalShortcuts?: boolean;
+  fps?: 24 | 30 | 60;
+  onFpsChange?: (fps: 24 | 30 | 60) => void;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
+  heightPx?: number;
+  onChangeHeightPx?: (height: number) => void;
 }
 
 export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
@@ -81,6 +91,7 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
   activeSceneId,
   onSelectScene,
   onAddScene,
+  onContinueScene,
   onDeleteScene,
   totalProjectDuration,
   scene,
@@ -107,8 +118,19 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
   canUndo,
   canRedo,
   disableGlobalShortcuts = false,
+  fps = DEFAULT_TIMELINE_FPS,
+  onFpsChange,
+  collapsed = false,
+  onToggleCollapsed,
+  heightPx: controlledHeightPx,
+  onChangeHeightPx,
 }) => {
-  const [heightPx, setHeightPx] = useState(DEFAULT_TIMELINE_HEIGHT);
+  const [internalHeightPx, setInternalHeightPx] = useState(DEFAULT_TIMELINE_HEIGHT);
+  const heightPx = controlledHeightPx ?? internalHeightPx;
+  const setHeightPx = (nextHeight: number) => {
+    setInternalHeightPx(nextHeight);
+    onChangeHeightPx?.(nextHeight);
+  };
   const [viewMode, setViewMode] = useState<TimelineViewMode>('simple');
   const [zoomPxPerSec, setZoomPxPerSec] = useState(DEFAULT_ZOOM_PX_PER_SEC);
   const [scrollTime, setScrollTime] = useState(0);
@@ -591,12 +613,12 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
         onTogglePlay();
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        const step = e.shiftKey ? 0.5 : 0.05;
-        onSeek(Number(Math.max(0, currentTime - step).toFixed(2)));
+        const frameDelta = e.shiftKey ? -Math.round(fps * 0.5) : -1;
+        onSeek(stepTimeByFrames(currentTime, frameDelta, fps, scene.duration));
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        const step = e.shiftKey ? 0.5 : 0.05;
-        onSeek(Number(Math.min(scene.duration, currentTime + step).toFixed(2)));
+        const frameDelta = e.shiftKey ? Math.round(fps * 0.5) : 1;
+        onSeek(stepTimeByFrames(currentTime, frameDelta, fps, scene.duration));
       } else if (!mod && key === 's') {
         e.preventDefault();
         handleSplitSelected();
@@ -737,8 +759,50 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
 
   const maxScrollTime = Math.max(0, scene.duration + 2 - viewportWidthPx / Math.max(1, zoomPxPerSec));
 
+  if (collapsed) {
+    return (
+      <section
+        data-testid="timeline-collapsed-bar"
+        className="h-10 bg-slate-50 border-t border-slate-200 px-3 flex items-center justify-between shrink-0 select-none z-20"
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <button
+            type="button"
+            onClick={onTogglePlay}
+            className="w-7 h-7 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center cursor-pointer"
+            title={isPlaying ? 'Duraklat' : 'Oynat'}
+          >
+            {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
+          </button>
+          <span className="text-[11px] font-mono font-semibold text-slate-700">
+            {formatStudioTime(currentTime)} / {formatStudioTime(scene.duration)}
+          </span>
+          <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-500 border-l border-slate-300 pl-2.5 truncate">
+            <Film className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <span className="font-semibold text-slate-700 truncate">{scene.name}</span>
+            <span>({scenes.length} sahne)</span>
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => onToggleCollapsed?.()}
+            data-testid="toggle-timeline-collapse-btn"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200 text-[11px] font-semibold cursor-pointer"
+            title="Zaman Çizelgesini Genişlet"
+          >
+            <ChevronUp className="w-3.5 h-3.5" />
+            <span>Zaman Çizelgesi</span>
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
+      data-testid="timeline-expanded-panel"
       style={{ height: `${heightPx}px` }}
       className="bg-white flex flex-col shrink-0 select-none z-20"
     >
@@ -760,6 +824,7 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
         canRedo={canRedo}
         onSelectScene={onSelectScene}
         onAddScene={onAddScene}
+        onContinueScene={onContinueScene}
         onDeleteScene={onDeleteScene}
         onChangeViewMode={setViewMode}
         onTogglePlay={onTogglePlay}
@@ -773,17 +838,30 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
         onRedo={onRedo}
         onChangeZoom={handleChangeZoom}
         onFitZoom={handleFitZoom}
+        onToggleCollapsed={onToggleCollapsed}
       />
 
       {/* Zaman Cetveli Satırı */}
       <div className="flex items-stretch shrink-0">
         <div className="w-56 h-7 shrink-0 border-r border-b border-slate-200 bg-slate-50 px-2.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-500">
           <span>Katmanlar / Kanallar</span>
-          {selectedClips.length > 1 && (
-            <span className="px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 font-mono">
-              {selectedClips.length} seçili
-            </span>
-          )}
+          <div className="flex items-center gap-1">
+            {onFpsChange && (
+              <button
+                type="button"
+                onClick={() => onFpsChange(fps === 24 ? 30 : fps === 30 ? 60 : 24)}
+                className="px-1.5 py-0.5 rounded bg-slate-200/80 hover:bg-slate-300 text-slate-700 font-mono text-[9px] normal-case"
+                title="Proje kare hızını (24 / 30 / 60 FPS) değiştir"
+              >
+                {fps} FPS
+              </button>
+            )}
+            {selectedClips.length > 1 && (
+              <span className="px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 font-mono">
+                {selectedClips.length} seçili
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex-1 min-w-0">
           <TimelineRuler
@@ -809,6 +887,7 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
             scene={scene}
             selectedObjectId={selectedObjectId}
             currentTime={currentTime}
+            fps={fps}
             scrollTime={scrollTime}
             zoomPxPerSec={zoomPxPerSec}
             viewportWidthPx={viewportWidthPx}

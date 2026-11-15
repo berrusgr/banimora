@@ -15,6 +15,7 @@ import {
 } from '../rig/rigKinematics';
 import { resolveEffectiveCharacterConfig } from './audioLipSync';
 import { computeObjectAnimation } from './animationEngine';
+import { resolveDynamicSocketState } from '../rig/socketTimelineResolver';
 import {
   evaluateChannelKeyframes,
   evaluateCharacterTimelineForRig,
@@ -125,25 +126,61 @@ export function resolveSceneObjectRenderTransform(
   isPlaying: boolean,
   anim: ObjectStageAnimInput
 ): SceneObjectRenderTransform {
-  if (obj.attachment) {
+  const dynamicSocket = resolveDynamicSocketState(
+    obj,
+    scene,
+    currentTime,
+    isPlaying,
+    anim,
+    computeObjectAnimation,
+    (_parent, cfg, animTime) =>
+      resolveHybridRigAngles(cfg, animTime) as unknown as ReturnType<
+        NonNullable<Parameters<typeof resolveDynamicSocketState>[6]>
+      >
+  );
+
+  if (dynamicSocket.handoffWorldPose) {
+    const h = dynamicSocket.handoffWorldPose;
+    return {
+      x: h.x,
+      y: h.y,
+      translateX: 0,
+      translateY: 0,
+      rotationDeg: h.rotationDeg,
+      scaleX: h.scaleX,
+      scaleY: h.scaleY,
+      flipX: h.flipX,
+      isAttached: true,
+      socketTransform: h.socketTransform,
+    };
+  }
+
+  if (dynamicSocket.attachment) {
+    const effectiveAtt = dynamicSocket.attachment;
     const validation = validateObjectAttachment(
       scene.objects,
       obj.id,
-      obj.attachment,
+      effectiveAtt,
       buildCharacterRigProfile
     );
     if (validation.valid) {
-      const parentObj = scene.objects.find((o) => o.id === obj.attachment!.parentObjectId);
+      const parentObj = scene.objects.find((o) => o.id === effectiveAtt.parentObjectId);
       if (parentObj) {
         const socketTransform = resolveParentCharacterSocketTransform(
           parentObj,
-          obj.attachment.socketId,
+          effectiveAtt.socketId,
           scene,
           currentTime,
           isPlaying
         );
         if (socketTransform) {
-          const resolved = resolveAttachedObjectStageTransform(obj, socketTransform, anim);
+          const objWithEffectiveAtt: CanvasObject =
+            obj.attachment === effectiveAtt ? obj : { ...obj, attachment: effectiveAtt };
+          const resolved = resolveAttachedObjectStageTransform(
+            objWithEffectiveAtt,
+            socketTransform,
+            anim
+          );
           return {
             x: resolved.x,
             y: resolved.y,
@@ -159,6 +196,22 @@ export function resolveSceneObjectRenderTransform(
         }
       }
     }
+  }
+
+  if (dynamicSocket.detachedWorldPose) {
+    const d = dynamicSocket.detachedWorldPose;
+    return {
+      x: d.x,
+      y: d.y,
+      translateX: 0,
+      translateY: 0,
+      rotationDeg: d.rotationDeg,
+      scaleX: d.scaleX,
+      scaleY: d.scaleY,
+      flipX: d.flipX,
+      isAttached: false,
+      socketTransform: null,
+    };
   }
 
   const rootEval = obj.timelineData?.channelKeyframes?.root

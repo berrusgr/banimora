@@ -1056,6 +1056,31 @@ export interface SavedMotionPackage {
   clips: SavedMotionPackageClipSpec[];
 }
 
+export type PoseCategoryId =
+  | 'teaching'
+  | 'pointing'
+  | 'holding'
+  | 'greeting'
+  | 'thinking'
+  | 'emotion'
+  | 'posture'
+  | 'bowing'
+  | 'listening';
+
+export interface SavedCharacterPose {
+  id: string;
+  name: string;
+  category: PoseCategoryId;
+  description?: string;
+  createdAt: number;
+  bones: Partial<Record<CanonicalBoneId, number>>;
+  bodyBobY?: number;
+  expression?: CharacterExpressionType;
+  lookDirection?: HeadDirectionType;
+  favorite?: boolean;
+  isBuiltIn?: boolean;
+}
+
 export interface ChannelKeyframeValue {
   bones?: Partial<Record<CanonicalBoneId, number>>;
   x?: number;
@@ -1071,6 +1096,14 @@ export interface ChannelKeyframeValue {
   targetY?: number;
   ikWeight?: number;
   ikHand?: 'left' | 'right' | 'both';
+  /** Faz 4B-3: kemiklerden bağımsız zamana bağlı socket bağlantısı */
+  attachmentTargetObjectId?: string;
+  attachmentParentId?: string | null;
+  attachmentSocketId?: 'leftPropSocket' | 'rightPropSocket' | 'backPropSocket' | null;
+  attachmentOffsetX?: number;
+  attachmentOffsetY?: number;
+  attachmentRotationDeg?: number;
+  attachmentTransitionSec?: number;
 }
 
 export interface ChannelKeyframe {
@@ -1114,4 +1147,12 @@ export interface AnimationComboPreset {
   description: string;
   badge: string;
   animations: ObjectAnimations;
+}
+
+export interface StageMotionPreviewRequest {
+  objectId: string;
+  presetId: string;
+  mirrored?: boolean;
+  speed?: number;
+  intensity?: number;
 }

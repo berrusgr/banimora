@@ -15,7 +15,10 @@ import {
   Plus,
   Save,
   FolderOpen,
+  Layout,
+  Maximize,
 } from 'lucide-react';
+import type { WorkspaceMode } from '../utils/workspaceLayoutStorage';
 import {
   formatCompactDuration,
   MAX_TOTAL_PROJECT_DURATION,
@@ -43,6 +46,8 @@ interface TopHeaderProps {
   onOpenExport: () => void;
   onSaveProjectJson: () => void;
   onLoadProjectJson: (file: File) => Promise<boolean> | boolean;
+  workspaceMode?: WorkspaceMode;
+  onChangeWorkspaceMode?: (mode: WorkspaceMode) => void;
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
@@ -67,6 +72,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onOpenExport,
   onSaveProjectJson,
   onLoadProjectJson,
+  workspaceMode = 'standard',
+  onChangeWorkspaceMode,
 }) => {
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const [jsonStatus, setJsonStatus] = useState<'saved' | 'loaded' | null>(null);
@@ -116,7 +123,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             type="text"
             value={projectName}
             onChange={(e) => onProjectNameChange(e.target.value)}
-            className="bg-slate-100 hover:bg-slate-200/70 focus:bg-white text-slate-900 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 focus:border-indigo-500 focus:outline-none transition-colors w-52"
+            className="bg-slate-100 hover:bg-slate-200/70 focus:bg-white text-slate-900 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 focus:border-indigo-500 focus:outline-none transition-colors w-40"
             aria-label="Proje Adı"
           />
           <span
@@ -190,6 +197,58 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         >
           <Grid3X3 className="w-3.5 h-3.5" />
         </button>
+
+        {onChangeWorkspaceMode && (
+          <>
+            <div className="h-4 w-px bg-slate-300 mx-1" />
+            <div
+              className="flex items-center gap-0.5 bg-white border border-slate-200/80 rounded-md p-0.5"
+              title="Çalışma Alanı Düzeni"
+            >
+              <button
+                type="button"
+                onClick={() => onChangeWorkspaceMode('standard')}
+                data-testid="workspace-mode-standard"
+                className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                  workspaceMode === 'standard'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+                title="Standart Çalışma Alanı (Tüm paneller açık)"
+              >
+                <Layout className="w-3 h-3" />
+                <span className="hidden xl:inline">Standart</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onChangeWorkspaceMode('wide')}
+                data-testid="workspace-mode-wide"
+                className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
+                  workspaceMode === 'wide'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+                title="Geniş Sahne Modu (Yan paneller daraltılır)"
+              >
+                Geniş Sahne
+              </button>
+              <button
+                type="button"
+                onClick={() => onChangeWorkspaceMode('focus')}
+                data-testid="workspace-mode-focus"
+                className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                  workspaceMode === 'focus'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+                title="Sahne Odaklı Mod (Maksimum sahne alanı)"
+              >
+                <Maximize className="w-3 h-3" />
+                <span className="hidden xl:inline">Odak</span>
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* RIGHT: Camera Tool (Add Camera / Add Camera Movement), Play Preview & Export MP4 */}

@@ -1,9 +1,9 @@
 import type { AudioClip, CanvasObject, Scene } from '../../types/studio.ts';
 import type { TimelineClipRef, TimelineDragPreview } from './timelineTypes.ts';
 
-export const MIN_TIMELINE_HEIGHT = 180;
+export const MIN_TIMELINE_HEIGHT = 160;
 export const MAX_TIMELINE_HEIGHT = 520;
-export const DEFAULT_TIMELINE_HEIGHT = 250;
+export const DEFAULT_TIMELINE_HEIGHT = 220;
 
 export const MIN_ZOOM_PX_PER_SEC = 20;
 export const MAX_ZOOM_PX_PER_SEC = 240;
@@ -330,4 +330,35 @@ export function applyDragPreviewToScene(
         }
       : undefined,
   };
+}
+
+
+export const DEFAULT_TIMELINE_FPS = 30 as const;
+
+export function getFrameDurationSec(fps: number = DEFAULT_TIMELINE_FPS): number {
+  const safeFps = Number.isFinite(fps) && fps > 0 ? fps : DEFAULT_TIMELINE_FPS;
+  return 1 / safeFps;
+}
+
+export function timeToFrameIndex(time: number, fps: number = DEFAULT_TIMELINE_FPS): number {
+  const safeFps = Number.isFinite(fps) && fps > 0 ? fps : DEFAULT_TIMELINE_FPS;
+  return Math.round(Math.max(0, time) * safeFps);
+}
+
+export function snapTimeToFrame(time: number, fps: number = DEFAULT_TIMELINE_FPS): number {
+  const safeFps = Number.isFinite(fps) && fps > 0 ? fps : DEFAULT_TIMELINE_FPS;
+  const clamped = Math.max(0, time);
+  return Number((Math.round(clamped * safeFps) / safeFps).toFixed(4));
+}
+
+export function stepTimeByFrames(
+  time: number,
+  frameDelta: number,
+  fps: number = DEFAULT_TIMELINE_FPS,
+  maxDuration = 60
+): number {
+  const safeFps = Number.isFinite(fps) && fps > 0 ? fps : DEFAULT_TIMELINE_FPS;
+  const nextFrame = Math.max(0, timeToFrameIndex(time, safeFps) + frameDelta);
+  const nextTime = Math.min(Math.max(0, maxDuration), nextFrame / safeFps);
+  return Number(nextTime.toFixed(4));
 }

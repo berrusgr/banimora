@@ -541,6 +541,10 @@ export interface SceneObjectAttachment {
   inheritRotation?: boolean;
   /** Karakterin sahne/iç yatay aynalamasını miras al (varsayılan: true) */
   inheritFlip?: boolean;
+  /** Faz 4B-3: Opsiyonel bağlantı başlangıç zamanı (sn). */
+  startTime?: number;
+  /** Faz 4B-3: Opsiyonel bağlantı bitiş zamanı (sn). */
+  endTime?: number;
 }
 
 /**

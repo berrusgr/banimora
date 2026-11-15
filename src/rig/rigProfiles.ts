@@ -657,12 +657,44 @@ const ZERO_PROPORTIONS: SkeletonProportions = {
  * Verilen `CharacterConfig` (ve opsiyonel `assetId`) için salt okunur `CharacterRigProfile` üretir.
  * Mevcut çalışan karakter ve sahne kodunu değiştirmez; yalnızca mevcut gerçek geometrileri ve yetenekleri raporlar.
  */
+const RIG_PROFILE_CACHE = new Map<string, CharacterRigProfile>();
+const MAX_RIG_PROFILE_CACHE = 128;
+
 export function buildCharacterRigProfile(
   config: CharacterConfig,
   assetId?: string
 ): CharacterRigProfile {
   const bodyStyle: CharacterBodyStyle = config.bodyStyle === 'slender-pro' ? 'slender-pro' : 'classic';
   const genderAge: CharacterGenderAge = config.genderAge || 'male';
+  const cacheKey = [
+    assetId ?? '',
+    bodyStyle,
+    genderAge,
+    config.faceShape ?? '',
+    config.hairStyle ?? '',
+    config.photoAvatarMode ?? '',
+    config.photoAvatarUrl ? '1' : '0',
+    config.flipHorizontal ? '1' : '0',
+  ].join('|');
+
+  const cached = RIG_PROFILE_CACHE.get(cacheKey);
+  if (cached) return cached;
+
+  const built = buildCharacterRigProfileUncached(config, assetId, bodyStyle, genderAge);
+  if (RIG_PROFILE_CACHE.size >= MAX_RIG_PROFILE_CACHE) {
+    const firstKey = RIG_PROFILE_CACHE.keys().next().value;
+    if (firstKey !== undefined) RIG_PROFILE_CACHE.delete(firstKey);
+  }
+  RIG_PROFILE_CACHE.set(cacheKey, built);
+  return built;
+}
+
+function buildCharacterRigProfileUncached(
+  config: CharacterConfig,
+  assetId: string | undefined,
+  bodyStyle: CharacterBodyStyle,
+  genderAge: CharacterGenderAge
+): CharacterRigProfile {
 
   if (!isSupportedCharacterAsset(assetId)) {
     const unsupportedReason = `Asset '${assetId}' mevcut VectorAssetRenderer / ArticulatedCharacterRig tarafından iskelet dışında tutulmaktadır (assetId !== 'char-robot-mira') ve aktif bir robot SVG iskelet çizicisi bulunmamaktadır.`;

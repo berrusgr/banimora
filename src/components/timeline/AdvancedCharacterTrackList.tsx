@@ -17,12 +17,24 @@ import type {
   Scene,
 } from '../../types/studio';
 import { getMotionPresetById } from '../../data/motionPresets';
-import { pixelXToTime, timeToPixelX } from './timelineUtils';
+import { buildCharacterRigProfile } from '../../rig/rigProfiles';
+import {
+  captureEvaluatedChannelKeyframeValue,
+  DEFAULT_CAPTURE_CHARACTER_CONFIG,
+} from '../../utils/timelineRigBridge';
+import {
+  DEFAULT_TIMELINE_FPS,
+  pixelXToTime,
+  snapTimeToFrame,
+  timeToPixelX,
+} from './timelineUtils';
+import { KeyframeInspectorBar } from './KeyframeInspectorBar';
 
 export interface AdvancedCharacterTrackListProps {
   scene: Scene;
   selectedObjectId: string | null;
   currentTime: number;
+  fps?: number;
   scrollTime: number;
   zoomPxPerSec: number;
   viewportWidthPx: number;
@@ -55,6 +67,7 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
   scene,
   selectedObjectId,
   currentTime,
+  fps = DEFAULT_TIMELINE_FPS,
   scrollTime,
   zoomPxPerSec,
   viewportWidthPx,
@@ -201,25 +214,36 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
   };
 
   const handleAddChannelKeyframe = (charObj: CanvasObject, channelId: CharacterChannelId) => {
-    const t = Number(currentTime.toFixed(2));
+    const t = snapTimeToFrame(Math.min(scene.duration, Math.max(0, currentTime)), fps);
+    const profile = buildCharacterRigProfile(
+      charObj.characterConfig ?? DEFAULT_CAPTURE_CHARACTER_CONFIG,
+      charObj.assetId
+    );
+    const capturedValue = captureEvaluatedChannelKeyframeValue(charObj, channelId, t, profile);
+    if (channelId === 'socketAttachments') {
+      const attachedOrFirstProp =
+        scene.objects.find((o) => o.attachment?.parentObjectId === charObj.id) ??
+        scene.objects.find((o) => o.category === 'objects');
+      if (attachedOrFirstProp) {
+        capturedValue.attachmentTargetObjectId = attachedOrFirstProp.id;
+        capturedValue.attachmentParentId = charObj.id;
+        capturedValue.attachmentSocketId =
+          attachedOrFirstProp.attachment?.socketId ?? 'rightPropSocket';
+        capturedValue.attachmentTransitionSec = 0.25;
+      }
+    }
     const newKf: ChannelKeyframe = {
       id: `kf-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
       time: t,
       interpolation: 'ease-in-out',
-      value:
-        channelId === 'root'
-          ? { x: charObj.x, y: charObj.y, rotation: charObj.rotation }
-          : channelId === 'expression'
-            ? { expression: charObj.characterConfig?.expression ?? 'neutral' }
-            : channelId === 'lipSync'
-              ? { talking: Boolean(charObj.characterConfig?.lipSyncEnabled) }
-              : { bones: {} },
+      value: capturedValue,
     };
+    setSelectedKeyframeId(newKf.id);
     updateCharTimeline(
       charObj,
       (prev) => {
         const list = prev.channelKeyframes?.[channelId] ?? [];
-        const filtered = list.filter((k) => Math.abs(k.time - t) > 0.04);
+        const filtered = list.filter((k) => Math.abs(k.time - t) > 0.015);
         return {
           ...prev,
           channelKeyframes: {
@@ -232,14 +256,147 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
     );
   };
 
+  const handleUpdateChannelKeyframe = (
+    charObj: CanvasObject,
+    channelId: CharacterChannelId,
+    updated: ChannelKeyframe,
+    commit = true
+  ) => {
+    updateCharTimeline(
+      charObj,
+      (prev) => ({
+        ...prev,
+        channelKeyframes: {
+          ...(prev.channelKeyframes ?? {}),
+          [channelId]: (prev.channelKeyframes?.[channelId] ?? [])
+            .map((k) => (k.id === updated.id ? updated : k))
+            .sort((a, b) => a.time - b.time),
+        },
+      }),
+      commit
+    );
+  };
+
+  const handleDeleteChannelKeyframe = (
+    charObj: CanvasObject,
+    channelId: CharacterChannelId,
+    kfId: string
+  ) => {
+    if (selectedKeyframeId === kfId) setSelectedKeyframeId(null);
+    updateCharTimeline(
+      charObj,
+      (prev) => ({
+        ...prev,
+        channelKeyframes: {
+          ...(prev.channelKeyframes ?? {}),
+          [channelId]: (prev.channelKeyframes?.[channelId] ?? []).filter((k) => k.id !== kfId),
+        },
+      }),
+      true
+    );
+  };
+
+  const handleStartKeyframeDrag = (
+    e: React.PointerEvent,
+    charObj: CanvasObject,
+    channelId: CharacterChannelId,
+    kf: ChannelKeyframe
+  ) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    setSelectedKeyframeId(kf.id);
+    onSelectObject(charObj.id);
+    if (charObj.locked) return;
+
+    const startClientX = e.clientX;
+    const origTime = kf.time;
+    let moved = false;
+    let latestTime = origTime;
+
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startClientX;
+      if (Math.abs(dx) > 2) moved = true;
+      if (!moved) return;
+      const rawTime = Math.min(
+        scene.duration,
+        Math.max(0, origTime + dx / Math.max(1, zoomPxPerSec))
+      );
+      latestTime = snapTimeToFrame(rawTime, fps);
+      handleUpdateChannelKeyframe(charObj, channelId, { ...kf, time: latestTime }, false);
+      onSeek(latestTime);
+    };
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      if (moved) {
+        handleUpdateChannelKeyframe(charObj, channelId, { ...kf, time: latestTime }, true);
+      } else {
+        onSeek(kf.time);
+      }
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
+  // Seçili keyframe'i bul (varsa KeyframeInspectorBar göster)
+  let selectedKfContext: {
+    charObj: CanvasObject;
+    channelDef: ChannelDef;
+    kf: ChannelKeyframe;
+  } | null = null;
+  if (selectedKeyframeId) {
+    for (const chObj of characters) {
+      const kfMap = chObj.timelineData?.channelKeyframes;
+      if (!kfMap) continue;
+      for (const chDef of CHARACTER_CHANNELS) {
+        const found = (kfMap[chDef.id] ?? []).find((k) => k.id === selectedKeyframeId);
+        if (found) {
+          selectedKfContext = { charObj: chObj, channelDef: chDef, kf: found };
+          break;
+        }
+      }
+      if (selectedKfContext) break;
+    }
+  }
+
   return (
     <div className="border-b-2 border-indigo-200 bg-indigo-50/20">
       <div className="px-2.5 py-1 bg-indigo-50 border-b border-indigo-200 text-[10px] font-bold uppercase tracking-wider text-indigo-800 flex items-center justify-between">
         <span>Gelişmiş Karakter Animasyon Kanalları</span>
         <span className="text-[9px] font-medium text-indigo-600 normal-case">
-          Hareket sürükle-bırak • Keyframe (◆)
+          Hareket sürükle-bırak • Keyframe (◆) tıkla/sürükle ({fps} FPS)
         </span>
       </div>
+      {selectedKfContext && (
+        <KeyframeInspectorBar
+          characterId={selectedKfContext.charObj.id}
+          characterName={selectedKfContext.charObj.name}
+          channelId={selectedKfContext.channelDef.id}
+          channelLabel={selectedKfContext.channelDef.label}
+          keyframe={selectedKfContext.kf}
+          sceneObjects={scene.objects}
+          sceneDuration={scene.duration}
+          fps={fps}
+          onChangeKeyframe={(updated, commit = true) =>
+            handleUpdateChannelKeyframe(
+              selectedKfContext!.charObj,
+              selectedKfContext!.channelDef.id,
+              updated,
+              commit
+            )
+          }
+          onDeleteKeyframe={() =>
+            handleDeleteChannelKeyframe(
+              selectedKfContext!.charObj,
+              selectedKfContext!.channelDef.id,
+              selectedKfContext!.kf.id
+            )
+          }
+          onClose={() => setSelectedKeyframeId(null)}
+        />
+      )}
 
       {characters.map((charObj) => {
         const isExpanded = expandedChars[charObj.id] ?? charObj.id === selectedObjectId;
@@ -438,6 +595,7 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
                           <button
                             key={kf.id}
                             type="button"
+                            onPointerDown={(e) => handleStartKeyframeDrag(e, charObj, ch.id, kf)}
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedKeyframeId(kf.id);
@@ -445,21 +603,13 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
                             }}
                             onContextMenu={(e) => {
                               e.preventDefault();
-                              updateCharTimeline(charObj, (prev) => ({
-                                ...prev,
-                                channelKeyframes: {
-                                  ...(prev.channelKeyframes ?? {}),
-                                  [ch.id]: (prev.channelKeyframes?.[ch.id] ?? []).filter(
-                                    (k) => k.id !== kf.id
-                                  ),
-                                },
-                              }));
+                              handleDeleteChannelKeyframe(charObj, ch.id, kf.id);
                             }}
                             style={{ transform: `translate3d(${x - 6}px, -50%, 0)` }}
-                            className={`absolute top-1/2 left-0 w-3 h-3 flex items-center justify-center z-10 ${
+                            className={`absolute top-1/2 left-0 w-3 h-3 flex items-center justify-center z-10 cursor-ew-resize ${
                               isSel ? 'text-indigo-700 scale-125' : 'text-amber-500 hover:text-indigo-600'
                             }`}
-                            title={`Keyframe ${kf.time.toFixed(2)}s (${kf.interpolation}) • Silmek için sağ tık`}
+                            title={`Keyframe ${kf.time.toFixed(2)}s (${kf.interpolation}) • Sürükle veya sağ tıkla sil`}
                           >
                             <Diamond className="w-2.5 h-2.5 fill-current" />
                           </button>

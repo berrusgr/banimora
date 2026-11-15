@@ -2483,6 +2483,174 @@ const CELEBRATION_PRESETS: MotionPresetDefinition[] = [
   }),
 ];
 
+const TEACHER_EXTRA_PRESETS: MotionPresetDefinition[] = [
+  {
+    id: 'count-fingers-123',
+    name: 'Parmakla 1-2-3 Sayma',
+    category: 'teaching',
+    description: 'Sağ elle 1-2-3 vurgulu ritmik sayma ve hafif baş onayı.',
+    defaultChannelId: 'rightArm',
+    mask: 'right-arm',
+    stage: 'L2_GESTURE_AND_IK',
+    defaultDuration: 2.4,
+    lockProcedural: true,
+    cyclesPerSec: 0.9,
+    supportsMirroring: true,
+    tags: ['sayma', 'parmak', '123', 'öğretmen', 'matematik'],
+    sample: (phase01, intensity) => {
+      const step = Math.sin(phase01 * Math.PI * 6);
+      const lift = -78 - 18 * Math.max(0, step) * intensity;
+      return {
+        boneAngles: {
+          rightShoulder: lift,
+          rightElbow: -72 + 16 * step * intensity,
+          rightWrist: 14 * step * intensity,
+        },
+      };
+    },
+  },
+  {
+    id: 'show-distance-hands',
+    name: 'İki Elle Mesafe Gösterme',
+    category: 'teaching',
+    description: 'İki el arasında uzaklık/aralık ölçüsünü açıp kapatarak gösterme.',
+    defaultChannelId: 'leftArm',
+    mask: 'both-arms',
+    stage: 'L2_GESTURE_AND_IK',
+    defaultDuration: 2.2,
+    lockProcedural: true,
+    cyclesPerSec: 0.85,
+    supportsMirroring: false,
+    tags: ['mesafe', 'ölçü', 'aralık', 'öğretmen'],
+    sample: (phase01, intensity) => {
+      const spread = 0.5 - 0.5 * Math.cos(phase01 * Math.PI * 2);
+      const deg = (28 + 38 * spread) * intensity;
+      return {
+        boneAngles: {
+          leftShoulder: deg,
+          leftElbow: 48 - 20 * spread * intensity,
+          leftWrist: -6,
+          rightShoulder: -deg,
+          rightElbow: -48 + 20 * spread * intensity,
+          rightWrist: 6,
+        },
+      };
+    },
+  },
+  {
+    id: 'show-object-size',
+    name: 'Nesne Boyutu Gösterme',
+    category: 'teaching',
+    description: 'İki elle bir nesnenin yüksekliğini veya boyutunu çerçeveleme.',
+    defaultChannelId: 'leftArm',
+    mask: 'both-arms',
+    stage: 'L2_GESTURE_AND_IK',
+    defaultDuration: 2.0,
+    lockProcedural: true,
+    cyclesPerSec: 0.9,
+    supportsMirroring: true,
+    tags: ['boyut', 'büyüklük', 'küçük', 'büyük', 'öğretmen'],
+    sample: (phase01, intensity) => {
+      const pulse = Math.sin(phase01 * Math.PI);
+      return {
+        boneAngles: {
+          leftShoulder: (36 + 22 * pulse) * intensity,
+          leftElbow: 64 * intensity,
+          leftWrist: -10,
+          rightShoulder: (-74 - 24 * pulse) * intensity,
+          rightElbow: -46 * intensity,
+          rightWrist: 10,
+        },
+      };
+    },
+  },
+  {
+    id: 'explain-palms-up',
+    name: 'Avuçlar Yukarı Açıklama',
+    category: 'teaching',
+    description: 'İki avuç yukarı dönük sıcak ve açıklayıcı anlatım hareketi.',
+    defaultChannelId: 'leftArm',
+    mask: 'both-arms',
+    stage: 'L2_GESTURE_AND_IK',
+    defaultDuration: 2.2,
+    lockProcedural: true,
+    cyclesPerSec: 0.85,
+    supportsMirroring: false,
+    expressionHint: 'happy',
+    tags: ['avuç', 'açıklama', 'öğretmen', 'sunum'],
+    sample: (phase01, intensity) => {
+      const s = Math.sin(phase01 * Math.PI * 2);
+      return {
+        boneAngles: {
+          leftShoulder: (44 + 12 * s) * intensity,
+          leftElbow: (52 - 14 * s) * intensity,
+          leftWrist: -16,
+          rightShoulder: (-44 - 12 * s) * intensity,
+          rightElbow: (-52 + 14 * s) * intensity,
+          rightWrist: 16,
+        },
+      };
+    },
+  },
+  {
+    id: 'invite-arms-open',
+    name: 'İki Kolu Davetkâr Açma',
+    category: 'social',
+    description: 'Öğrencileri karşılamak veya dahil etmek için kolları iki yana açma.',
+    defaultChannelId: 'torso',
+    mask: 'upper-body',
+    stage: 'L2_GESTURE_AND_IK',
+    defaultDuration: 2.0,
+    lockProcedural: true,
+    cyclesPerSec: 0.8,
+    supportsMirroring: false,
+    expressionHint: 'happy',
+    tags: ['davet', 'karşılama', 'kollar', 'açık'],
+    sample: (phase01, intensity) => {
+      const env = Math.sin(phase01 * Math.PI);
+      return {
+        boneAngles: {
+          chest: -4 * env * intensity,
+          leftShoulder: 76 * env * intensity,
+          leftElbow: 24 * env * intensity,
+          rightShoulder: -76 * env * intensity,
+          rightElbow: -24 * env * intensity,
+        },
+      };
+    },
+  },
+  {
+    id: 'sit-down-transition',
+    name: 'Sandalyeye Oturma Geçişi',
+    category: 'posture',
+    description: 'Ayakta duruştan oturma pozisyonuna yumuşak geçiş.',
+    defaultChannelId: 'leftLeg',
+    mask: 'full',
+    stage: 'L1_LOCOMOTION',
+    defaultDuration: 1.6,
+    lockProcedural: true,
+    cyclesPerSec: 0.65,
+    supportsMirroring: false,
+    tags: ['oturma', 'sandalye', 'geçiş', 'postür'],
+    sample: (phase01, intensity) => {
+      const p = 0.5 - 0.5 * Math.cos(Math.min(1, phase01) * Math.PI);
+      return {
+        boneAngles: {
+          pelvis: 6 * p * intensity,
+          spine: -4 * p * intensity,
+          leftHip: -76 * p * intensity,
+          leftKnee: 80 * p * intensity,
+          leftAnkle: -6 * p * intensity,
+          rightHip: -74 * p * intensity,
+          rightKnee: 78 * p * intensity,
+          rightAnkle: -6 * p * intensity,
+        },
+        bodyBobY: 34 * p * intensity,
+      };
+    },
+  },
+];
+
 export const MOTION_PRESETS: readonly MotionPresetDefinition[] = [
   ...LOCOMOTION_PRESETS,
   ...HAND_ARM_PRESETS,
@@ -2493,6 +2661,7 @@ export const MOTION_PRESETS: readonly MotionPresetDefinition[] = [
   ...SOCIAL_PRESETS,
   ...THINKING_PRESETS,
   ...CELEBRATION_PRESETS,
+  ...TEACHER_EXTRA_PRESETS,
 ];
 
 const PRESET_MAP = new Map<string, MotionPresetDefinition>(
@@ -2503,17 +2672,60 @@ export function getMotionPresetById(presetId: string): MotionPresetDefinition | 
   return PRESET_MAP.get(presetId);
 }
 
+const TURKISH_SYNONYM_GROUPS: string[][] = [
+  ['saskin', 'sasirma', 'hayret', 'surpriz'],
+  ['mutlu', 'sevinc', 'neseli', 'kutlama', 'alkis'],
+  ['el salla', 'el sallama', 'selam', 'selamlasma', 'merhaba', 'hosgeldin'],
+  ['kitap', 'okuma', 'nesne', 'defter', 'ders'],
+  ['konus', 'konusma', 'anlat', 'anlatim', 'diyalog', 'sunum'],
+  ['uzgun', 'uzulme', 'huzun', 'hayal kirikligi'],
+  ['zipla', 'ziplama', 'atlama', 'sicrama'],
+  ['otur', 'oturma', 'sandalye'],
+  ['dusun', 'dusunme', 'merak', 'sorgulama'],
+  ['goster', 'isaret', 'tahta', 'yonlendirme'],
+  ['yuru', 'yurume', 'adim', 'kos', 'kosma'],
+  ['bak', 'bakma', 'izle', 'gozlem'],
+];
+
+export function normalizeTurkishSearchText(input: string): string {
+  return input
+    .trim()
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ş/g, 's')
+    .replace(/ç/g, 'c')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ö/g, 'o')
+    .replace(/ı/g, 'i')
+    .replace(/i̇/g, 'i');
+}
+
+function expandSearchQueries(normalizedQuery: string): string[] {
+  const variants = new Set<string>([normalizedQuery]);
+  for (const group of TURKISH_SYNONYM_GROUPS) {
+    if (group.some((term) => term.includes(normalizedQuery) || normalizedQuery.includes(term))) {
+      for (const term of group) {
+        variants.add(term);
+      }
+    }
+  }
+  return Array.from(variants);
+}
+
 export function searchMotionPresets(
   query: string,
   category?: MotionCategoryId | 'all'
 ): MotionPresetDefinition[] {
-  const q = query.trim().toLocaleLowerCase('tr-TR');
+  const rawQ = query.trim().toLocaleLowerCase('tr-TR');
+  const normQ = normalizeTurkishSearchText(query);
+  const queryVariants = normQ ? expandSearchQueries(normQ) : [];
+
   return MOTION_PRESETS.filter((preset) => {
     if (category && category !== 'all' && preset.category !== category) {
       return false;
     }
-    if (!q) return true;
-    const hay = [
+    if (!rawQ) return true;
+    const rawHay = [
       preset.name,
       preset.description ?? '',
       preset.id,
@@ -2521,7 +2733,9 @@ export function searchMotionPresets(
     ]
       .join(' ')
       .toLocaleLowerCase('tr-TR');
-    return hay.includes(q);
+    if (rawHay.includes(rawQ)) return true;
+    const normHay = normalizeTurkishSearchText(rawHay);
+    return queryVariants.some((variant) => normHay.includes(variant));
   });
 }
 

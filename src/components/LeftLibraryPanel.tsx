@@ -19,6 +19,8 @@ import {
   Mic,
   Shapes,
   BarChart3,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import {
   CHART_TABLE_LIBRARY_ITEMS,
@@ -62,6 +64,8 @@ interface LeftLibraryPanelProps {
   selectedObjectId: string | null;
   onApplyAnimationPreset: (preset: AnimationComboPreset) => void;
   onAddAudioClip: (clip: AudioClip) => void;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }
 
 const DOCK_TABS: {
@@ -95,6 +99,8 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
   selectedObjectId,
   onApplyAnimationPreset,
   onAddAudioClip,
+  collapsed = false,
+  onToggleCollapsed,
 }) => {
   const [activeCategory, setActiveCategory] = useState<AssetCategory>('characters');
   const [activeMathClass, setActiveMathClass] = useState<MathAssetClass>('static');
@@ -316,7 +322,12 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
   };
 
   return (
-    <aside className="w-80 border-r border-slate-200 flex shrink-0 select-none z-20 bg-white">
+    <aside
+      data-testid="left-library-panel"
+      className={`${
+        collapsed ? 'w-14' : 'w-[268px]'
+      } border-r border-slate-200 flex shrink-0 select-none z-20 bg-white transition-[width] duration-150`}
+    >
       {/* Hidden File Inputs for Custom Object, Background & Audio Uploads */}
       <input
         ref={objectFileInputRef}
@@ -340,24 +351,44 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
         className="hidden"
       />
 
-      {/* Leftmost Vertical Icon Menu (w-16 bg-slate-50) */}
-      <nav className="w-16 bg-slate-50 border-r border-slate-200 flex flex-col items-center py-3 gap-1.5 shrink-0">
+      {/* Leftmost Vertical Icon Menu (w-14 bg-slate-50) */}
+      <nav className="w-14 bg-slate-50 border-r border-slate-200 flex flex-col items-center py-2 gap-1 shrink-0">
+        {onToggleCollapsed && (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            data-testid="toggle-left-panel-btn"
+            className="w-10 h-7 mb-1 rounded-lg flex items-center justify-center text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer"
+            title={collapsed ? 'Sol Kütüphaneyi Aç' : 'Sol Kütüphaneyi Daralt'}
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="w-4 h-4" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4" />
+            )}
+          </button>
+        )}
         {DOCK_TABS.map((tab) => {
           const Icon = tab.icon;
-          const isActive = activeCategory === tab.id;
+          const isActive = activeCategory === tab.id && !collapsed;
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveCategory(tab.id)}
-              className={`w-12 py-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+              onClick={() => {
+                setActiveCategory(tab.id);
+                if (collapsed && onToggleCollapsed) {
+                  onToggleCollapsed();
+                }
+              }}
+              className={`w-11 py-1.5 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
                 isActive
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
                   : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/60'
               }`}
               title={tab.label}
             >
-              <Icon className="w-[17px] h-[17px]" />
-              <span className="text-[10px] font-semibold tracking-tight leading-none">
+              <Icon className="w-4 h-4" />
+              <span className="text-[9.5px] font-semibold tracking-tight leading-none">
                 {tab.label}
               </span>
             </button>
@@ -365,12 +396,13 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
         })}
       </nav>
 
-      {/* Right Content Drawer (flex-1 bg-white p-4) */}
-      <div className="flex-1 bg-white p-4 flex flex-col h-full overflow-hidden">
+      {/* Right Content Drawer */}
+      {!collapsed && (
+      <div className="flex-1 bg-white p-3 flex flex-col h-full overflow-hidden min-w-0">
         {/* Drawer Header */}
-        <div className="mb-3 shrink-0 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+        <div className="mb-2.5 shrink-0 space-y-2">
+          <div className="flex items-center justify-between gap-1.5">
+            <h2 className="text-xs font-bold text-slate-900 tracking-tight truncate">
               {activeCategory === 'characters' && 'Karakter Kütüphanesi'}
               {activeCategory === 'objects' && 'Eğitim & Bilim Nesneleri'}
               {activeCategory === 'elements' && 'Eğitim Nesneleri ve Şekiller'}
@@ -781,7 +813,13 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
                   >
                     <div
                       className="w-full aspect-video rounded-lg mb-1.5 border border-slate-200 shadow-inner bg-cover bg-center"
-                      style={{ background: bg.style, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                      style={{
+                        ...(bg.style.includes('url(') || bg.style.includes('gradient(')
+                          ? { backgroundImage: bg.style }
+                          : { backgroundColor: bg.style }),
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                      }}
                     />
                     <p className="text-xs font-semibold text-slate-800 truncate text-center w-full">
                       {bg.name}
@@ -956,6 +994,7 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
           )}
         </div>
       </div>
+      )}
     </aside>
   );
 };

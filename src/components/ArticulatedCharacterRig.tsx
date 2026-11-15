@@ -5235,9 +5235,9 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
         transform={`translate(${110 + dirShift}, ${112 + userHeadOffsetY}) rotate(${turnTilt}) scale(${backScale * turnScaleX}, ${backScale}) translate(-110, -112)`}
         style={{ overflow: 'visible' }}
       >
-        {/* Back hair curtain rendered BEHIND torso & neck so it never covers the shirt */}
+        {/* Back hair curtain rendered BEHIND torso & neck so it never covers the shirt or pokes past the head */}
         <path
-          d="M80 72 Q74 110 77 146 Q110 154 143 146 Q146 110 140 72 Z"
+          d="M90 88 Q110 70 130 88 Q135 116 134 142 Q110 150 86 142 Q85 116 90 88 Z"
           fill={backShade}
         />
       </g>

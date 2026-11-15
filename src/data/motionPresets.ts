@@ -2682,9 +2682,165 @@ export const MOTION_PRESETS: readonly MotionPresetDefinition[] = [
   ...TEACHER_EXTRA_PRESETS,
 ];
 
-const PRESET_MAP = new Map<string, MotionPresetDefinition>(
-  MOTION_PRESETS.map((p) => [p.id, p])
-);
+export const EXTRA_SMART_ACTION_MOTION_PRESETS: MotionPresetDefinition[] = [
+  {
+    id: 'type-keyboard',
+    name: 'Klavyede Yazı Yazma',
+    category: 'object-use',
+    description: 'İki elle masaüstü veya dizüstü klavyede hızlı yazı yazma hareketi.',
+    tags: ['bilgisayar', 'klavye', 'yazma', 'ofis', 'masa'],
+    defaultChannelId: 'leftArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'upper-body',
+    lockProcedural: true,
+    defaultDuration: 4.0,
+    cyclesPerSec: 3.0,
+    supportsMirroring: false,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    sample: (phase01, intensity) => {
+      const fast = Math.sin(phase01 * TAU * 4);
+      const fastCos = Math.cos(phase01 * TAU * 4);
+      return {
+        boneAngles: {
+          leftShoulder: (-48 + fast * 3) * intensity,
+          leftElbow: (-42 + fastCos * 6) * intensity,
+          leftWrist: (-6 + fast * 8) * intensity,
+          rightShoulder: (-42 - fastCos * 3) * intensity,
+          rightElbow: (-48 - fast * 6) * intensity,
+          rightWrist: (-6 - fastCos * 8) * intensity,
+          head: (4 + Math.sin(phase01 * TAU) * 2) * intensity,
+        },
+        leftHandGesture: 'open',
+        rightHandGesture: 'open',
+      };
+    },
+  },
+  {
+    id: 'use-mouse',
+    name: 'Fare Kullanma',
+    category: 'object-use',
+    description: 'Sağ elle masa üzerinde bilgisayar faresini hareket ettirme ve tıklama.',
+    tags: ['fare', 'mouse', 'bilgisayar', 'ofis'],
+    defaultChannelId: 'rightArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'right-arm',
+    lockProcedural: true,
+    defaultDuration: 3.0,
+    cyclesPerSec: 1.5,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    sample: (phase01, intensity) => {
+      const s = osc(phase01);
+      const c = oscCos(phase01);
+      return {
+        boneAngles: {
+          rightShoulder: (-36 + s * 4) * intensity,
+          rightElbow: (-52 + c * 5) * intensity,
+          rightWrist: (-4 + Math.sin(phase01 * TAU * 2) * 5) * intensity,
+        },
+        rightHandGesture: 'point',
+      };
+    },
+  },
+  {
+    id: 'drink-sip',
+    name: 'Fincandan İçme',
+    category: 'object-use',
+    description: 'Fincanı ağza götürüp içtikten sonra başlangıç konumuna geri indirme.',
+    tags: ['kahve', 'çay', 'fincan', 'bardak', 'içme'],
+    defaultChannelId: 'rightArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'right-arm',
+    lockProcedural: true,
+    defaultDuration: 3.2,
+    cyclesPerSec: 0.5,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.25,
+    defaultBlendOutSec: 0.25,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const sipEnv = Math.sin(clamp01(phase01) * Math.PI);
+      const holdEnv = Math.pow(sipEnv, 0.7);
+      return {
+        boneAngles: {
+          rightShoulder: (-26 - holdEnv * 36) * intensity,
+          rightElbow: (-42 - holdEnv * 76) * intensity,
+          rightWrist: (-8 - holdEnv * 14) * intensity,
+          head: (-4 * holdEnv) * intensity,
+        },
+        rightHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'carry-suitcase',
+    name: 'Bavul Taşıma',
+    category: 'locomotion',
+    description: 'Sağ elde bavul tutarak yürüyüşle uyumlu şekilde taşıma hareketi.',
+    tags: ['bavul', 'valiz', 'seyahat', 'taşıma', 'yürüme'],
+    defaultChannelId: 'rightArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'right-arm',
+    lockProcedural: true,
+    defaultDuration: 3.0,
+    cyclesPerSec: 1.0,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const s = osc(phase01);
+      return {
+        boneAngles: {
+          rightShoulder: (-12 + s * 6) * intensity,
+          rightElbow: (-10 + Math.abs(s) * 4) * intensity,
+          rightWrist: 0,
+        },
+        rightHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'lift-weights',
+    name: 'Ağırlık Kaldırma',
+    category: 'hand-arm',
+    description: 'İki elle koordineli ağırlık kaldırma ve indirme egzersizi.',
+    tags: ['ağırlık', 'dambıl', 'halter', 'spor', 'egzersiz'],
+    defaultChannelId: 'rightArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'upper-body',
+    lockProcedural: true,
+    defaultDuration: 3.0,
+    cyclesPerSec: 0.75,
+    supportsMirroring: false,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const lift = (1 - Math.cos(phase01 * TAU)) * 0.5;
+      return {
+        boneAngles: {
+          leftShoulder: (18 + lift * 22) * intensity,
+          leftElbow: (32 + lift * 76) * intensity,
+          leftWrist: 0,
+          rightShoulder: (-18 - lift * 22) * intensity,
+          rightElbow: (-32 - lift * 76) * intensity,
+          rightWrist: 0,
+          torso: (-4 + lift * 6) * intensity,
+        },
+        leftHandGesture: 'fist',
+        rightHandGesture: 'fist',
+      };
+    },
+  },
+];
+
+const PRESET_MAP = new Map<string, MotionPresetDefinition>([
+  ...MOTION_PRESETS.map((p) => [p.id, p] as const),
+  ...EXTRA_SMART_ACTION_MOTION_PRESETS.map((p) => [p.id, p] as const),
+]);
 
 export function getMotionPresetById(presetId: string): MotionPresetDefinition | undefined {
   return PRESET_MAP.get(presetId);
@@ -2703,6 +2859,11 @@ const TURKISH_SYNONYM_GROUPS: string[][] = [
   ['goster', 'isaret', 'tahta', 'yonlendirme'],
   ['yuru', 'yurume', 'adim', 'kos', 'kosma'],
   ['bak', 'bakma', 'izle', 'gozlem'],
+  ['bilgisayar', 'pc', 'klavye', 'fare', 'yazma', 'masa'],
+  ['kahve', 'cay', 'fincan', 'bardak', 'icme'],
+  ['bavul', 'valiz', 'seyahat', 'tasima'],
+  ['agirlik', 'dambil', 'halter', 'spor', 'egzersiz'],
+  ['telefon', 'arama', 'cagri', 'konusma'],
 ];
 
 export function normalizeTurkishSearchText(input: string): string {

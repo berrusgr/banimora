@@ -91,6 +91,9 @@ import {
 } from '../rig/rigKinematics';
 import { resolveParentCharacterSocketTransform } from '../utils/sceneAttachmentResolver';
 import { MotionStudioPanel } from './MotionStudioPanel';
+import { SmartActionLibrarySection } from './SmartActionLibrarySection';
+import type { SmartActionPackage } from '../data/smartActionPackages';
+import type { SmartActionApplyMode } from '../utils/smartActionApplier';
 
 type DesignSectionKey =
   | 'actions'
@@ -182,6 +185,11 @@ interface RightInspectorProps {
   onContinueScene: () => void;
   onUploadBackgroundFile: (file: File) => void;
   onUpdateObject: (id: string, patch: Partial<CanvasObject>, commitHistory?: boolean) => void;
+  onApplySmartAction?: (
+    characterId: string,
+    pkg: SmartActionPackage,
+    mode: SmartActionApplyMode
+  ) => void;
   onUpdateAnimations: (id: string, animations: ObjectAnimations) => void;
   isPlaying?: boolean;
   onPreviewAnimation: (obj: CanvasObject) => void;
@@ -454,6 +462,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
   onContinueScene,
   onUploadBackgroundFile,
   onUpdateObject,
+  onApplySmartAction,
   onUpdateAnimations,
   isPlaying = false,
   onPreviewAnimation,
@@ -1450,7 +1459,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 className="hidden"
               />
 
-              {/* 1. KARAKTER EYLEMLERİ (ACTIONS) - 3 KATEGORİ */}
+              {/* 1. KARAKTER EYLEMLERİ (AKILLI EYLEM KÜTÜPHANESİ - 11 KATEGORİ) */}
               <DesignAccordionSection
                 isOpen={isSectionOpen('actions')}
                 onToggle={() => toggleSection('actions')}
@@ -1459,35 +1468,19 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 title={
                   <>
                     <Bone className="w-3.5 h-3.5 text-indigo-600" />
-                    Karakter Eylemleri (Actions)
+                    Akıllı Eylemler (Actions)
                   </>
                 }
               >
-
-                {/* Category Tabs: Temel | İş & Yaşam | Duygusal */}
-                <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-slate-100 border border-slate-200">
-                  {CHARACTER_ACTION_CATEGORIES.map((cat) => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setActionCat(cat.id)}
-                      className={`py-1 px-1 rounded-md text-[10px] font-semibold transition-all cursor-pointer truncate ${actionCat === cat.id
-                        ? 'bg-indigo-600 text-white shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                    >
-                      {cat.id === 'basic'
-                        ? 'Temel'
-                        : cat.id === 'work'
-                          ? 'İş & Günlük'
-                          : 'Duygusal'}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Actions Grid for Selected Category */}
-                <div className="grid grid-cols-2 gap-1.5">
-                  {CHARACTER_ACTION_CATEGORIES.find((c) => c.id === actionCat)?.actions.map(
-                    (act) => {
+                {onApplySmartAction ? (
+                  <SmartActionLibrarySection
+                    selectedObject={selectedObject}
+                    charConfig={resolvedCharConfig}
+                    onApplySmartAction={onApplySmartAction}
+                  />
+                ) : (
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {CHARACTER_ACTION_CATEGORIES.flatMap((c) => c.actions).map((act) => {
                       const isPoseActive = resolvedCharConfig.pose === act.id;
                       return (
                         <button
@@ -1508,9 +1501,9 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                           {act.label}
                         </button>
                       );
-                    }
-                  )}
-                </div>
+                    })}
+                  </div>
+                )}
 
                 {/* Action Speed & Intensity Sliders (Customizable Motion Parameters!) */}
                 <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">

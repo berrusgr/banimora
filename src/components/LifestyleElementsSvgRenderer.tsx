@@ -441,6 +441,244 @@ export const LifestyleElementsSvgRenderer: React.FC<LifestyleElementsSvgRenderer
         </svg>
       );
 
+    case 'el-office-desk':
+      return (
+        <svg viewBox="0 0 240 140" className="w-full h-full">
+          {/* Legs */}
+          <rect x="22" y="42" width="12" height="90" rx="3" fill={secondaryColor} stroke="#0f172a" strokeWidth="2.4" />
+          <rect x="206" y="42" width="12" height="90" rx="3" fill={secondaryColor} stroke="#0f172a" strokeWidth="2.4" />
+          {/* Modesty panel */}
+          <rect x="34" y="42" width="172" height="30" rx="2" fill={secondaryColor} opacity="0.85" stroke="#0f172a" strokeWidth="2" />
+          {/* Drawer unit */}
+          <rect x="150" y="42" width="56" height="58" rx="4" fill={color} stroke="#0f172a" strokeWidth="2.2" />
+          <line x1="170" y1="58" x2="186" y2="58" stroke="#f8fafc" strokeWidth="3" strokeLinecap="round" />
+          <line x1="170" y1="80" x2="186" y2="80" stroke="#f8fafc" strokeWidth="3" strokeLinecap="round" />
+          {/* Tabletop */}
+          <rect x="10" y="26" width="220" height="16" rx="5" fill={color} stroke="#0f172a" strokeWidth="2.4" />
+          <rect x="14" y="28" width="212" height="5" rx="2.5" fill="#ffffff" opacity="0.22" />
+        </svg>
+      );
+
+    case 'el-office-chair':
+      return (
+        <svg viewBox="0 0 110 160" className="w-full h-full">
+          {/* Spine & cylinder */}
+          <rect x="50" y="72" width="10" height="58" rx="3" fill={secondaryColor} stroke="#0f172a" strokeWidth="2.2" />
+          {/* 5-star base */}
+          <path d="M55 128 L24 146 M55 128 L86 146 M55 128 L55 148" stroke={secondaryColor} strokeWidth="5.5" strokeLinecap="round" />
+          <circle cx="22" cy="148" r="5" fill="#0f172a" />
+          <circle cx="55" cy="150" r="5" fill="#0f172a" />
+          <circle cx="88" cy="148" r="5" fill="#0f172a" />
+          {/* Backrest */}
+          <rect x="26" y="14" width="58" height="62" rx="12" fill={color} stroke="#0f172a" strokeWidth="2.4" />
+          <rect x="34" y="22" width="42" height="44" rx="7" fill={secondaryColor} opacity="0.35" />
+          {/* Seat */}
+          <rect x="20" y="88" width="70" height="16" rx="7" fill={color} stroke="#0f172a" strokeWidth="2.4" />
+          {/* Armrests */}
+          <path d="M22 72 L22 92 M88 72 L88 92" stroke={secondaryColor} strokeWidth="4.5" strokeLinecap="round" />
+        </svg>
+      );
+
+    case 'el-tech-keyboard':
+      return (
+        <svg viewBox="0 0 110 42" className="w-full h-full">
+          <rect x="4" y="8" width="102" height="26" rx="5" fill={color} stroke="#0f172a" strokeWidth="2.2" />
+          <rect x="10" y="14" width="12" height="4.5" rx="1" fill={secondaryColor} />
+          <rect x="25" y="14" width="12" height="4.5" rx="1" fill={secondaryColor} />
+          <rect x="40" y="14" width="12" height="4.5" rx="1" fill={secondaryColor} />
+          <rect x="55" y="14" width="12" height="4.5" rx="1" fill={secondaryColor} />
+          <rect x="70" y="14" width="12" height="4.5" rx="1" fill={secondaryColor} />
+          <rect x="85" y="14" width="14" height="4.5" rx="1" fill={secondaryColor} />
+          <rect x="12" y="22" width="16" height="5" rx="1.2" fill={secondaryColor} />
+          <rect x="31" y="22" width="44" height="5" rx="1.2" fill={secondaryColor} />
+          <rect x="78" y="22" width="20" height="5" rx="1.2" fill={secondaryColor} />
+        </svg>
+      );
+
+    case 'el-tech-mouse':
+      return (
+        <svg viewBox="0 0 46 58" className="w-full h-full">
+          <rect x="10" y="8" width="26" height="42" rx="13" fill={color} stroke="#0f172a" strokeWidth="2.2" />
+          <line x1="10" y1="24" x2="36" y2="24" stroke="#0f172a" strokeWidth="1.8" />
+          <line x1="23" y1="8" x2="23" y2="24" stroke="#0f172a" strokeWidth="1.8" />
+          <rect x="20.5" y="12" width="5" height="9" rx="2.5" fill={secondaryColor} />
+        </svg>
+      );
+
+    case 'el-edu-whiteboard':
+      return (
+        <svg viewBox="0 0 280 190" className="w-full h-full">
+          {/* Stand legs */}
+          <line x1="56" y1="148" x2="40" y2="184" stroke={secondaryColor} strokeWidth="6" strokeLinecap="round" />
+          <line x1="224" y1="148" x2="240" y2="184" stroke={secondaryColor} strokeWidth="6" strokeLinecap="round" />
+          {/* Board frame & surface */}
+          <rect x="16" y="14" width="248" height="136" rx="6" fill={color} stroke={secondaryColor} strokeWidth="7" />
+          <rect x="16" y="14" width="248" height="136" rx="6" fill="none" stroke="#0f172a" strokeWidth="2" />
+          {/* Marker tray */}
+          <rect x="52" y="148" width="176" height="9" rx="3" fill={secondaryColor} stroke="#0f172a" strokeWidth="1.8" />
+          <rect x="70" y="144" width="22" height="4.5" rx="1.5" fill="#2563eb" />
+          <rect x="98" y="144" width="22" height="4.5" rx="1.5" fill="#ef4444" />
+          {/* Educational board markings */}
+          <line x1="36" y1="42" x2="132" y2="42" stroke="#0284c7" strokeWidth="4" strokeLinecap="round" />
+          <line x1="36" y1="62" x2="112" y2="62" stroke="#64748b" strokeWidth="3" strokeLinecap="round" />
+          <line x1="36" y1="80" x2="145" y2="80" stroke="#64748b" strokeWidth="3" strokeLinecap="round" />
+          <rect x="168" y="38" width="72" height="72" rx="6" fill="#e0f2fe" stroke="#0284c7" strokeWidth="2" />
+          <polyline points="178,94 196,74 212,84 230,54" fill="none" stroke="#0284c7" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+
+    case 'el-edu-marker':
+      return (
+        <svg viewBox="0 0 42 80" className="w-full h-full">
+          <rect x="14" y="16" width="14" height="48" rx="3.5" fill={secondaryColor} stroke="#0f172a" strokeWidth="2.2" />
+          <rect x="14" y="16" width="14" height="14" rx="2" fill={color} stroke="#0f172a" strokeWidth="2" />
+          <polygon points="17,16 25,16 23,6 19,6" fill={color} stroke="#0f172a" strokeWidth="1.8" strokeLinejoin="round" />
+          <rect x="15.5" y="58" width="11" height="8" rx="2" fill={color} stroke="#0f172a" strokeWidth="1.8" />
+        </svg>
+      );
+
+    case 'el-edu-book':
+      return (
+        <svg viewBox="0 0 90 70" className="w-full h-full">
+          <path d="M10 16 Q28 10 45 18 Q62 10 80 16 L80 56 Q62 50 45 58 Q28 50 10 56 Z" fill={color} stroke="#0f172a" strokeWidth="2.2" strokeLinejoin="round" />
+          <path d="M14 14 Q29 9 45 17 Q61 9 76 14 L76 52 Q61 47 45 55 Q29 47 14 52 Z" fill={secondaryColor} stroke="#0f172a" strokeWidth="1.8" strokeLinejoin="round" />
+          <line x1="45" y1="17" x2="45" y2="55" stroke="#94a3b8" strokeWidth="2" />
+          <line x1="20" y1="26" x2="38" y2="26" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" />
+          <line x1="20" y1="34" x2="36" y2="34" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" />
+          <line x1="52" y1="26" x2="70" y2="26" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" />
+          <line x1="52" y1="34" x2="68" y2="34" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      );
+
+    case 'el-edu-notebook':
+      return (
+        <svg viewBox="0 0 78 94" className="w-full h-full">
+          <rect x="16" y="10" width="50" height="74" rx="5" fill={color} stroke="#0f172a" strokeWidth="2.2" />
+          <rect x="24" y="20" width="32" height="16" rx="3" fill={secondaryColor} stroke="#0f172a" strokeWidth="1.5" />
+          {[20, 32, 44, 56, 68, 76].map((ry) => (
+            <circle key={ry} cx="16" cy={ry} r="3.2" fill="#e2e8f0" stroke="#0f172a" strokeWidth="1.5" />
+          ))}
+        </svg>
+      );
+
+    case 'el-edu-magnifier':
+      return (
+        <svg viewBox="0 0 80 88" className="w-full h-full">
+          <line x1="46" y1="48" x2="68" y2="74" stroke={secondaryColor} strokeWidth="8" strokeLinecap="round" />
+          <line x1="46" y1="48" x2="68" y2="74" stroke="#0f172a" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="33" cy="33" r="21" fill="#bae6fd" opacity="0.6" stroke={secondaryColor} strokeWidth="6" />
+          <circle cx="33" cy="33" r="21" fill="none" stroke="#0f172a" strokeWidth="2" />
+          <path d="M22 25 A12 12 0 0 1 36 18" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" />
+        </svg>
+      );
+
+    case 'el-travel-suitcase':
+      return (
+        <svg viewBox="0 0 96 125" className="w-full h-full">
+          {/* Telescopic handle */}
+          <path d="M36 32 L36 12 L60 12 L60 32" fill="none" stroke={secondaryColor} strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Wheels */}
+          <circle cx="28" cy="114" r="6" fill="#0f172a" />
+          <circle cx="68" cy="114" r="6" fill="#0f172a" />
+          {/* Suitcase body */}
+          <rect x="18" y="32" width="60" height="78" rx="9" fill={color} stroke="#0f172a" strokeWidth="2.4" />
+          <line x1="34" y1="44" x2="34" y2="98" stroke="#ffffff" strokeWidth="3" opacity="0.4" strokeLinecap="round" />
+          <line x1="62" y1="44" x2="62" y2="98" stroke="#ffffff" strokeWidth="3" opacity="0.4" strokeLinecap="round" />
+          <rect x="41" y="28" width="14" height="6" rx="2" fill={secondaryColor} stroke="#0f172a" strokeWidth="1.5" />
+        </svg>
+      );
+
+    case 'el-sport-dumbbell':
+      return (
+        <svg viewBox="0 0 96 52" className="w-full h-full">
+          <rect x="26" y="22" width="44" height="8" rx="3" fill={secondaryColor} stroke="#0f172a" strokeWidth="2" />
+          <rect x="10" y="10" width="12" height="32" rx="4" fill={color} stroke="#0f172a" strokeWidth="2.2" />
+          <rect x="22" y="14" width="9" height="24" rx="3" fill={color} stroke="#0f172a" strokeWidth="2" />
+          <rect x="74" y="10" width="12" height="32" rx="4" fill={color} stroke="#0f172a" strokeWidth="2.2" />
+          <rect x="65" y="14" width="9" height="24" rx="3" fill={color} stroke="#0f172a" strokeWidth="2" />
+        </svg>
+      );
+
+    case 'el-sport-barbell':
+      return (
+        <svg viewBox="0 0 160 68" className="w-full h-full">
+          <rect x="20" y="30" width="120" height="8" rx="3" fill="#94a3b8" stroke="#0f172a" strokeWidth="2" />
+          <rect x="10" y="10" width="14" height="48" rx="5" fill={color} stroke="#0f172a" strokeWidth="2.2" />
+          <rect x="24" y="16" width="10" height="36" rx="4" fill={secondaryColor} stroke="#0f172a" strokeWidth="2" />
+          <rect x="136" y="10" width="14" height="48" rx="5" fill={color} stroke="#0f172a" strokeWidth="2.2" />
+          <rect x="126" y="16" width="10" height="36" rx="4" fill={secondaryColor} stroke="#0f172a" strokeWidth="2" />
+        </svg>
+      );
+
+    case 'el-med-stethoscope':
+      return (
+        <svg viewBox="0 0 95 115" className="w-full h-full">
+          <path d="M24 18 L24 44 C24 62, 62 62, 62 44 L62 18" fill="none" stroke={color} strokeWidth="5.5" strokeLinecap="round" />
+          <circle cx="24" cy="16" r="4.5" fill={secondaryColor} stroke="#0f172a" strokeWidth="1.8" />
+          <circle cx="62" cy="16" r="4.5" fill={secondaryColor} stroke="#0f172a" strokeWidth="1.8" />
+          <path d="M43 58 L43 82 C43 96, 68 96, 68 82 L68 74" fill="none" stroke={color} strokeWidth="5" strokeLinecap="round" />
+          <circle cx="68" cy="70" r="11" fill={secondaryColor} stroke="#0f172a" strokeWidth="2.2" />
+          <circle cx="68" cy="70" r="5" fill="#e2e8f0" />
+        </svg>
+      );
+
+    case 'el-cel-trophy':
+      return (
+        <svg viewBox="0 0 92 112" className="w-full h-full">
+          <path d="M24 22 L12 22 C10 42, 22 50, 30 50" fill="none" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
+          <path d="M68 22 L80 22 C82 42, 70 50, 62 50" fill="none" stroke={color} strokeWidth="4.5" strokeLinecap="round" />
+          <path d="M24 16 L68 16 L62 54 C60 66, 32 66, 30 54 Z" fill={color} stroke="#0f172a" strokeWidth="2.2" />
+          <rect x="41" y="62" width="10" height="22" fill={color} stroke="#0f172a" strokeWidth="2" />
+          <rect x="26" y="84" width="40" height="14" rx="3" fill={secondaryColor} stroke="#0f172a" strokeWidth="2.2" />
+        </svg>
+      );
+
+    case 'el-cel-cake':
+      return (
+        <svg viewBox="0 0 115 105" className="w-full h-full">
+          <rect x="20" y="54" width="75" height="34" rx="6" fill={secondaryColor} stroke="#0f172a" strokeWidth="2.2" />
+          <path d="M20 58 Q32 70 44 58 Q57 70 70 58 Q83 70 95 58 L95 50 Q95 44 89 44 L26 44 Q20 44 20 50 Z" fill={color} stroke="#0f172a" strokeWidth="2" />
+          <rect x="54" y="24" width="7" height="20" rx="2" fill="#38bdf8" stroke="#0f172a" strokeWidth="1.6" />
+          <path d="M57.5 10 C62 16, 62 22, 57.5 23 C53 22, 53 16, 57.5 10 Z" fill="#facc15" stroke="#ea580c" strokeWidth="1.2" />
+        </svg>
+      );
+
+    case 'el-cel-gift':
+      return (
+        <svg viewBox="0 0 96 104" className="w-full h-full">
+          <rect x="18" y="38" width="60" height="52" rx="5" fill={color} stroke="#0f172a" strokeWidth="2.2" />
+          <rect x="14" y="28" width="68" height="14" rx="4" fill={color} stroke="#0f172a" strokeWidth="2.2" />
+          <rect x="43" y="28" width="10" height="62" fill={secondaryColor} stroke="#0f172a" strokeWidth="1.8" />
+          <path d="M48 28 C34 14, 24 24, 38 28 Z" fill={secondaryColor} stroke="#0f172a" strokeWidth="1.8" />
+          <path d="M48 28 C62 14, 72 24, 58 28 Z" fill={secondaryColor} stroke="#0f172a" strokeWidth="1.8" />
+        </svg>
+      );
+
+    case 'el-travel-bicycle':
+      return (
+        <svg viewBox="0 0 190 120" className="w-full h-full">
+          <circle cx="44" cy="82" r="28" fill="none" stroke={secondaryColor} strokeWidth="6" />
+          <circle cx="146" cy="82" r="28" fill="none" stroke={secondaryColor} strokeWidth="6" />
+          <path d="M44 82 L88 82 L124 44 L68 44 Z" fill="none" stroke={color} strokeWidth="5" strokeLinejoin="round" />
+          <path d="M88 82 L64 34 M146 82 L120 26 L136 24" fill="none" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+          <rect x="54" y="28" width="22" height="7" rx="3.5" fill="#0f172a" />
+          <circle cx="88" cy="82" r="7" fill={secondaryColor} />
+        </svg>
+      );
+
+    case 'el-travel-car':
+      return (
+        <svg viewBox="0 0 220 115" className="w-full h-full">
+          <path d="M24 68 L42 36 Q48 28 60 28 L140 28 Q154 28 164 40 L186 58 Q202 60 204 72 L204 86 L18 86 L18 72 Z" fill={color} stroke="#0f172a" strokeWidth="2.4" strokeLinejoin="round" />
+          <polygon points="54,36 96,36 96,56 42,56" fill={secondaryColor} stroke="#0f172a" strokeWidth="1.8" />
+          <polygon points="104,36 144,36 160,56 104,56" fill={secondaryColor} stroke="#0f172a" strokeWidth="1.8" />
+          <circle cx="58" cy="86" r="18" fill="#1e293b" stroke="#0f172a" strokeWidth="2.4" />
+          <circle cx="58" cy="86" r="8" fill="#cbd5e1" />
+          <circle cx="164" cy="86" r="18" fill="#1e293b" stroke="#0f172a" strokeWidth="2.4" />
+          <circle cx="164" cy="86" r="8" fill="#cbd5e1" />
+        </svg>
+      );
+
     default:
       return null;
   }

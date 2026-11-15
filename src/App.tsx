@@ -33,6 +33,11 @@ import {
   parseProjectJsonFile,
   saveAutoSaveProject,
 } from './utils/projectStorage';
+import type { SmartActionPackage } from './data/smartActionPackages';
+import {
+  applySmartActionToScene,
+  type SmartActionApplyMode,
+} from './utils/smartActionApplier';
 import {
   applyWorkspaceMode,
   clampRightPanelWidth,
@@ -952,6 +957,28 @@ export function App() {
     [activeScene.id, updateScenesState]
   );
 
+  // Apply Smart Action Package (objects + attachments + pose + motion clips) atomically in Undo/Redo
+  const handleApplySmartAction = useCallback(
+    (characterId: string, pkg: SmartActionPackage, mode: SmartActionApplyMode) => {
+      updateScenesState(
+        (prev) =>
+          prev.map((s) =>
+            s.id === activeScene.id
+              ? applySmartActionToScene({
+                  scene: s,
+                  characterId,
+                  actionPackage: pkg,
+                  mode,
+                  currentTime,
+                }).scene
+              : s
+          ),
+        true
+      );
+    },
+    [activeScene.id, currentTime, updateScenesState]
+  );
+
   // Reorder Object Layer Stack (from visual top-to-bottom timeline order)
   const handleReorderObject = useCallback(
     (draggedId: string, targetId: string) => {
@@ -1554,6 +1581,7 @@ export function App() {
           onContinueScene={handleContinueScene}
           onUploadBackgroundFile={handleUploadBackgroundFile}
           onUpdateObject={handleUpdateObject}
+          onApplySmartAction={handleApplySmartAction}
           onUpdateAnimations={handleUpdateAnimations}
           isPlaying={isPlaying}
           onPreviewAnimation={(obj) => {

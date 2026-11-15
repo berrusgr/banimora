@@ -700,11 +700,8 @@ export function isLongDicebearTop(topId: string | undefined): boolean {
     'straight02',
     'straightAndStrand',
     'curvy',
-    'curly',
     'bigHair',
-    'dreads',
     'shaggyMullet',
-    'hijab',
   ].includes(topId);
 }
 

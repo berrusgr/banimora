@@ -1,4 +1,6 @@
 import type {
+  CanvasObject,
+  CharacterConfig,
   HandGestureType,
   HandPropType,
 } from '../types/studio.ts';
@@ -9,6 +11,7 @@ import type {
   ArmIKEffectorKind,
   ArmIKReachStatus,
   ArmMirrorSymmetryReport,
+  AttachmentValidationResult,
   BoneFKTransformNode,
   CanonicalBoneId,
   CharacterRigProfile,
@@ -22,8 +25,12 @@ import type {
   Matrix2D,
   NeckSubgroupTransform,
   Point2D,
+  PropSocketId,
+  PropSocketWorldTransform,
+  ResolvedAttachedObjectStageTransform,
   RigAnimationLayerInput,
   SceneObjectAnchorId,
+  SceneObjectAttachment,
   SceneTargetObjectGeometry,
   SingleAnkleLevelingResult,
   TorsoChainFKOptions,
@@ -2630,4 +2637,374 @@ export function composeKinematicsToEvaluatorLayers(
     filteredOutUnarticulatedAngles,
     conflictWarnings,
   };
+}
+
+// ============================================================================
+// FAZ 4A — SAHNE KOORDİNATLARI, KARAKTER DÖNÜŞÜMLERİ VE SOCKET BAĞLANTILARI
+// ============================================================================
+
+export interface ObjectStageAnimInput {
+  translateX: number;
+  translateY: number;
+  scaleX: number;
+  scaleY: number;
+  rotationDelta: number;
+}
+
+/**
+ * Bir `CanvasObject` ve onun animasyon çıktısından (`computeObjectAnimation`)
+ * `960x540` sahne uzayındaki `CharacterStageTransform` yapısını üretir.
+ * `scaleX` / `scaleY` geriye dönük olarak `anim.scaleX` / `anim.scaleY` üzerinden
+ * (çift çarpım yapılmadan) alınır; `autoMotionFlip` ve `charConfig.flipHorizontal` korunur.
+ */
+export function resolveObjectStageTransform(
+  obj: Pick<
+    CanvasObject,
+    'x' | 'y' | 'width' | 'height' | 'scale' | 'scaleX' | 'scaleY' | 'rotation' | 'flipX' | 'motionPath' | 'characterConfig'
+  >,
+  anim: ObjectStageAnimInput,
+  isPlaying: boolean
+): CharacterStageTransform {
+  const autoMotionFlip = Boolean(
+    obj.motionPath?.enabled &&
+      obj.motionPath.autoFlipX &&
+      isPlaying &&
+      obj.motionPath.endX < obj.x - 10
+  );
+  const effectiveFlipX = autoMotionFlip ? !obj.flipX : Boolean(obj.flipX);
+
+  return {
+    x: obj.x,
+    y: obj.y,
+    width: obj.width,
+    height: obj.height,
+    translateX: anim.translateX,
+    translateY: anim.translateY,
+    rotationDeg: (obj.rotation ?? 0) + anim.rotationDelta,
+    scaleX: anim.scaleX,
+    scaleY: anim.scaleY,
+    flipX: effectiveFlipX,
+    flipHorizontal: Boolean(obj.characterConfig?.flipHorizontal),
+    portraitMode: Boolean(
+      obj.characterConfig?.photoAvatarMode === 'realistic-avatar' && obj.characterConfig?.photoAvatarUrl
+    ),
+  };
+}
+
+/**
+ * Bir karakter rig profilinin belirtilen prop soketi için bağlı olduğu kanonik kemiği
+ * ve ham gövde SVG uzayındaki dayanak noktasını döndürür.
+ */
+export function getPropSocketLocalGeometry(
+  profile: CharacterRigProfile,
+  socketId: PropSocketId
+): { parentBone: CanonicalBoneId; rawAnchorPoint: Point2D; wristSocketOffset: Point2D } {
+  const raw = getRawArchetypeGeometry(profile);
+
+  switch (socketId) {
+    case 'leftPropSocket':
+      return {
+        parentBone: 'leftWrist',
+        rawAnchorPoint: { ...raw.leftWrist },
+        wristSocketOffset: { x: 0, y: 7 },
+      };
+    case 'rightPropSocket':
+      return {
+        parentBone: 'rightWrist',
+        rawAnchorPoint: { ...raw.rightWrist },
+        wristSocketOffset: { x: 0, y: 7 },
+      };
+    case 'backPropSocket':
+      return {
+        parentBone: 'chest',
+        rawAnchorPoint:
+          profile.bodyStyle === 'slender-pro' ? { x: 104, y: 106 } : { x: 110, y: 150 },
+        wristSocketOffset: { x: 0, y: 0 },
+      };
+  }
+}
+
+/**
+ * Karakterin `leftPropSocket`, `rightPropSocket` veya `backPropSocket` noktasının
+ * gerçek SVG hiyerarşisini (`bodyScaleX/Y` → `charRoot/flipHorizontal/bodyBobY` →
+ * `pelvis → spine → chest → [shoulder → elbow → wrist]` → `viewBoxToBox` → `boxToStage`)
+ * izleyerek `960x540` sahne uzayındaki dünya dönüşümünü hesaplar.
+ */
+export function computePropSocketWorldTransform(
+  profile: CharacterRigProfile,
+  boneAngles: Partial<Record<CanonicalBoneId, number>>,
+  stageTransform: CharacterStageTransform,
+  socketId: PropSocketId,
+  options?: {
+    bodyBobY?: number;
+    legacyHeadTiltDeg?: number;
+    canonicalHeadAngleDeg?: number;
+  }
+): PropSocketWorldTransform {
+  const raw = getRawArchetypeGeometry(profile);
+  const socketGeo = getPropSocketLocalGeometry(profile, socketId);
+  const bodyBobY = options?.bodyBobY ?? 0;
+
+  const torso = computeTorsoChainWorldTransform(profile, boneAngles, {
+    portraitMode: stageTransform.portraitMode,
+    flipHorizontal: stageTransform.flipHorizontal,
+    bodyBobY,
+    legacyHeadTiltDeg: options?.legacyHeadTiltDeg,
+    canonicalHeadAngleDeg: options?.canonicalHeadAngleDeg,
+  });
+
+  const mVbToStage = buildViewBoxToStageMatrix(profile, stageTransform);
+  const mChestToStage = multiplyMatrix2D(mVbToStage, torso.nodes.chest.worldMatrix);
+
+  let socketToStageMatrix: Matrix2D;
+  let boneCumulativeRot = torso.nodes.chest.cumulativeRotationDeg;
+
+  if (socketId === 'backPropSocket') {
+    socketToStageMatrix = multiplyMatrix2D(
+      mChestToStage,
+      translationMatrix2D(socketGeo.rawAnchorPoint.x, socketGeo.rawAnchorPoint.y)
+    );
+  } else {
+    const isLeft = socketId === 'leftPropSocket';
+    const shoulderBone: CanonicalBoneId = isLeft ? 'leftShoulder' : 'rightShoulder';
+    const elbowBone: CanonicalBoneId = isLeft ? 'leftElbow' : 'rightElbow';
+    const wristBone: CanonicalBoneId = isLeft ? 'leftWrist' : 'rightWrist';
+
+    const S = isLeft ? raw.leftShoulder : raw.rightShoulder;
+    const E0 = isLeft ? raw.leftElbow : raw.rightElbow;
+    const W0 = isLeft ? raw.leftWrist : raw.rightWrist;
+
+    const shoulderAngle = boneAngles[shoulderBone] ?? 0;
+    const elbowAngle = boneAngles[elbowBone] ?? 0;
+    const wristAngle = clampRange(boneAngles[wristBone] ?? 0, -38, 38);
+
+    const mShoulder = rotationAroundPointMatrix2D(shoulderAngle, S);
+    const mElbow = rotationAroundPointMatrix2D(elbowAngle, E0);
+    const mWrist = multiplyMatrix2D(
+      translationMatrix2D(W0.x + socketGeo.wristSocketOffset.x, W0.y + socketGeo.wristSocketOffset.y),
+      rotationMatrix2D(wristAngle)
+    );
+
+    socketToStageMatrix = multiplyMatrices2D(mChestToStage, mShoulder, mElbow, mWrist);
+    boneCumulativeRot += shoulderAngle + elbowAngle + wristAngle;
+  }
+
+  const stagePoint = applyMatrixToPoint(socketToStageMatrix, { x: 0, y: 0 });
+  const effectiveFlipX = Boolean(stageTransform.flipX) !== Boolean(stageTransform.flipHorizontal);
+  const worldScaleX = Math.abs(stageTransform.scaleX ?? 1);
+  const worldScaleY = Math.abs(stageTransform.scaleY ?? 1);
+  const signedBoneRot = effectiveFlipX ? -boneCumulativeRot : boneCumulativeRot;
+  const worldRotationDeg = normalizeAngleSignedDeg((stageTransform.rotationDeg ?? 0) + signedBoneRot);
+
+  return {
+    socketId,
+    parentBone: socketGeo.parentBone,
+    rawSocketPoint: {
+      x: socketGeo.rawAnchorPoint.x + socketGeo.wristSocketOffset.x,
+      y: socketGeo.rawAnchorPoint.y + socketGeo.wristSocketOffset.y,
+    },
+    stagePoint,
+    worldRotationDeg,
+    worldScaleX,
+    worldScaleY,
+    effectiveFlipX,
+    socketToStageMatrix,
+  };
+}
+
+/**
+ * Bağlı bir sahne nesnesinin (`obj.attachment`) ebeveyn karakterin soket dünya
+ * dönüşümünü kullanarak `960x540` sahne uzayındaki nihai kutu konumu (`x`, `y`),
+ * dönüş açısı, ölçek ve aynalama bilgilerini çözümler.
+ */
+export function resolveAttachedObjectStageTransform(
+  obj: Pick<
+    CanvasObject,
+    'width' | 'height' | 'scale' | 'scaleX' | 'scaleY' | 'rotation' | 'flipX' | 'attachment'
+  >,
+  socketTransform: PropSocketWorldTransform,
+  objAnim: ObjectStageAnimInput
+): ResolvedAttachedObjectStageTransform {
+  const att = obj.attachment;
+  const inheritScale = att?.inheritScale ?? true;
+  const inheritRotation = att?.inheritRotation ?? true;
+  const inheritFlip = att?.inheritFlip ?? true;
+
+  const localOffsetX = att?.localOffsetX ?? 0;
+  const localOffsetY = att?.localOffsetY ?? 0;
+  const localRot = att?.localRotationDeg ?? 0;
+
+  const flippedOffsetX = inheritFlip && socketTransform.effectiveFlipX ? -localOffsetX : localOffsetX;
+  const scaledOffsetX = flippedOffsetX * (inheritScale ? socketTransform.worldScaleX : 1);
+  const scaledOffsetY = localOffsetY * (inheritScale ? socketTransform.worldScaleY : 1);
+
+  const socketRotForOffset = inheritRotation ? socketTransform.worldRotationDeg : 0;
+  const rotatedOffset = rotateVector2D({ x: scaledOffsetX, y: scaledOffsetY }, socketRotForOffset);
+
+  const objectCenterStagePoint: Point2D = {
+    x: socketTransform.stagePoint.x + rotatedOffset.x + objAnim.translateX,
+    y: socketTransform.stagePoint.y + rotatedOffset.y + objAnim.translateY,
+  };
+
+  const scaleX = objAnim.scaleX * (inheritScale ? socketTransform.worldScaleX : 1);
+  const scaleY = objAnim.scaleY * (inheritScale ? socketTransform.worldScaleY : 1);
+  const flipX = inheritFlip
+    ? Boolean(obj.flipX) !== socketTransform.effectiveFlipX
+    : Boolean(obj.flipX);
+
+  const rotationDeg = normalizeAngleSignedDeg(
+    (inheritRotation ? socketTransform.worldRotationDeg : 0) +
+      (obj.rotation ?? 0) +
+      objAnim.rotationDelta +
+      localRot
+  );
+
+  return {
+    x: objectCenterStagePoint.x - obj.width / 2,
+    y: objectCenterStagePoint.y - obj.height / 2,
+    rotationDeg,
+    scaleX,
+    scaleY,
+    flipX,
+    socketStagePoint: { ...socketTransform.stagePoint },
+    objectCenterStagePoint,
+  };
+}
+
+/**
+ * Bağlı bir nesne sahnede sürüklendiğinde, yeni sahne sol-üst `(newStageX, newStageY)`
+ * konumunu ebeveyn soketinin yerel uzayındaki `localOffsetX`, `localOffsetY` değerlerine geri çevirir.
+ */
+export function computeLocalOffsetFromAttachedStagePoint(
+  newStageX: number,
+  newStageY: number,
+  obj: Pick<CanvasObject, 'width' | 'height' | 'attachment'>,
+  socketTransform: PropSocketWorldTransform,
+  objAnimTranslate: Point2D = { x: 0, y: 0 }
+): { localOffsetX: number; localOffsetY: number } {
+  const att = obj.attachment;
+  const inheritScale = att?.inheritScale ?? true;
+  const inheritRotation = att?.inheritRotation ?? true;
+  const inheritFlip = att?.inheritFlip ?? true;
+
+  const newCenter: Point2D = {
+    x: newStageX + obj.width / 2 - objAnimTranslate.x,
+    y: newStageY + obj.height / 2 - objAnimTranslate.y,
+  };
+
+  const delta: Point2D = {
+    x: newCenter.x - socketTransform.stagePoint.x,
+    y: newCenter.y - socketTransform.stagePoint.y,
+  };
+
+  const socketRot = inheritRotation ? socketTransform.worldRotationDeg : 0;
+  const unrotated = rotateVector2D(delta, -socketRot);
+
+  const sx = inheritScale ? socketTransform.worldScaleX || 1 : 1;
+  const sy = inheritScale ? socketTransform.worldScaleY || 1 : 1;
+  const unscaledX = unrotated.x / sx;
+  const unscaledY = unrotated.y / sy;
+
+  const localOffsetX = inheritFlip && socketTransform.effectiveFlipX ? -unscaledX : unscaledX;
+  const localOffsetY = unscaledY;
+
+  return {
+    localOffsetX: round2(localOffsetX),
+    localOffsetY: round2(localOffsetY),
+  };
+}
+
+/**
+ * Bağlı bir nesnenin karakter soketinden ayrılması (detach) sırasında, o anki dünya
+ * konumu (`x`, `y`), dönüşü (`rotation`), ölçeği (`scaleX`, `scaleY`) ve yatay aynalamasını (`flipX`)
+ * koruyacak `CanvasObject` güncelleme yamasını döndürür.
+ */
+export function detachObjectPreservingWorldTransform(
+  resolved: ResolvedAttachedObjectStageTransform
+): Pick<CanvasObject, 'x' | 'y' | 'rotation' | 'scaleX' | 'scaleY' | 'flipX' | 'attachment'> {
+  return {
+    x: round2(resolved.x),
+    y: round2(resolved.y),
+    rotation: round2(resolved.rotationDeg),
+    scaleX: round4(resolved.scaleX),
+    scaleY: round4(resolved.scaleY),
+    flipX: resolved.flipX,
+    attachment: undefined,
+  };
+}
+
+/**
+ * Bir `SceneObjectAttachment` tanımının geçerliliğini doğrular:
+ * - Kendine bağlanmayı engeller (`self-attachment`)
+ * - Var olmayan veya karakter olmayan ebeveyni reddeder
+ * - Rig veya soket desteklemeyen karakterleri (`char-robot-mira`, `realistic-avatar` vb.) reddeder
+ * - Bağlantı zincirinde döngü oluşmasını engeller (`circular-attachment`)
+ */
+export function validateObjectAttachment(
+  objects: ReadonlyArray<Pick<CanvasObject, 'id' | 'category' | 'assetId' | 'characterConfig' | 'attachment'>>,
+  childId: string,
+  attachment: SceneObjectAttachment,
+  resolveProfile?: (charConfig: CharacterConfig, assetId: string) => CharacterRigProfile
+): AttachmentValidationResult {
+  if (attachment.parentObjectId === childId) {
+    return {
+      valid: false,
+      reason: 'self-attachment',
+      message: 'Bir nesne kendisine bağlanamaz.',
+    };
+  }
+
+  const byId = new Map(objects.map((o) => [o.id, o]));
+  const parent = byId.get(attachment.parentObjectId);
+
+  if (!parent) {
+    return {
+      valid: false,
+      reason: 'parent-not-found',
+      message: `Hedef ebeveyn nesne (${attachment.parentObjectId}) sahnede bulunamadı.`,
+    };
+  }
+
+  if (parent.category !== 'characters' || !parent.characterConfig) {
+    return {
+      valid: false,
+      reason: 'parent-not-character',
+      message: 'Nesneler yalnızca bir karakter nesnesine bağlanabilir.',
+    };
+  }
+
+  if (resolveProfile) {
+    const profile = resolveProfile(parent.characterConfig, parent.assetId);
+    if (!profile.isSupported) {
+      return {
+        valid: false,
+        reason: 'parent-unsupported-rig',
+        message: profile.unsupportedReason ?? 'Hedef karakter rig soketlerini desteklemiyor.',
+      };
+    }
+    if (!profile.propSockets.includes(attachment.socketId)) {
+      return {
+        valid: false,
+        reason: 'socket-not-supported',
+        message: `Hedef karakter "${attachment.socketId}" soketini desteklemiyor.`,
+      };
+    }
+  }
+
+  // Döngü denetimi (A -> B -> A veya daha uzun zincirler)
+  const visited = new Set<string>([childId]);
+  let cursor: string | undefined = attachment.parentObjectId;
+  while (cursor) {
+    if (visited.has(cursor)) {
+      return {
+        valid: false,
+        reason: 'circular-attachment',
+        message: 'Döngüsel nesne bağlantısına izin verilmez.',
+      };
+    }
+    visited.add(cursor);
+    cursor = byId.get(cursor)?.attachment?.parentObjectId;
+  }
+
+  return { valid: true };
 }

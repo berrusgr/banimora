@@ -29,6 +29,7 @@ import {
   findSupportedAudioEncoderConfig,
   renderScenesAudioTrack,
 } from '../utils/exportAudioMixer';
+import { resolveSceneObjectRenderTransform } from '../utils/sceneAttachmentResolver';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -549,15 +550,23 @@ function renderSingleSceneToCanvas(
     ctx.save();
     ctx.globalAlpha = Math.max(0, Math.min(1, anim.opacity));
 
-    const centerX = obj.x + obj.width / 2 + anim.translateX;
-    const centerY = obj.y + obj.height / 2 + anim.translateY;
+    const renderTransform = resolveSceneObjectRenderTransform(
+      obj,
+      scene,
+      localTime,
+      true,
+      anim
+    );
+
+    const centerX = renderTransform.x + obj.width / 2 + renderTransform.translateX;
+    const centerY = renderTransform.y + obj.height / 2 + renderTransform.translateY;
     ctx.translate(centerX, centerY);
 
-    const totalRotRad = ((obj.rotation + anim.rotationDelta) * Math.PI) / 180;
+    const totalRotRad = (renderTransform.rotationDeg * Math.PI) / 180;
     ctx.rotate(totalRotRad);
 
-    const sx = anim.scaleX * (obj.flipX ? -1 : 1);
-    const sy = anim.scaleY;
+    const sx = renderTransform.scaleX * (renderTransform.flipX ? -1 : 1);
+    const sy = renderTransform.scaleY;
     ctx.scale(sx, sy);
 
     if (anim.drawProgress < 0.995) {

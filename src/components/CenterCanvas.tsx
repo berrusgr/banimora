@@ -34,6 +34,11 @@ import {
   computeObjectAnimation,
   computeSceneCameraState,
 } from '../utils/animationEngine';
+import { computeLocalOffsetFromAttachedStagePoint } from '../rig/rigKinematics';
+import {
+  resolveParentCharacterSocketTransform,
+  resolveSceneObjectRenderTransform,
+} from '../utils/sceneAttachmentResolver';
 
 interface CenterCanvasProps {
   scene: Scene;
@@ -220,11 +225,50 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
       if (interaction.type === 'drag') {
         const dx = (e.clientX - interaction.startMouseX) / scaleRatio;
         const dy = (e.clientY - interaction.startMouseY) / scaleRatio;
+        const nextStageX = Math.round(interaction.startX + dx);
+        const nextStageY = Math.round(interaction.startY + dy);
+        const draggedObj = scene.objects.find((o) => o.id === interaction.id);
+
+        if (draggedObj?.attachment) {
+          const parentObj = scene.objects.find((o) => o.id === draggedObj.attachment!.parentObjectId);
+          const socketTransform = parentObj
+            ? resolveParentCharacterSocketTransform(
+                parentObj,
+                draggedObj.attachment.socketId,
+                scene,
+                currentTime,
+                isPlaying
+              )
+            : null;
+          if (socketTransform) {
+            const anim = computeObjectAnimation(draggedObj, currentTime, isPlaying);
+            const { localOffsetX, localOffsetY } = computeLocalOffsetFromAttachedStagePoint(
+              nextStageX,
+              nextStageY,
+              draggedObj,
+              socketTransform,
+              { x: anim.translateX, y: anim.translateY }
+            );
+            onUpdateObject(
+              interaction.id,
+              {
+                attachment: {
+                  ...draggedObj.attachment,
+                  localOffsetX,
+                  localOffsetY,
+                },
+              },
+              false
+            );
+            return;
+          }
+        }
+
         onUpdateObject(
           interaction.id,
           {
-            x: Math.round(interaction.startX + dx),
-            y: Math.round(interaction.startY + dy),
+            x: nextStageX,
+            y: nextStageY,
           },
           false
         );
@@ -921,14 +965,14 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                 return null;
               }
 
-              const totalRotation = obj.rotation + anim.rotationDelta;
-              const autoMotionFlip =
-                obj.motionPath?.enabled &&
-                obj.motionPath.autoFlipX &&
-                isPlaying &&
-                obj.motionPath.endX < obj.x - 10;
-              const effectiveFlipX = autoMotionFlip ? !obj.flipX : obj.flipX;
-              const flipScaleX = (effectiveFlipX ? -1 : 1) * anim.scaleX;
+              const renderTransform = resolveSceneObjectRenderTransform(
+                obj,
+                scene,
+                currentTime,
+                isPlaying,
+                anim
+              );
+              const flipScaleX = (renderTransform.flipX ? -1 : 1) * renderTransform.scaleX;
 
               return (
                 <div
@@ -959,8 +1003,8 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                       id: obj.id,
                       startMouseX: e.clientX,
                       startMouseY: e.clientY,
-                      startX: obj.x,
-                      startY: obj.y,
+                      startX: renderTransform.x,
+                      startY: renderTransform.y,
                     });
                   }}
                   onClick={(e) => {
@@ -983,13 +1027,13 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                     }
                   }}
                   style={{
-                    left: `${obj.x}px`,
-                    top: `${obj.y}px`,
+                    left: `${renderTransform.x}px`,
+                    top: `${renderTransform.y}px`,
                     width: `${obj.width}px`,
                     height: `${obj.height}px`,
                     opacity: anim.opacity,
                     zIndex: index + 1,
-                    transform: `translate(${anim.translateX}px, ${anim.translateY}px) rotate(${totalRotation}deg) scale(${flipScaleX}, ${anim.scaleY})`,
+                    transform: `translate(${renderTransform.translateX}px, ${renderTransform.translateY}px) rotate(${renderTransform.rotationDeg}deg) scale(${flipScaleX}, ${renderTransform.scaleY})`,
                     transformOrigin: 'center center',
                   }}
                   className={`absolute group ${

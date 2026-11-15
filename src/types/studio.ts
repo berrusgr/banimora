@@ -1,3 +1,5 @@
+import type { SceneObjectAttachment } from './rigStandard';
+
 export type AssetCategory =
   | 'characters'
   | 'objects'
@@ -854,6 +856,8 @@ export interface CanvasObject {
   width: number;
   height: number;
   scale?: number;
+  scaleX?: number;
+  scaleY?: number;
   rotation: number;
   opacity: number; // 0 to 100
   color: string;
@@ -865,6 +869,8 @@ export interface CanvasObject {
   fontWeight?: 'normal' | 'semibold' | 'bold' | 'extrabold';
   flipX?: boolean;
   locked?: boolean;
+  /** Faz 4A: Karakter prop soketine opsiyonel bağlanma bilgisi */
+  attachment?: SceneObjectAttachment;
   // Uploaded external image URL / DataURL
   imageUrl?: string;
   // Chart & Table live data

@@ -287,7 +287,7 @@ describe('Özel Senaryolar — hybrid-head, realistic-avatar, char-custom ve Des
     assert.equal(profile.supportsFullBody, true);
     assert.deepEqual(profile.supportedBones, [...CANONICAL_BONE_ORDER]);
     assert.equal(profile.currentlyArticulatedBones.length, 18);
-    assert.deepEqual(profile.propSockets, ['leftPropSocket', 'rightPropSocket']);
+    assert.deepEqual(profile.propSockets, ['leftPropSocket', 'rightPropSocket', 'backPropSocket']);
 
     assert.deepEqual(profile.facialCapabilities, {
       backend: 'photo-hybrid-jaw',

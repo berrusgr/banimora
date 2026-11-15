@@ -789,7 +789,7 @@ export function buildCharacterRigProfile(
   }
 
   const unimplementedInCurrentCode: string[] = [
-    'torso-bend, ik-reach, hand-counting (count-1..5), backPropSocket ve sürekli parametrik kaş/göz bebeği kontrolü henüz aktif değildir (sonraki aşamalarda eklenecektir).',
+    'torso-bend, ik-reach, hand-counting (count-1..5) ve sürekli parametrik kaş/göz bebeği kontrolü henüz aktif değildir (sonraki aşamalarda eklenecektir).',
   ];
   if (facialCapabilities.backend === 'photo-hybrid-jaw') {
     unimplementedInCurrentCode.push(
@@ -808,7 +808,7 @@ export function buildCharacterRigProfile(
     supportedBones: [...CANONICAL_BONE_ORDER],
     currentlyArticulatedBones,
     boneSpecs,
-    propSockets: ['leftPropSocket', 'rightPropSocket'],
+    propSockets: ['leftPropSocket', 'rightPropSocket', 'backPropSocket'],
     proportions,
     facialCapabilities,
     handCapabilities: {

@@ -104,8 +104,8 @@ export function computeObjectAnimation(
   let opacity = baseOpacity;
   let translateX = 0;
   let translateY = 0;
-  let scaleX = obj.scale ?? 1;
-  let scaleY = obj.scale ?? 1;
+  let scaleX = obj.scaleX ?? obj.scale ?? 1;
+  let scaleY = obj.scaleY ?? obj.scale ?? 1;
   let rotationDelta = 0;
   let textRevealRatio = 1;
   let drawProgress = 1;

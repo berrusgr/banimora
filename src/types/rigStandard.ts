@@ -516,6 +516,86 @@ export interface SceneTargetObjectGeometry {
   flipX?: boolean;
 }
 
+// ============================================================================
+// FAZ 4A — SAHNE KOORDİNATLARI, KARAKTER DÖNÜŞÜMLERİ VE SOCKET BAĞLANTILARI
+// ============================================================================
+
+/**
+ * Bir sahne nesnesinin (prop, yazı, şekil vb.) bir karakterin kanonik prop soketine
+ * (`leftPropSocket`, `rightPropSocket`, `backPropSocket`) bağlanma tanımı.
+ */
+export interface SceneObjectAttachment {
+  /** Bağlanılan hedef karakter `CanvasObject.id` değeri */
+  parentObjectId: string;
+  /** Hedef karakterin kanonik soket noktası */
+  socketId: PropSocketId;
+  /** Soket yerel uzayında yatay ofset (sahne px cinsinden) */
+  localOffsetX?: number;
+  /** Soket yerel uzayında dikey ofset (sahne px cinsinden) */
+  localOffsetY?: number;
+  /** Soket yerel uzayında ek dönüş açısı (derece) */
+  localRotationDeg?: number;
+  /** Karakter ölçeğini miras al (varsayılan: true) */
+  inheritScale?: boolean;
+  /** Soket/karakter dönüş açısını miras al (varsayılan: true) */
+  inheritRotation?: boolean;
+  /** Karakterin sahne/iç yatay aynalamasını miras al (varsayılan: true) */
+  inheritFlip?: boolean;
+}
+
+/**
+ * Karakterin belirli bir soketinin sahne (`960x540`) uzayındaki dünya dönüşümü.
+ */
+export interface PropSocketWorldTransform {
+  socketId: PropSocketId;
+  /** Bağlı olduğu kanonik kemik (`leftWrist`, `rightWrist`, `chest`) */
+  parentBone: CanonicalBoneId;
+  /** Ham gövde SVG uzayındaki soket merkezi */
+  rawSocketPoint: Point2D;
+  /** Sahne (`960x540`) uzayındaki soket dünya konumu */
+  stagePoint: Point2D;
+  /** Kemik zinciri + karakter sahne dönüşümü dahil kümülatif dünya açısı (derece) */
+  worldRotationDeg: number;
+  /** Sahne uzayında net X ölçeği (aynalama işareti hariç büyüklük) */
+  worldScaleX: number;
+  /** Sahne uzayında net Y ölçeği */
+  worldScaleY: number;
+  /** Toplam yatay aynalama durumu (`flipX` XOR `flipHorizontal`) */
+  effectiveFlipX: boolean;
+  /** Soketten sahneye 2D homojen dönüşüm matrisi */
+  socketToStageMatrix: Matrix2D;
+}
+
+export interface AttachmentValidationResult {
+  valid: boolean;
+  reason?:
+    | 'self-attachment'
+    | 'parent-not-found'
+    | 'parent-not-character'
+    | 'parent-unsupported-rig'
+    | 'socket-not-supported'
+    | 'circular-attachment';
+  message?: string;
+}
+
+export interface ResolvedAttachedObjectStageTransform {
+  /** Bağlı nesnenin sahne (`960x540`) uzayındaki sol-üst kutu konumu (`x`, `y`) */
+  x: number;
+  y: number;
+  /** Kutu merkezi etrafındaki nihai dünya dönüş açısı (derece) */
+  rotationDeg: number;
+  /** Nihai sahne X ölçeği (aynalama işareti hariç) */
+  scaleX: number;
+  /** Nihai sahne Y ölçeği */
+  scaleY: number;
+  /** Nihai yatay aynalama durumu */
+  flipX: boolean;
+  /** Soketin sahne (`960x540`) uzayındaki dünya noktası */
+  socketStagePoint: Point2D;
+  /** Nesnenin merkezinin sahne (`960x540`) uzayındaki dünya noktası */
+  objectCenterStagePoint: Point2D;
+}
+
 /**
  * Gövde-Baş FK zincirindeki her bir kanonik kemiğin 2D matris dönüşüm düğümü.
  */

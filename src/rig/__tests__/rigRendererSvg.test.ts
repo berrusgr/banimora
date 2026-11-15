@@ -110,7 +110,9 @@ const {
 
 const baselinePath = path.join(__dirname, 'fixtures/legacyRendererBaseline.json');
 const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
-const UPDATE_BASELINE = process.env.UPDATE_SVG_BASELINE === '1';
+const UPDATE_BASELINE =
+  (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env
+    ?.UPDATE_SVG_BASELINE === '1';
 
 const ALL_21_POSES: CharacterPoseType[] = [
   'idle',

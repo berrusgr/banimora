@@ -1,4 +1,10 @@
-import type { SceneObjectAttachment } from './rigStandard';
+import type {
+  CanonicalBoneId,
+  Point2D,
+  RigBodyMaskId,
+  RigLayerStage,
+  SceneObjectAttachment,
+} from './rigStandard';
 
 export type AssetCategory =
   | 'characters'
@@ -869,8 +875,12 @@ export interface CanvasObject {
   fontWeight?: 'normal' | 'semibold' | 'bold' | 'extrabold';
   flipX?: boolean;
   locked?: boolean;
+  /** Adaptive Timeline: Nesneyi sahnede ve dışa aktarımda geçici olarak gizler */
+  hidden?: boolean;
   /** Faz 4A: Karakter prop soketine opsiyonel bağlanma bilgisi */
   attachment?: SceneObjectAttachment;
+  /** Adaptive Timeline (Faz T1): Karakter hareket klipleri ve kanal keyframe verileri */
+  timelineData?: CharacterTimelineData;
   // Uploaded external image URL / DataURL
   imageUrl?: string;
   // Chart & Table live data
@@ -943,6 +953,136 @@ export interface Scene {
   camera?: SceneCamera;
   objects: CanvasObject[];
   audioClips: AudioClip[];
+  /** Adaptive Timeline (Faz T1): Track kilit/gizleme/katlanma meta verileri */
+  trackMeta?: Record<string, TimelineTrackMeta>;
+}
+
+// ============================================================================
+// ADAPTIVE TIMELINE (FAZ T1) — VERİ MODELİ
+// ============================================================================
+
+export interface TimelineTrackMeta {
+  locked?: boolean;
+  muted?: boolean;
+  hidden?: boolean;
+  collapsed?: boolean;
+}
+
+export type KeyframeInterpolation =
+  | 'linear'
+  | 'ease-in-out'
+  | 'ease-out'
+  | 'hold'
+  | 'spring';
+
+export type CharacterChannelId =
+  | 'root'
+  | 'torso'
+  | 'headNeck'
+  | 'leftArm'
+  | 'rightArm'
+  | 'leftLeg'
+  | 'rightLeg'
+  | 'expression'
+  | 'lipSync'
+  | 'ikTargets'
+  | 'socketAttachments';
+
+export type MotionCategoryId =
+  | 'locomotion'
+  | 'hand-arm'
+  | 'teaching'
+  | 'object-use'
+  | 'emotion'
+  | 'posture'
+  | 'social'
+  | 'thinking'
+  | 'celebration';
+
+export type MotionRepeatMode = 'loop' | 'once' | 'count';
+
+export interface CharacterMotionClip {
+  id: string;
+  presetId: string;
+  name: string;
+  channelId: CharacterChannelId;
+  mask: RigBodyMaskId;
+  stage: RigLayerStage;
+  startTime: number;
+  duration: number;
+  speed?: number;
+  intensity?: number;
+  weight?: number;
+  priority?: number;
+  blendInSec?: number;
+  blendOutSec?: number;
+  repeatMode?: MotionRepeatMode;
+  repeatCount?: number;
+  mirrored?: boolean;
+  enabled?: boolean;
+  requiredSocket?: 'leftPropSocket' | 'rightPropSocket' | 'backPropSocket';
+  targetPoint?: Point2D;
+  locked?: boolean;
+}
+
+export interface SavedMotionPackageClipSpec {
+  presetId: string;
+  name: string;
+  channelId: CharacterChannelId;
+  mask: RigBodyMaskId;
+  stage: RigLayerStage;
+  offsetStartSec: number;
+  duration: number;
+  speed?: number;
+  intensity?: number;
+  weight?: number;
+  priority?: number;
+  blendInSec?: number;
+  blendOutSec?: number;
+  repeatMode?: MotionRepeatMode;
+  repeatCount?: number;
+  mirrored?: boolean;
+  requiredSocket?: 'leftPropSocket' | 'rightPropSocket' | 'backPropSocket';
+}
+
+export interface SavedMotionPackage {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: number;
+  favorite?: boolean;
+  expression?: CharacterExpressionType;
+  lipSyncEnabled?: boolean;
+  clips: SavedMotionPackageClipSpec[];
+}
+
+export interface ChannelKeyframeValue {
+  bones?: Partial<Record<CanonicalBoneId, number>>;
+  x?: number;
+  y?: number;
+  rotation?: number;
+  scaleX?: number;
+  scaleY?: number;
+  bodyBobY?: number;
+  expression?: CharacterExpressionType;
+  lookDirection?: HeadDirectionType;
+  talking?: boolean;
+  targetX?: number;
+  targetY?: number;
+  ikWeight?: number;
+  ikHand?: 'left' | 'right' | 'both';
+}
+
+export interface ChannelKeyframe {
+  id: string;
+  time: number;
+  interpolation: KeyframeInterpolation;
+  value: ChannelKeyframeValue;
+}
+
+export interface CharacterTimelineData {
+  motionClips?: CharacterMotionClip[];
+  channelKeyframes?: Partial<Record<CharacterChannelId, ChannelKeyframe[]>>;
 }
 
 export interface LibraryAssetItem {

@@ -291,44 +291,7 @@ export function App() {
   ]);
 
   // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-
-      if (e.code === 'Space' && !isCharStudioOpen) {
-        e.preventDefault();
-        setIsPlaying((p) => {
-          if (!p && currentTime >= activeScene.duration - 0.1) {
-            setCurrentTime(0);
-          }
-          return !p;
-        });
-      } else if (
-        (e.key === 'Delete' || e.key === 'Backspace') &&
-        selectedObjectId &&
-        !isCharStudioOpen
-      ) {
-        e.preventDefault();
-        handleDeleteObject(selectedObjectId);
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        handleUndo();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        handleRedo();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
-    selectedObjectId,
-    currentTime,
-    activeScene.duration,
-    handleUndo,
-    handleRedo,
-    isCharStudioOpen,
-  ]);
+  // Merkezi klavye kısayolları `AdaptiveTimeline` içinde yönetilir.
 
   // Trigger live transition animation on the 16:9 canvas
   const handleTriggerTransitionPreview = () => {
@@ -1444,7 +1407,18 @@ export function App() {
         onUpdateCameraMovement={handleUpdateCameraMovement}
         onDeleteCameraMovement={handleDeleteCameraMovement}
         onUpdateObject={handleUpdateObject}
+        onBatchUpdateScene={(updater, commitHistory = true) => {
+          updateScenesState(
+            (prev) => prev.map((s) => (s.id === activeScene.id ? updater(s) : s)),
+            commitHistory
+          );
+        }}
         onReorderObject={handleReorderObject}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={historyIndex > 0}
+        canRedo={historyIndex < history.length - 1}
+        disableGlobalShortcuts={isCharStudioOpen}
         onUpdateAudioClip={handleUpdateAudioClip}
         onDeleteAudioClip={handleDeleteAudioClip}
         currentTime={currentTime}

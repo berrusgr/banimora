@@ -87,6 +87,7 @@ import {
   validateObjectAttachment,
 } from '../rig/rigKinematics';
 import { resolveParentCharacterSocketTransform } from '../utils/sceneAttachmentResolver';
+import { MotionStudioPanel } from './MotionStudioPanel';
 
 type DesignSectionKey =
   | 'actions'
@@ -3335,6 +3336,16 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>Seçili Animasyonu Şimdi Oynat</span>
           </button>
+
+          {/* BANIMORA MOTION STUDIO (T3) */}
+          {selectedObject.category === 'characters' && (
+            <MotionStudioPanel
+              selectedObject={selectedObject}
+              sceneDuration={scene.duration}
+              currentTime={currentTime}
+              onUpdateObject={onUpdateObject}
+            />
+          )}
 
           {/* CHARACTER HEAD DIRECTION IN ANIMATION TAB */}
           {isArticulatedCharacter && resolvedCharConfig && (

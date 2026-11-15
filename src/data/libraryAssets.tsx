@@ -20,6 +20,7 @@ import {
   ArticulatedCharacterRig,
   DEFAULT_CHARACTER_CONFIGS,
 } from '../components/ArticulatedCharacterRig';
+import type { TimelineRigBridgeResult } from '../utils/timelineRigBridge';
 import {
   ComputedMathAssetState,
   MATH_ASSET_REGISTRY,
@@ -1574,6 +1575,7 @@ interface VectorRendererProps {
   tableData?: TableDataConfig;
   chartAnimProgress?: number;
   onUpdateTableData?: (next: TableDataConfig) => void;
+  timelineRig?: TimelineRigBridgeResult;
 }
 
 export const VectorAssetRenderer: React.FC<VectorRendererProps> = ({
@@ -1603,6 +1605,7 @@ export const VectorAssetRenderer: React.FC<VectorRendererProps> = ({
   tableData,
   chartAnimProgress = 1,
   onUpdateTableData,
+  timelineRig,
 }) => {
   const visibleChars = Math.ceil(text.length * textRevealRatio);
   const displayedText = textRevealRatio < 1 ? text.slice(0, visibleChars) : text;
@@ -1634,10 +1637,17 @@ export const VectorAssetRenderer: React.FC<VectorRendererProps> = ({
       const syncedConfig: CharacterConfig = {
         ...resolvedCharConfig,
         topColor: color || resolvedCharConfig.topColor,
+        expression: timelineRig?.expressionOverride ?? resolvedCharConfig.expression,
+        headDirection: timelineRig?.lookDirectionOverride ?? resolvedCharConfig.headDirection,
+        lipSyncEnabled:
+          timelineRig?.lipSyncTalkingOverride !== undefined
+            ? Boolean(resolvedCharConfig.lipSyncEnabled || timelineRig.lipSyncTalkingOverride)
+            : resolvedCharConfig.lipSyncEnabled,
       };
       return (
         <ArticulatedCharacterRig
           config={syncedConfig}
+          assetId={assetId}
           animTime={animTime}
           portraitMode={false}
           showJointPins={showJointPins}
@@ -1645,6 +1655,13 @@ export const VectorAssetRenderer: React.FC<VectorRendererProps> = ({
           selectedJoint={selectedJoint}
           onSelectJoint={onSelectJoint}
           onChangeJointAngles={onChangeJointAngles}
+          rigLayers={timelineRig?.layers}
+          canonicalBoneAngles={timelineRig?.userCanonicalBoneOverrides}
+          userBodyBobYOverride={timelineRig?.userBodyBobYOverride}
+          leftArmIK={timelineRig?.leftArmIK}
+          rightArmIK={timelineRig?.rightArmIK}
+          leftArmIKWeight={timelineRig?.leftArmIKWeight}
+          rightArmIKWeight={timelineRig?.rightArmIKWeight}
         />
       );
     }

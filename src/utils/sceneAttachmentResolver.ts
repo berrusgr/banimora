@@ -15,6 +15,26 @@ import {
 } from '../rig/rigKinematics';
 import { resolveEffectiveCharacterConfig } from './audioLipSync';
 import { computeObjectAnimation } from './animationEngine';
+import {
+  evaluateChannelKeyframes,
+  evaluateCharacterTimelineForRig,
+  type TimelineRootTransformOverride,
+} from './timelineRigBridge';
+
+function withTimelineRootOverride(
+  obj: CanvasObject,
+  override?: TimelineRootTransformOverride
+): CanvasObject {
+  if (!override) return obj;
+  return {
+    ...obj,
+    x: override.x ?? obj.x,
+    y: override.y ?? obj.y,
+    rotation: override.rotation ?? obj.rotation,
+    scaleX: override.scaleX ?? obj.scaleX,
+    scaleY: override.scaleY ?? obj.scaleY,
+  };
+}
 
 export interface SceneObjectRenderTransform {
   x: number;
@@ -57,9 +77,12 @@ export function resolveParentCharacterSocketTransform(
     return null;
   }
 
-  const parentAnim = computeObjectAnimation(parentObj, currentTime, isPlaying);
+  const timelineRig = evaluateCharacterTimelineForRig(parentObj, currentTime, profile);
+  const parentWithRoot = withTimelineRootOverride(parentObj, timelineRig.rootTransformOverride);
+
+  const parentAnim = computeObjectAnimation(parentWithRoot, currentTime, isPlaying);
   const parentStage = resolveObjectStageTransform(
-    { ...parentObj, characterConfig: effectiveCharConfig },
+    { ...parentWithRoot, characterConfig: effectiveCharConfig },
     parentAnim,
     isPlaying
   );
@@ -72,6 +95,13 @@ export function resolveParentCharacterSocketTransform(
     portraitMode: Boolean(
       effectiveCharConfig.photoAvatarMode === 'realistic-avatar' && effectiveCharConfig.photoAvatarUrl
     ),
+    layers: timelineRig.layers,
+    canonicalBoneAngles: timelineRig.userCanonicalBoneOverrides,
+    userBodyBobYOverride: timelineRig.userBodyBobYOverride,
+    leftArmIK: timelineRig.leftArmIK,
+    rightArmIK: timelineRig.rightArmIK,
+    leftArmIKWeight: timelineRig.leftArmIKWeight,
+    rightArmIKWeight: timelineRig.rightArmIKWeight,
   });
 
   return computePropSocketWorldTransform(
@@ -131,7 +161,20 @@ export function resolveSceneObjectRenderTransform(
     }
   }
 
-  const stage = resolveObjectStageTransform(obj, anim, isPlaying);
+  const rootEval = obj.timelineData?.channelKeyframes?.root
+    ? evaluateChannelKeyframes(obj.timelineData.channelKeyframes.root, currentTime)
+    : null;
+  const objWithRoot = rootEval
+    ? withTimelineRootOverride(obj, {
+        x: rootEval.x,
+        y: rootEval.y,
+        rotation: rootEval.rotation,
+        scaleX: rootEval.scaleX,
+        scaleY: rootEval.scaleY,
+      })
+    : obj;
+
+  const stage = resolveObjectStageTransform(objWithRoot, anim, isPlaying);
   return {
     x: stage.x,
     y: stage.y,

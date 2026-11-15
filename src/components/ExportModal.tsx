@@ -30,6 +30,9 @@ import {
   renderScenesAudioTrack,
 } from '../utils/exportAudioMixer';
 import { resolveSceneObjectRenderTransform } from '../utils/sceneAttachmentResolver';
+import { DEFAULT_CHARACTER_CONFIGS } from './ArticulatedCharacterRig';
+import { buildCharacterRigProfile } from '../rig/rigProfiles';
+import { evaluateCharacterTimelineForRig } from '../utils/timelineRigBridge';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -194,6 +197,20 @@ async function prepareSceneDynamicRasters(
             color={obj.color}
             secondaryColor={obj.secondaryColor}
             characterConfig={resolveEffectiveCharacterConfig(obj, scene.audioClips)}
+            timelineRig={
+              obj.category === 'characters' && obj.timelineData
+                ? evaluateCharacterTimelineForRig(
+                    obj,
+                    localTime,
+                    buildCharacterRigProfile(
+                      resolveEffectiveCharacterConfig(obj, scene.audioClips) ||
+                        DEFAULT_CHARACTER_CONFIGS[obj.assetId] ||
+                        DEFAULT_CHARACTER_CONFIGS['char-pro-sinan'],
+                      obj.assetId
+                    )
+                  )
+                : undefined
+            }
             animTime={localTime}
             mathState={anim.mathState}
           />
@@ -544,6 +561,7 @@ function renderSingleSceneToCanvas(
   drawSceneBackground(ctx, scene, cache);
 
   for (const obj of scene.objects) {
+    if (obj.hidden) continue;
     const anim = computeObjectAnimation(obj, localTime, true);
     if (!anim.isVisible || anim.opacity <= 0.01) continue;
 

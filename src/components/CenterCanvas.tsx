@@ -39,6 +39,8 @@ import {
   resolveParentCharacterSocketTransform,
   resolveSceneObjectRenderTransform,
 } from '../utils/sceneAttachmentResolver';
+import { buildCharacterRigProfile } from '../rig/rigProfiles';
+import { evaluateCharacterTimelineForRig } from '../utils/timelineRigBridge';
 
 interface CenterCanvasProps {
   scene: Scene;
@@ -961,7 +963,7 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
               const isSelected = obj.id === selectedObjectId && !isPlaying;
               const anim = computeObjectAnimation(obj, currentTime, isPlaying);
 
-              if (!anim.isVisible && isPlaying) {
+              if (obj.hidden || (!anim.isVisible && isPlaying)) {
                 return null;
               }
 
@@ -1056,6 +1058,20 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                     textRevealRatio={!isPlaying && isSelected ? 1 : anim.textRevealRatio}
                     drawProgress={anim.drawProgress}
                     characterConfig={resolveEffectiveCharacterConfig(obj, scene.audioClips)}
+                    timelineRig={
+                      obj.category === 'characters' && obj.timelineData
+                        ? evaluateCharacterTimelineForRig(
+                            obj,
+                            currentTime,
+                            buildCharacterRigProfile(
+                              resolveEffectiveCharacterConfig(obj, scene.audioClips) ||
+                                DEFAULT_CHARACTER_CONFIGS[obj.assetId] ||
+                                DEFAULT_CHARACTER_CONFIGS['char-pro-sinan'],
+                              obj.assetId
+                            )
+                          )
+                        : undefined
+                    }
                     imageUrl={obj.imageUrl}
                     animTime={currentTime}
                     chartData={obj.chartData}

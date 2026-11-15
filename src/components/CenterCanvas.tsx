@@ -1403,6 +1403,35 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                           <span>Hareket Yolu</span>
                         </button>
 
+                        <div
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-50 border border-slate-200"
+                          title={`Opaklık: %${Math.round(obj.opacity ?? 100)}`}
+                        >
+                          <span className="text-[10px] font-semibold text-slate-600">
+                            Opaklık
+                          </span>
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            step={5}
+                            value={Math.round(obj.opacity ?? 100)}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onChange={(e) =>
+                              onUpdateObject(
+                                obj.id,
+                                { opacity: Number(e.target.value) },
+                                true
+                              )
+                            }
+                            aria-label="Opaklık"
+                            className="w-14 accent-indigo-600 cursor-pointer h-1"
+                          />
+                          <span className="text-[10px] font-mono font-semibold text-slate-700 w-7 text-right">
+                            %{Math.round(obj.opacity ?? 100)}
+                          </span>
+                        </div>
+
                         <button
                           onClick={() => onDuplicateObject(obj.id)}
                           className="p-1 rounded hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"

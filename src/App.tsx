@@ -1555,7 +1555,12 @@ export function App() {
           onUploadBackgroundFile={handleUploadBackgroundFile}
           onUpdateObject={handleUpdateObject}
           onUpdateAnimations={handleUpdateAnimations}
+          isPlaying={isPlaying}
           onPreviewAnimation={(obj) => {
+            if (isPlaying) {
+              setIsPlaying(false);
+              return;
+            }
             setCurrentTime(obj.startTime);
             setIsPlaying(true);
           }}

@@ -1135,46 +1135,6 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
       {/* A2. POZ KÜTÜPHANESİ (FAZ 4B-2) */}
       {studioTab === 'poses' && (
         <div className="space-y-2.5">
-          {/* Mevcut Pozu Kaydet */}
-          <div className="rounded-lg border border-indigo-200 bg-indigo-50/40 p-2 space-y-1.5">
-            <div className="text-[10px] font-bold text-indigo-800">
-              Mevcut Duruşu Poz Olarak Kaydet ({currentTime.toFixed(1)}s)
-            </div>
-            <div className="flex items-center gap-1.5">
-              <input
-                type="text"
-                value={poseNameInput}
-                onChange={(e) => setPoseNameInput(e.target.value)}
-                placeholder="Poz adı (ör. Tahta Gösterme)"
-                className="flex-1 rounded border border-indigo-200 bg-white px-2 py-1 text-[10.5px] focus:outline-none focus:ring-1 focus:ring-indigo-400"
-              />
-              <button
-                type="button"
-                disabled={!rigProfile.isSupported}
-                onClick={() => {
-                  const captured = captureCurrentCharacterPose(
-                    selectedObject,
-                    currentTime,
-                    poseNameInput || `${selectedObject.name} Pozu`,
-                    poseCategory === 'all' ? 'teaching' : poseCategory,
-                    rigProfile
-                  );
-                  const next = [captured, ...userPoses];
-                  setUserPoses(next);
-                  saveUserPoses(next);
-                  setPoseNameInput('');
-                  setPoseFeedback(`"${captured.name}" kaydedildi.`);
-                }}
-                className="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white text-[10px] font-semibold shrink-0"
-              >
-                Pozu Kaydet
-              </button>
-            </div>
-            {poseFeedback && (
-              <div className="text-[10px] text-emerald-700 font-medium">{poseFeedback}</div>
-            )}
-          </div>
-
           {/* Kategori Filtresi */}
           <div className="flex flex-wrap gap-1">
             <button

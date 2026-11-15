@@ -1,4 +1,4 @@
-﻿import React, { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Sliders,
   Sparkles,
@@ -124,41 +124,41 @@ const DesignAccordionSection: React.FC<{
   headerExtra,
   children,
 }) => (
-  <div className={`${containerClassName} ${isOpen ? 'space-y-2' : ''}`}>
-    <div
-      role="button"
-      tabIndex={0}
-      aria-expanded={isOpen}
-      onClick={onToggle}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onToggle();
-        }
-      }}
-      className="flex items-center justify-between gap-2 cursor-pointer select-none group"
-    >
-      <span className={`${titleClassName} flex items-center gap-1.5 min-w-0`}>
-        {title}
-      </span>
-      <div className="flex items-center gap-1.5 shrink-0">
-        {headerExtra && (
-          <div onClick={(e) => e.stopPropagation()} className="flex items-center">
-            {headerExtra}
-          </div>
-        )}
-        <span className="p-0.5 rounded text-slate-400 group-hover:text-slate-700 group-hover:bg-slate-200/60 transition-colors">
-          {isOpen ? (
-            <ChevronDown className="w-3.5 h-3.5" />
-          ) : (
-            <ChevronRight className="w-3.5 h-3.5" />
-          )}
+    <div className={`${containerClassName} ${isOpen ? 'space-y-2' : ''}`}>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={isOpen}
+        onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+        className="flex items-center justify-between gap-2 cursor-pointer select-none group"
+      >
+        <span className={`${titleClassName} flex items-center gap-1.5 min-w-0`}>
+          {title}
         </span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {headerExtra && (
+            <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+              {headerExtra}
+            </div>
+          )}
+          <span className="p-0.5 rounded text-slate-400 group-hover:text-slate-700 group-hover:bg-slate-200/60 transition-colors">
+            {isOpen ? (
+              <ChevronDown className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5" />
+            )}
+          </span>
+        </div>
       </div>
+      {isOpen && children}
     </div>
-    {isOpen && children}
-  </div>
-);
+  );
 
 interface RightInspectorProps {
   scene: Scene;
@@ -183,6 +183,7 @@ interface RightInspectorProps {
   onUploadBackgroundFile: (file: File) => void;
   onUpdateObject: (id: string, patch: Partial<CanvasObject>, commitHistory?: boolean) => void;
   onUpdateAnimations: (id: string, animations: ObjectAnimations) => void;
+  isPlaying?: boolean;
   onPreviewAnimation: (obj: CanvasObject) => void;
   onDuplicateObject: (id: string) => void;
   onDeleteObject: (id: string) => void;
@@ -201,43 +202,43 @@ const SCENE_TRANSITION_OPTIONS: {
   desc: string;
   badge?: string;
 }[] = [
-  {
-    id: 'dissolve',
-    label: 'Dissolve (Çözünerek Geçiş)',
-    desc: 'Önceki sahneden yumuşak eriyerek / çözünerek geçiş yapar.',
-    badge: 'Önerilen',
-  },
-  {
-    id: 'none',
-    label: 'Yok (Kesme / Cut)',
-    desc: 'Sahneler arasında doğrudan anlık geçiş.',
-  },
-  {
-    id: 'fade',
-    label: 'Fade ( Yumuşak Belirme)',
-    desc: 'Sahne yumuşak opaklık artışıyla belirir.',
-  },
-  {
-    id: 'slide-left',
-    label: 'Slide (Sola Kayarak Geçiş)',
-    desc: 'Yeni sahne sağdan sola doğru kayarak girer.',
-  },
-  {
-    id: 'wipe',
-    label: 'Wipe (Perde Geçişi)',
-    desc: 'Soldan sağa doğru perde gibi açılarak geçiş yapar.',
-  },
-  {
-    id: 'zoom',
-    label: 'Zoom (Yakınlaşarak Geçiş)',
-    desc: 'Merkezden büyüyerek sahneye odaklanır.',
-  },
-  {
-    id: 'iris',
-    label: 'Iris (Dairesel Açılma)',
-    desc: 'Merkezden dışa doğru dairesel diyafram geçişi.',
-  },
-];
+    {
+      id: 'dissolve',
+      label: 'Dissolve (Çözünerek Geçiş)',
+      desc: 'Önceki sahneden yumuşak eriyerek / çözünerek geçiş yapar.',
+      badge: 'Önerilen',
+    },
+    {
+      id: 'none',
+      label: 'Yok (Kesme / Cut)',
+      desc: 'Sahneler arasında doğrudan anlık geçiş.',
+    },
+    {
+      id: 'fade',
+      label: 'Fade ( Yumuşak Belirme)',
+      desc: 'Sahne yumuşak opaklık artışıyla belirir.',
+    },
+    {
+      id: 'slide-left',
+      label: 'Slide (Sola Kayarak Geçiş)',
+      desc: 'Yeni sahne sağdan sola doğru kayarak girer.',
+    },
+    {
+      id: 'wipe',
+      label: 'Wipe (Perde Geçişi)',
+      desc: 'Soldan sağa doğru perde gibi açılarak geçiş yapar.',
+    },
+    {
+      id: 'zoom',
+      label: 'Zoom (Yakınlaşarak Geçiş)',
+      desc: 'Merkezden büyüyerek sahneye odaklanır.',
+    },
+    {
+      id: 'iris',
+      label: 'Iris (Dairesel Açılma)',
+      desc: 'Merkezden dışa doğru dairesel diyafram geçişi.',
+    },
+  ];
 
 const STUDIO_SWATCHES = [
   '#6366f1',
@@ -257,109 +258,109 @@ export const CHARACTER_ACTION_CATEGORIES: {
   title: string;
   actions: { id: CharacterPoseType; label: string; desc?: string }[];
 }[] = [
-  {
-    id: 'basic',
-    title: 'Temel Hareketler',
-    actions: [
-      { id: 'walk', label: 'Yürüme (Walk)' },
-      { id: 'run', label: 'Koşma (Run)' },
-      { id: 'sit', label: 'Oturma (Sit)' },
-      { id: 'stand-up', label: 'Ayağa Kalkma' },
-      { id: 'wave', label: 'El Sallama' },
-      { id: 'clap', label: 'Alkışlama' },
-      { id: 'point', label: 'İşaret Etme' },
-      { id: 'idle', label: 'Doğal Duruş' },
-    ],
-  },
-  {
-    id: 'work',
-    title: 'İş ve Günlük Yaşam',
-    actions: [
-      { id: 'typing', label: 'Bilgisayar Kullanma' },
-      { id: 'phone-call', label: 'Telefonla Konuşma' },
-      { id: 'presentation', label: 'Sunum Yapma' },
-      { id: 'surgery', label: 'Ameliyat Yapma' },
-      { id: 'workout', label: 'Spor Yapma' },
-      { id: 'clipboard', label: 'Kontrol Panolu' },
-      { id: 'explain', label: 'Ders Anlatma' },
-    ],
-  },
-  {
-    id: 'emotion',
-    title: 'Duygusal & Anlık Tepkiler',
-    actions: [
-      { id: 'idea-bulb', label: 'Fikir Gelmesi (Ampul 💡)' },
-      { id: 'surprised', label: 'Şaşırma' },
-      { id: 'cheer', label: 'Sevinme' },
-      { id: 'sad', label: 'Üzülme' },
-      { id: 'scared', label: 'Korkma' },
-      { id: 'think', label: 'Düşünme' },
-    ],
-  },
-];
+    {
+      id: 'basic',
+      title: 'Temel Hareketler',
+      actions: [
+        { id: 'walk', label: 'Yürüme (Walk)' },
+        { id: 'run', label: 'Koşma (Run)' },
+        { id: 'sit', label: 'Oturma (Sit)' },
+        { id: 'stand-up', label: 'Ayağa Kalkma' },
+        { id: 'wave', label: 'El Sallama' },
+        { id: 'clap', label: 'Alkışlama' },
+        { id: 'point', label: 'İşaret Etme' },
+        { id: 'idle', label: 'Doğal Duruş' },
+      ],
+    },
+    {
+      id: 'work',
+      title: 'İş ve Günlük Yaşam',
+      actions: [
+        { id: 'typing', label: 'Bilgisayar Kullanma' },
+        { id: 'phone-call', label: 'Telefonla Konuşma' },
+        { id: 'presentation', label: 'Sunum Yapma' },
+        { id: 'surgery', label: 'Ameliyat Yapma' },
+        { id: 'workout', label: 'Spor Yapma' },
+        { id: 'clipboard', label: 'Kontrol Panolu' },
+        { id: 'explain', label: 'Ders Anlatma' },
+      ],
+    },
+    {
+      id: 'emotion',
+      title: 'Duygusal & Anlık Tepkiler',
+      actions: [
+        { id: 'idea-bulb', label: 'Fikir Gelmesi (Ampul 💡)' },
+        { id: 'surprised', label: 'Şaşırma' },
+        { id: 'cheer', label: 'Sevinme' },
+        { id: 'sad', label: 'Üzülme' },
+        { id: 'scared', label: 'Korkma' },
+        { id: 'think', label: 'Düşünme' },
+      ],
+    },
+  ];
 
 export const EXPRESSION_OPTIONS: {
   id: CharacterExpressionType;
   label: string;
   emoji: string;
 }[] = [
-  { id: 'neutral', label: 'Doğal', emoji: '🙂' },
-  { id: 'happy', label: 'Mutlu', emoji: '😄' },
-  { id: 'sad', label: 'Üzgün', emoji: '😢' },
-  { id: 'angry', label: 'Kızgın', emoji: '😠' },
-  { id: 'surprised', label: 'Şaşkın', emoji: '😮' },
-  { id: 'worried', label: 'Endişeli', emoji: '😟' },
-];
+    { id: 'neutral', label: 'Doğal', emoji: '🙂' },
+    { id: 'happy', label: 'Mutlu', emoji: '😄' },
+    { id: 'sad', label: 'Üzgün', emoji: '😢' },
+    { id: 'angry', label: 'Kızgın', emoji: '😠' },
+    { id: 'surprised', label: 'Şaşkın', emoji: '😮' },
+    { id: 'worried', label: 'Endişeli', emoji: '😟' },
+  ];
 
 export const HEAD_DIRECTION_OPTIONS: {
   id: HeadDirectionType;
   label: string;
 }[] = [
-  { id: 'left', label: '◀ Sola Bak' },
-  { id: 'center', label: '● Kameraya' },
-  { id: 'right', label: 'Sağa Bak ▶' },
-];
+    { id: 'left', label: '◀ Sola Bak' },
+    { id: 'center', label: '● Kameraya' },
+    { id: 'right', label: 'Sağa Bak ▶' },
+  ];
 
 export const HAND_GESTURE_OPTIONS: {
   id: HandGestureType;
   label: string;
   emoji: string;
 }[] = [
-  { id: 'open', label: 'Açık El', emoji: '🖐️' },
-  { id: 'point', label: 'İşaret', emoji: '☝️' },
-  { id: 'wave', label: 'El Salla', emoji: '👋' },
-  { id: 'thumbs-up', label: 'Onay', emoji: '👍' },
-  { id: 'peace', label: 'Zafer', emoji: '✌️' },
-  { id: 'fist', label: 'Yumruk', emoji: '✊' },
-  { id: 'hold', label: 'Tutuş', emoji: '🫱' },
-];
+    { id: 'open', label: 'Açık El', emoji: '🖐️' },
+    { id: 'point', label: 'İşaret', emoji: '☝️' },
+    { id: 'wave', label: 'El Salla', emoji: '👋' },
+    { id: 'thumbs-up', label: 'Onay', emoji: '👍' },
+    { id: 'peace', label: 'Zafer', emoji: '✌️' },
+    { id: 'fist', label: 'Yumruk', emoji: '✊' },
+    { id: 'hold', label: 'Tutuş', emoji: '🫱' },
+  ];
 
 export const RIG_MODE_OPTIONS: {
   id: RigMotionMode;
   label: string;
   desc: string;
 }[] = [
-  {
-    id: 'preset',
-    label: 'Hazır Aksiyon',
-    desc: 'Seçili eylem kalıbı hız ve genişlik ayarıyla oynatılır.',
-  },
-  {
-    id: 'hybrid',
-    label: 'Hibrit (Aksiyon + İskelet)',
-    desc: 'Hazır aksiyon oynarken elle ayarladığınız eklemler (kol, baş vb.) sabitlenir.',
-  },
-  {
-    id: 'manual',
-    label: 'Serbest 2D İskelet (Rig)',
-    desc: 'Tüm eklemleri fareyle sahneden veya kaydırıcılarla serbestçe pozlayın.',
-  },
-  {
-    id: 'pose-to-pose',
-    label: 'Pozdan Poza İskelet',
-    desc: 'Başlangıç (Poz A) ve Hedef (Poz B) eklem açıları arasında akıcı geçiş yapar.',
-  },
-];
+    {
+      id: 'preset',
+      label: 'Hazır Aksiyon',
+      desc: 'Seçili eylem kalıbı hız ve genişlik ayarıyla oynatılır.',
+    },
+    {
+      id: 'hybrid',
+      label: 'Hibrit (Aksiyon + İskelet)',
+      desc: 'Hazır aksiyon oynarken elle ayarladığınız eklemler (kol, baş vb.) sabitlenir.',
+    },
+    {
+      id: 'manual',
+      label: 'Serbest 2D İskelet (Rig)',
+      desc: 'Tüm eklemleri fareyle sahneden veya kaydırıcılarla serbestçe pozlayın.',
+    },
+    {
+      id: 'pose-to-pose',
+      label: 'Pozdan Poza İskelet',
+      desc: 'Başlangıç (Poz A) ve Hedef (Poz B) eklem açıları arasında akıcı geçiş yapar.',
+    },
+  ];
 
 export const RIG_JOINT_CONTROLS: {
   key: RigJointKey;
@@ -368,18 +369,18 @@ export const RIG_JOINT_CONTROLS: {
   min: number;
   max: number;
 }[] = [
-  { key: 'headTilt', label: 'Baş Eğimi (Boyun)', group: 'upper', min: -40, max: 40 },
-  { key: 'leftShoulder', label: 'Sol Omuz (Üst Kol)', group: 'upper', min: -160, max: 160 },
-  { key: 'leftElbow', label: 'Sol Dirsek (Ön Kol)', group: 'upper', min: -150, max: 150 },
-  { key: 'leftWrist', label: 'Sol Bilek & El', group: 'upper', min: -90, max: 90 },
-  { key: 'rightShoulder', label: 'Sağ Omuz (Üst Kol)', group: 'upper', min: -160, max: 160 },
-  { key: 'rightElbow', label: 'Sağ Dirsek (Ön Kol)', group: 'upper', min: -150, max: 150 },
-  { key: 'rightWrist', label: 'Sağ Bilek & El', group: 'upper', min: -90, max: 90 },
-  { key: 'leftHip', label: 'Sol Kalça (Üst Bacak)', group: 'lower', min: -110, max: 110 },
-  { key: 'leftKnee', label: 'Sol Diz (Alt Bacak)', group: 'lower', min: -120, max: 120 },
-  { key: 'rightHip', label: 'Sağ Kalça (Üst Bacak)', group: 'lower', min: -110, max: 110 },
-  { key: 'rightKnee', label: 'Sağ Diz (Alt Bacak)', group: 'lower', min: -120, max: 120 },
-];
+    { key: 'headTilt', label: 'Baş Eğimi (Boyun)', group: 'upper', min: -40, max: 40 },
+    { key: 'leftShoulder', label: 'Sol Omuz (Üst Kol)', group: 'upper', min: -160, max: 160 },
+    { key: 'leftElbow', label: 'Sol Dirsek (Ön Kol)', group: 'upper', min: -150, max: 150 },
+    { key: 'leftWrist', label: 'Sol Bilek & El', group: 'upper', min: -90, max: 90 },
+    { key: 'rightShoulder', label: 'Sağ Omuz (Üst Kol)', group: 'upper', min: -160, max: 160 },
+    { key: 'rightElbow', label: 'Sağ Dirsek (Ön Kol)', group: 'upper', min: -150, max: 150 },
+    { key: 'rightWrist', label: 'Sağ Bilek & El', group: 'upper', min: -90, max: 90 },
+    { key: 'leftHip', label: 'Sol Kalça (Üst Bacak)', group: 'lower', min: -110, max: 110 },
+    { key: 'leftKnee', label: 'Sol Diz (Alt Bacak)', group: 'lower', min: -120, max: 120 },
+    { key: 'rightHip', label: 'Sağ Kalça (Üst Bacak)', group: 'lower', min: -110, max: 110 },
+    { key: 'rightKnee', label: 'Sağ Diz (Alt Bacak)', group: 'lower', min: -120, max: 120 },
+  ];
 
 const MOTION_CURVE_OPTIONS: { id: MotionPathCurveType; label: string }[] = [
   { id: 'linear', label: 'Düz Çizgi (Linear)' },
@@ -448,6 +449,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
   onUploadBackgroundFile,
   onUpdateObject,
   onUpdateAnimations,
+  isPlaying = false,
   onPreviewAnimation,
   onDuplicateObject,
   onDeleteObject,
@@ -738,9 +740,9 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                         const lastMov = prevMovs[prevMovs.length - 1];
                         const startT = lastMov
                           ? Math.min(
-                              Math.max(0, scene.duration - 1),
-                              Number((lastMov.startTime + lastMov.duration).toFixed(1))
-                            )
+                            Math.max(0, scene.duration - 1),
+                            Number((lastMov.startTime + lastMov.duration).toFixed(1))
+                          )
                           : 0;
                         const newMov = {
                           id: `cam-mov-${Date.now()}`,
@@ -805,11 +807,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                         <div
                           key={mov.id}
                           onClick={() => onSelectCamera(mov.id)}
-                          className={`p-2 rounded-lg border text-xs cursor-pointer transition-all ${
-                            isSel
-                              ? 'bg-white border-orange-500 ring-1 ring-orange-500 shadow-2xs'
-                              : 'bg-white/70 hover:bg-white border-orange-200'
-                          }`}
+                          className={`p-2 rounded-lg border text-xs cursor-pointer transition-all ${isSel
+                            ? 'bg-white border-orange-500 ring-1 ring-orange-500 shadow-2xs'
+                            : 'bg-white/70 hover:bg-white border-orange-200'
+                            }`}
                         >
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-slate-900 text-[11px]">
@@ -1035,16 +1036,15 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                     key={preset.label}
                     disabled={isDisabled}
                     onClick={() => onUpdateScene({ duration: targetSec })}
-                    className={`py-1 rounded-md text-[10px] font-semibold border transition-colors cursor-pointer disabled:opacity-40 ${
-                      isCurrent
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                        : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
-                    }`}
+                    className={`py-1 rounded-md text-[10px] font-semibold border transition-colors cursor-pointer disabled:opacity-40 ${isCurrent
+                      ? 'bg-indigo-600 border-indigo-600 text-white'
+                      : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                      }`}
                     title={
                       preset.sec === 600 && maxAllowedSceneDuration < 600
                         ? `Kalan maksimum sahne süresi: ${formatCompactDuration(
-                            maxAllowedSceneDuration
-                          )}`
+                          maxAllowedSceneDuration
+                        )}`
                         : `${preset.label} olarak ayarla`
                     }
                   >
@@ -1072,34 +1072,6 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               </p>
             </div>
           </div>
-
-          <button
-            onClick={() => bgUploadInputRef.current?.click()}
-            className="w-full py-2 px-3 rounded-lg bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <ImagePlus className="w-3.5 h-3.5" />
-            <span>Dışarıdan Sahne Görseli Yükle</span>
-          </button>
-        </div>
-
-        {/* CONTINUE SCENE (SAHNE DEVAMLILIĞI) SECTION */}
-        <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-              <FastForward className="w-3.5 h-3.5 text-amber-600" />
-              Sahne Devamlılığı (Continue Scene)
-            </span>
-          </div>
-          <p className="text-[10px] text-amber-800/90 leading-snug">
-            Karakterlerin ve nesnelerin bu sahnedeki son konumlarından (Motion Path bitiş noktalarından) ve devam eden eylemlerinden başlayan yeni bir sahne oluşturur.
-          </p>
-          <button
-            onClick={onContinueScene}
-            className="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
-          >
-            <FastForward className="w-3.5 h-3.5" />
-            <span>Bu Sahneden Devam Et (Continue Scene)</span>
-          </button>
         </div>
 
         {/* SCENE TRANSITIONS SECTION (INCLUDING DISSOLVE!) */}
@@ -1137,17 +1109,15 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                     });
                     setTimeout(() => onTriggerTransitionPreview(), 30);
                   }}
-                  className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-indigo-50/90 border-indigo-500 ring-1 ring-indigo-500 shadow-2xs'
-                      : 'bg-white hover:bg-slate-100/70 border-slate-200'
-                  }`}
+                  className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer ${isSelected
+                    ? 'bg-indigo-50/90 border-indigo-500 ring-1 ring-indigo-500 shadow-2xs'
+                    : 'bg-white hover:bg-slate-100/70 border-slate-200'
+                    }`}
                 >
                   <div className="flex items-center justify-between">
                     <span
-                      className={`text-xs font-bold ${
-                        isSelected ? 'text-indigo-950' : 'text-slate-800'
-                      }`}
+                      className={`text-xs font-bold ${isSelected ? 'text-indigo-950' : 'text-slate-800'
+                        }`}
                     >
                       {opt.label}
                     </span>
@@ -1347,13 +1317,12 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
             </span>
             {isMathAsset && (
               <span
-                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
-                  resolvedAssetClass === 'static'
-                    ? 'bg-slate-100 text-slate-700 border border-slate-200'
-                    : resolvedAssetClass === 'animated'
+                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold ${resolvedAssetClass === 'static'
+                  ? 'bg-slate-100 text-slate-700 border border-slate-200'
+                  : resolvedAssetClass === 'animated'
                     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                     : 'bg-pink-50 text-pink-700 border border-pink-200'
-                }`}
+                  }`}
               >
                 {resolvedAssetClass === 'static' && (
                   <>
@@ -1382,11 +1351,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
             onClick={() =>
               onUpdateObject(selectedObject.id, { locked: !selectedObject.locked })
             }
-            className={`p-1.5 rounded-lg border cursor-pointer ${
-              selectedObject.locked
-                ? 'bg-amber-100 border-amber-300 text-amber-700'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
-            }`}
+            className={`p-1.5 rounded-lg border cursor-pointer ${selectedObject.locked
+              ? 'bg-amber-100 border-amber-300 text-amber-700'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+              }`}
             title={selectedObject.locked ? 'Kilidi Aç' : 'Nesneyi Kilitle'}
           >
             {selectedObject.locked ? (
@@ -1427,22 +1395,20 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
       <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200 mb-4">
         <button
           onClick={() => setActiveTab('design')}
-          className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-            activeTab === 'design'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
+          className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeTab === 'design'
+            ? 'bg-indigo-600 text-white shadow-xs'
+            : 'text-slate-600 hover:text-slate-900'
+            }`}
         >
           <Sliders className="w-3.5 h-3.5" />
-          <span>Tasarım (Design)</span>
+          <span>Tasarım</span>
         </button>
         <button
           onClick={() => setActiveTab('animate')}
-          className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-            activeTab === 'animate'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
+          className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeTab === 'animate'
+            ? 'bg-indigo-600 text-white shadow-xs'
+            : 'text-slate-600 hover:text-slate-900'
+            }`}
         >
           <Sparkles className="w-3.5 h-3.5" />
           <span>Animasyon</span>
@@ -1484,14 +1450,6 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 className="hidden"
               />
 
-              <button
-                onClick={() => onEditCharacterInStudio(selectedObject)}
-                className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer"
-              >
-                <UserCog className="w-4 h-4" />
-                <span>Karakter Stüdyosunda Özelleştir</span>
-              </button>
-
               {/* 1. KARAKTER EYLEMLERİ (ACTIONS) - 3 KATEGORİ */}
               <DesignAccordionSection
                 isOpen={isSectionOpen('actions')}
@@ -1512,17 +1470,16 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                     <button
                       key={cat.id}
                       onClick={() => setActionCat(cat.id)}
-                      className={`py-1 px-1 rounded-md text-[10px] font-semibold transition-all cursor-pointer truncate ${
-                        actionCat === cat.id
-                          ? 'bg-indigo-600 text-white shadow-2xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                      className={`py-1 px-1 rounded-md text-[10px] font-semibold transition-all cursor-pointer truncate ${actionCat === cat.id
+                        ? 'bg-indigo-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                        }`}
                     >
                       {cat.id === 'basic'
                         ? 'Temel'
                         : cat.id === 'work'
-                        ? 'İş & Günlük'
-                        : 'Duygusal'}
+                          ? 'İş & Günlük'
+                          : 'Duygusal'}
                     </button>
                   ))}
                 </div>
@@ -1543,11 +1500,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                               },
                             })
                           }
-                          className={`px-2 py-1.5 rounded-lg text-[10.5px] font-medium text-left border transition-all cursor-pointer truncate ${
-                            isPoseActive
-                              ? 'bg-indigo-600 text-white border-indigo-600 font-semibold shadow-2xs'
-                              : 'bg-slate-50 hover:bg-indigo-50/60 border-slate-200 text-slate-700'
-                          }`}
+                          className={`px-2 py-1.5 rounded-lg text-[10.5px] font-medium text-left border transition-all cursor-pointer truncate ${isPoseActive
+                            ? 'bg-indigo-600 text-white border-indigo-600 font-semibold shadow-2xs'
+                            : 'bg-slate-50 hover:bg-indigo-50/60 border-slate-200 text-slate-700'
+                            }`}
                         >
                           {act.label}
                         </button>
@@ -1609,6 +1565,323 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 </div>
               </DesignAccordionSection>
 
+              {/* 1.B HİBRİT HAREKET SİSTEMİ (HAZIR AKSİYON + MANUEL 2D İSKELET & EL DURUŞU) */}
+              <DesignAccordionSection
+                isOpen={isSectionOpen('rig')}
+                onToggle={() => toggleSection('rig')}
+                containerClassName="bg-gradient-to-br from-pink-50/80 via-white to-indigo-50/50 p-2.5 rounded-xl border border-pink-200/90"
+                titleClassName="text-[11px] font-bold text-slate-900"
+                title={
+                  <>
+                    <Bone className="w-3.5 h-3.5 text-pink-600" />
+                    Hibrit Hareket & 2D İskelet (Rigging)
+                  </>
+                }
+                headerExtra={
+                  <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-pink-100 text-pink-800">
+                    2D Bone Rig
+                  </span>
+                }
+              >
+
+                {/* Rig Motion Mode Selector (Preset / Hybrid / Manual / Pose-to-Pose) */}
+                <div className="grid grid-cols-2 gap-1">
+                  {RIG_MODE_OPTIONS.map((rm) => {
+                    const curMode = resolvedCharConfig.rigMode || 'preset';
+                    const isActive = curMode === rm.id;
+                    return (
+                      <button
+                        key={rm.id}
+                        onClick={() =>
+                          onUpdateObject(selectedObject.id, {
+                            characterConfig: {
+                              ...resolvedCharConfig,
+                              rigMode: rm.id,
+                            },
+                          })
+                        }
+                        title={rm.desc}
+                        className={`px-2 py-1.5 rounded-lg text-[10px] font-bold text-left border transition-all cursor-pointer truncate ${isActive
+                          ? 'bg-pink-600 text-white border-pink-600 shadow-2xs'
+                          : 'bg-white hover:bg-pink-50/70 border-slate-200 text-slate-700'
+                          }`}
+                      >
+                        {rm.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <p className="text-[9.5px] text-slate-500 leading-snug">
+                  {
+                    RIG_MODE_OPTIONS.find(
+                      (m) => m.id === (resolvedCharConfig.rigMode || 'preset')
+                    )?.desc
+                  }{' '}
+                  Sahnede karakterin üstündeki <strong>&ldquo;2D İskelet (Rig)&rdquo;</strong> butonuna basarak eklemleri fareyle de döndürebilirsiniz.
+                </p>
+
+                {/* Pose-to-Pose Slot Selector & Duration when rigMode === 'pose-to-pose' */}
+                {resolvedCharConfig.rigMode === 'pose-to-pose' && (
+                  <div className="p-2 rounded-lg bg-amber-50/80 border border-amber-200 space-y-1.5">
+                    <div className="grid grid-cols-2 gap-1">
+                      <button
+                        onClick={() => setRigPoseSlot('start')}
+                        className={`py-1 rounded text-[10px] font-bold cursor-pointer ${rigPoseSlot === 'start'
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-white text-amber-900 border border-amber-200'
+                          }`}
+                      >
+                        1. Başlangıç Pozu (A)
+                      </button>
+                      <button
+                        onClick={() => setRigPoseSlot('target')}
+                        className={`py-1 rounded text-[10px] font-bold cursor-pointer ${rigPoseSlot === 'target'
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-white text-amber-900 border border-amber-200'
+                          }`}
+                      >
+                        2. Hedef Poz (B)
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-semibold text-amber-900">Poz Geçiş Süresi:</span>
+                      <span className="font-mono font-bold text-amber-950">
+                        {(resolvedCharConfig.poseTransitionDuration ?? 1.2).toFixed(1)} sn
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.4}
+                      max={4.0}
+                      step={0.2}
+                      value={resolvedCharConfig.poseTransitionDuration ?? 1.2}
+                      onChange={(e) =>
+                        onUpdateObject(selectedObject.id, {
+                          characterConfig: {
+                            ...resolvedCharConfig,
+                            poseTransitionDuration: Number(e.target.value),
+                          },
+                        })
+                      }
+                      className="w-full accent-amber-600 cursor-pointer h-1.5"
+                    />
+                  </div>
+                )}
+
+                {/* Interactive Joint Angle Sliders (Upper Body vs Lower Body) */}
+                <div className="bg-white rounded-lg p-2 border border-pink-100 space-y-2">
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setRigJointGroup('upper')}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer ${rigJointGroup === 'upper'
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                      >
+                        Baş & Kollar (7 Eklem)
+                      </button>
+                      <button
+                        onClick={() => setRigJointGroup('lower')}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer ${rigJointGroup === 'lower'
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                      >
+                        Bacaklar (4 Eklem)
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          const snap = computePoseJointAngles(resolvedCharConfig.pose, 0);
+                          const copied: CustomJointAngles = {
+                            headTilt: Math.round(snap.headTilt),
+                            leftShoulder: Math.round(snap.leftShoulder),
+                            leftElbow: Math.round(snap.leftElbow),
+                            leftWrist: Math.round(snap.leftWrist),
+                            rightShoulder: Math.round(snap.rightShoulder),
+                            rightElbow: Math.round(snap.rightElbow),
+                            rightWrist: Math.round(snap.rightWrist),
+                            leftHip: Math.round(snap.leftHip),
+                            leftKnee: Math.round(snap.leftKnee),
+                            rightHip: Math.round(snap.rightHip),
+                            rightKnee: Math.round(snap.rightKnee),
+                          };
+                          onUpdateObject(selectedObject.id, {
+                            characterConfig: {
+                              ...resolvedCharConfig,
+                              rigMode:
+                                !resolvedCharConfig.rigMode ||
+                                  resolvedCharConfig.rigMode === 'preset'
+                                  ? 'hybrid'
+                                  : resolvedCharConfig.rigMode,
+                              ...(resolvedCharConfig.rigMode === 'pose-to-pose' &&
+                                rigPoseSlot === 'target'
+                                ? { targetJointAngles: copied }
+                                : { customJointAngles: copied }),
+                            },
+                          });
+                        }}
+                        className="px-1.5 py-0.5 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[9.5px] font-bold cursor-pointer"
+                        title="Mevcut hazır aksiyonun eklem açılarını manuel iskelete kopyalar"
+                      >
+                        Pozu Kopyala
+                      </button>
+                      <button
+                        onClick={() =>
+                          onUpdateObject(selectedObject.id, {
+                            characterConfig: {
+                              ...resolvedCharConfig,
+                              customJointAngles: {},
+                              targetJointAngles: {},
+                            },
+                          })
+                        }
+                        className="p-1 rounded bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 cursor-pointer"
+                        title="Tüm Manuel Eklem Açılarını Sıfırla"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {RIG_JOINT_CONTROLS.filter((j) => j.group === rigJointGroup).map(
+                      (joint) => {
+                        const presetAngles = computePoseJointAngles(resolvedCharConfig.pose, 0);
+                        const activeMap =
+                          resolvedCharConfig.rigMode === 'pose-to-pose' &&
+                            rigPoseSlot === 'target'
+                            ? resolvedCharConfig.targetJointAngles
+                            : resolvedCharConfig.customJointAngles;
+                        const customVal = activeMap?.[joint.key];
+                        const displayVal =
+                          customVal !== undefined
+                            ? customVal
+                            : Math.round(presetAngles[joint.key]);
+
+                        return (
+                          <div key={joint.key} className="space-y-0.5">
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="font-medium text-slate-700 flex items-center gap-1">
+                                {joint.label}
+                                {customVal !== undefined && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-pink-500 inline-block" />
+                                )}
+                              </span>
+                              <span className="font-mono font-bold text-slate-900">
+                                {displayVal}°
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              min={joint.min}
+                              max={joint.max}
+                              step={1}
+                              value={displayVal}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                const nextMode =
+                                  !resolvedCharConfig.rigMode ||
+                                    resolvedCharConfig.rigMode === 'preset'
+                                    ? 'hybrid'
+                                    : resolvedCharConfig.rigMode;
+                                if (
+                                  nextMode === 'pose-to-pose' &&
+                                  rigPoseSlot === 'target'
+                                ) {
+                                  onUpdateObject(selectedObject.id, {
+                                    characterConfig: {
+                                      ...resolvedCharConfig,
+                                      rigMode: nextMode,
+                                      targetJointAngles: {
+                                        ...(resolvedCharConfig.targetJointAngles || {}),
+                                        [joint.key]: val,
+                                      },
+                                    },
+                                  });
+                                } else {
+                                  onUpdateObject(selectedObject.id, {
+                                    characterConfig: {
+                                      ...resolvedCharConfig,
+                                      rigMode: nextMode,
+                                      customJointAngles: {
+                                        ...(resolvedCharConfig.customJointAngles || {}),
+                                        [joint.key]: val,
+                                      },
+                                    },
+                                  });
+                                }
+                              }}
+                              className="w-full accent-pink-600 cursor-pointer h-1.5"
+                            />
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+                </div>
+
+                {/* Clear Hand Gestures (Sol El & Sağ El Net El Duruşları) */}
+                <div className="bg-white rounded-lg p-2 border border-pink-100 space-y-2">
+                  <span className="text-[10.5px] font-bold text-slate-800 flex items-center gap-1">
+                    <Hand className="w-3.5 h-3.5 text-pink-600" />
+                    El ve Parmak Duruşu (Net El Tasarımı)
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[9.5px] font-semibold text-slate-500 block mb-1">
+                        Sol El Duruşu
+                      </label>
+                      <select
+                        value={resolvedCharConfig.leftHandGesture || 'open'}
+                        onChange={(e) =>
+                          onUpdateObject(selectedObject.id, {
+                            characterConfig: {
+                              ...resolvedCharConfig,
+                              leftHandGesture: e.target.value as HandGestureType,
+                            },
+                          })
+                        }
+                        className="w-full bg-slate-50 border border-slate-200 rounded-md px-1.5 py-1 text-[10.5px] font-semibold text-slate-800 focus:outline-none focus:border-pink-500"
+                      >
+                        {HAND_GESTURE_OPTIONS.map((hg) => (
+                          <option key={hg.id} value={hg.id}>
+                            {hg.emoji} {hg.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[9.5px] font-semibold text-slate-500 block mb-1">
+                        Sağ El Duruşu
+                      </label>
+                      <select
+                        value={resolvedCharConfig.rightHandGesture || 'open'}
+                        onChange={(e) =>
+                          onUpdateObject(selectedObject.id, {
+                            characterConfig: {
+                              ...resolvedCharConfig,
+                              rightHandGesture: e.target.value as HandGestureType,
+                            },
+                          })
+                        }
+                        className="w-full bg-slate-50 border border-slate-200 rounded-md px-1.5 py-1 text-[10.5px] font-semibold text-slate-800 focus:outline-none focus:border-pink-500"
+                      >
+                        {HAND_GESTURE_OPTIONS.map((hg) => (
+                          <option key={hg.id} value={hg.id}>
+                            {hg.emoji} {hg.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </DesignAccordionSection>
+
               {/* 2. YÜZ İFADELERİ & KAFA YÖNÜ (EXPRESSIONS & HEAD DIRECTION) */}
               <DesignAccordionSection
                 isOpen={isSectionOpen('expression')}
@@ -1638,11 +1911,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                               },
                             })
                           }
-                          className={`py-1.5 px-1.5 rounded-lg text-[10.5px] font-medium border flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                            isActive
-                              ? 'bg-indigo-600 text-white border-indigo-600 font-semibold'
-                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                          }`}
+                          className={`py-1.5 px-1.5 rounded-lg text-[10.5px] font-medium border flex items-center justify-center gap-1 transition-all cursor-pointer ${isActive
+                            ? 'bg-indigo-600 text-white border-indigo-600 font-semibold'
+                            : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                            }`}
                         >
                           <span>{exp.emoji}</span>
                           <span>{exp.label}</span>
@@ -1672,11 +1944,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                               },
                             })
                           }
-                          className={`py-1 px-1.5 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
-                            isActive
-                              ? 'bg-indigo-600 text-white border-indigo-600'
-                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                          }`}
+                          className={`py-1 px-1.5 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${isActive
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                            }`}
                         >
                           {dir.label}
                         </button>
@@ -1718,19 +1989,18 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                           lipSyncEnabled: nextEnabled,
                           ...(shouldAttachSceneAudio && firstSceneAudio
                             ? {
-                                lipSyncAudioUrl: firstSceneAudio.audioUrl,
-                                lipSyncAudioName: firstSceneAudio.name,
-                                lipSyncAudioStartTime: firstSceneAudio.startTime,
-                              }
+                              lipSyncAudioUrl: firstSceneAudio.audioUrl,
+                              lipSyncAudioName: firstSceneAudio.name,
+                              lipSyncAudioStartTime: firstSceneAudio.startTime,
+                            }
                             : {}),
                         },
                       });
                     }}
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${
-                      resolvedCharConfig.lipSyncEnabled
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-slate-200 text-slate-600'
-                    }`}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${resolvedCharConfig.lipSyncEnabled
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-200 text-slate-600'
+                      }`}
                   >
                     {resolvedCharConfig.lipSyncEnabled ? 'Aktif (Konuşuyor)' : 'Kapalı'}
                   </button>
@@ -1848,11 +2118,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                                   },
                                 });
                               }}
-                              className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-colors cursor-pointer truncate max-w-full ${
-                                isLinked
-                                  ? 'bg-emerald-600 text-white border-emerald-600'
-                                  : 'bg-slate-50 hover:bg-indigo-50 text-slate-700 border-slate-200'
-                              }`}
+                              className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-colors cursor-pointer truncate max-w-full ${isLinked
+                                ? 'bg-emerald-600 text-white border-emerald-600'
+                                : 'bg-slate-50 hover:bg-indigo-50 text-slate-700 border-slate-200'
+                                }`}
                             >
                               🎙️ {clip.name}
                             </button>
@@ -2023,27 +2292,6 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 />
               </div>
 
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-600">Opaklık (Opacity)</span>
-                  <span className="font-mono font-semibold text-slate-900">
-                    %{selectedObject.opacity}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={10}
-                  max={100}
-                  value={selectedObject.opacity}
-                  onChange={(e) =>
-                    onUpdateObject(selectedObject.id, {
-                      opacity: Number(e.target.value),
-                    })
-                  }
-                  className="w-full accent-indigo-600 cursor-pointer"
-                />
-              </div>
-
               <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/70">
                 <span className="text-slate-500 flex items-center gap-1">
                   <Layers className="w-3 h-3 text-slate-400" />
@@ -2091,12 +2339,12 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               const normalizedObjects = scene.objects.map((o) =>
                 o.category === 'characters'
                   ? {
-                      ...o,
-                      characterConfig:
-                        resolveEffectiveCharacterConfig(o, scene.audioClips) ||
-                        o.characterConfig ||
-                        DEFAULT_CHARACTER_CONFIGS[o.assetId],
-                    }
+                    ...o,
+                    characterConfig:
+                      resolveEffectiveCharacterConfig(o, scene.audioClips) ||
+                      o.characterConfig ||
+                      DEFAULT_CHARACTER_CONFIGS[o.assetId],
+                  }
                   : o
               );
               const candidate = {
@@ -2233,11 +2481,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                                     handleAttach(activeParentId, sockId);
                                   }
                                 }}
-                                className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer ${
-                                  isActive
-                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                                }`}
+                                className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer ${isActive
+                                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                  }`}
                               >
                                 {SOCKET_LABELS[sockId]}
                               </button>
@@ -2319,11 +2566,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                       onClick={() =>
                         onSelectPart?.(isPartActive ? null : part.id)
                       }
-                      className={`px-2 py-1.5 rounded-lg text-[10.5px] font-semibold text-left border transition-all cursor-pointer truncate ${
-                        isPartActive
-                          ? 'bg-pink-600 text-white border-pink-600 shadow-xs'
-                          : 'bg-white hover:bg-pink-50 border-pink-200 text-slate-700'
-                      }`}
+                      className={`px-2 py-1.5 rounded-lg text-[10.5px] font-semibold text-left border transition-all cursor-pointer truncate ${isPartActive
+                        ? 'bg-pink-600 text-white border-pink-600 shadow-xs'
+                        : 'bg-white hover:bg-pink-50 border-pink-200 text-slate-700'
+                        }`}
                     >
                       {part.name}
                     </button>
@@ -2524,111 +2770,111 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
             selectedObject.assetId === 'obj-speech-bubble' ||
             selectedObject.assetId === 'obj-formula-card' ||
             selectedObject.assetId === 'obj-badge-star') && (
-            <DesignAccordionSection
-              isOpen={isSectionOpen('text')}
-              onToggle={() => toggleSection('text')}
-              title={
-                <>
-                  <Type className="w-3.5 h-3.5 text-indigo-600" />
-                  Metin İçeriği, Font & Boyut
-                </>
-              }
-              headerExtra={
-                selectedObject.assetId === 'text-formula' ||
-                selectedObject.assetId === 'obj-formula-card' ? (
-                  <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[9.5px] font-bold">
-                    LaTeX Destekli
-                  </span>
-                ) : undefined
-              }
-            >
-              <textarea
-                rows={3}
-                value={selectedObject.text || ''}
-                onChange={(e) =>
-                  onUpdateObject(selectedObject.id, { text: e.target.value })
+              <DesignAccordionSection
+                isOpen={isSectionOpen('text')}
+                onToggle={() => toggleSection('text')}
+                title={
+                  <>
+                    <Type className="w-3.5 h-3.5 text-indigo-600" />
+                    Metin İçeriği, Font & Boyut
+                  </>
                 }
-                className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-lg p-2 text-xs font-mono text-slate-900 focus:outline-none resize-none"
-                placeholder={
+                headerExtra={
                   selectedObject.assetId === 'text-formula' ||
-                  selectedObject.assetId === 'obj-formula-card'
-                    ? 'Örn: \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}'
-                    : 'Sahne metnini girin...'
+                    selectedObject.assetId === 'obj-formula-card' ? (
+                    <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[9.5px] font-bold">
+                      LaTeX Destekli
+                    </span>
+                  ) : undefined
                 }
-              />
-              {(selectedObject.assetId === 'text-formula' ||
-                selectedObject.assetId === 'obj-formula-card') && (
-                <div className="flex flex-wrap gap-1">
-                  {[
-                    { label: 'Kesir', code: '\\frac{a}{b}' },
-                    { label: 'Karekök', code: '\\sqrt{x}' },
-                    { label: 'Üs', code: 'x^{2}' },
-                    { label: '±', code: '\\pm ' },
-                    { label: 'Toplam ∑', code: '\\sum_{i=1}^{n} ' },
-                    { label: 'İntegral ∫', code: '\\int_{a}^{b} ' },
-                    { label: 'π', code: '\\pi ' },
-                  ].map((snip) => (
-                    <button
-                      key={snip.label}
-                      type="button"
-                      onClick={() =>
-                        onUpdateObject(selectedObject.id, {
-                          text: (selectedObject.text || '') + snip.code,
-                        })
-                      }
-                      className="px-1.5 py-0.5 rounded bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-[10px] font-semibold text-slate-700 cursor-pointer"
-                      title={snip.code}
-                    >
-                      {snip.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-600">Yazı Tipi (Font)</span>
-                </div>
-                <select
-                  value={selectedObject.fontFamily || 'Inter'}
+              >
+                <textarea
+                  rows={3}
+                  value={selectedObject.text || ''}
                   onChange={(e) =>
-                    onUpdateObject(selectedObject.id, {
-                      fontFamily: e.target.value,
-                    })
+                    onUpdateObject(selectedObject.id, { text: e.target.value })
                   }
-                  style={{ fontFamily: selectedObject.fontFamily || 'Inter' }}
-                  className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none cursor-pointer"
-                >
-                  <option value="Inter">Inter (Varsayılan)</option>
-                  <option value="Poppins">Poppins</option>
-                  <option value="Roboto">Roboto</option>
-                  <option value="Montserrat">Montserrat</option>
-                  <option value="Playfair Display">Playfair Display (Serif)</option>
-                  <option value="Caveat">Caveat (El Yazısı)</option>
-                  <option value="JetBrains Mono">JetBrains Mono (Kod / Matematik)</option>
-                </select>
-              </div>
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-600">Yazı Boyutu (px)</span>
-                  <span className="font-mono font-semibold text-slate-900">
-                    {selectedObject.fontSize || 18}px
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={12}
-                  max={44}
-                  value={selectedObject.fontSize || 18}
-                  onChange={(e) =>
-                    onUpdateObject(selectedObject.id, {
-                      fontSize: Number(e.target.value),
-                    })
+                  className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-lg p-2 text-xs font-mono text-slate-900 focus:outline-none resize-none"
+                  placeholder={
+                    selectedObject.assetId === 'text-formula' ||
+                      selectedObject.assetId === 'obj-formula-card'
+                      ? 'Örn: \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}'
+                      : 'Sahne metnini girin...'
                   }
-                  className="w-full accent-indigo-600 cursor-pointer"
                 />
-              </div>
-            </DesignAccordionSection>
-          )}
+                {(selectedObject.assetId === 'text-formula' ||
+                  selectedObject.assetId === 'obj-formula-card') && (
+                    <div className="flex flex-wrap gap-1">
+                      {[
+                        { label: 'Kesir', code: '\\frac{a}{b}' },
+                        { label: 'Karekök', code: '\\sqrt{x}' },
+                        { label: 'Üs', code: 'x^{2}' },
+                        { label: '±', code: '\\pm ' },
+                        { label: 'Toplam ∑', code: '\\sum_{i=1}^{n} ' },
+                        { label: 'İntegral ∫', code: '\\int_{a}^{b} ' },
+                        { label: 'π', code: '\\pi ' },
+                      ].map((snip) => (
+                        <button
+                          key={snip.label}
+                          type="button"
+                          onClick={() =>
+                            onUpdateObject(selectedObject.id, {
+                              text: (selectedObject.text || '') + snip.code,
+                            })
+                          }
+                          className="px-1.5 py-0.5 rounded bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-[10px] font-semibold text-slate-700 cursor-pointer"
+                          title={snip.code}
+                        >
+                          {snip.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-600">Yazı Tipi (Font)</span>
+                  </div>
+                  <select
+                    value={selectedObject.fontFamily || 'Inter'}
+                    onChange={(e) =>
+                      onUpdateObject(selectedObject.id, {
+                        fontFamily: e.target.value,
+                      })
+                    }
+                    style={{ fontFamily: selectedObject.fontFamily || 'Inter' }}
+                    className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none cursor-pointer"
+                  >
+                    <option value="Inter">Inter (Varsayılan)</option>
+                    <option value="Poppins">Poppins</option>
+                    <option value="Roboto">Roboto</option>
+                    <option value="Montserrat">Montserrat</option>
+                    <option value="Playfair Display">Playfair Display (Serif)</option>
+                    <option value="Caveat">Caveat (El Yazısı)</option>
+                    <option value="JetBrains Mono">JetBrains Mono (Kod / Matematik)</option>
+                  </select>
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-600">Yazı Boyutu (px)</span>
+                    <span className="font-mono font-semibold text-slate-900">
+                      {selectedObject.fontSize || 18}px
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={12}
+                    max={44}
+                    value={selectedObject.fontSize || 18}
+                    onChange={(e) =>
+                      onUpdateObject(selectedObject.id, {
+                        fontSize: Number(e.target.value),
+                      })
+                    }
+                    className="w-full accent-indigo-600 cursor-pointer"
+                  />
+                </div>
+              </DesignAccordionSection>
+            )}
 
           {/* Live Chart Data Editor */}
           {selectedObject.assetId.startsWith('chart-') && (
@@ -2660,11 +2906,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                         onClick={() =>
                           onUpdateObject(selectedObject.id, { chartPalette: palId })
                         }
-                        className={`p-1.5 rounded-lg border text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                          isAct
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                        }`}
+                        className={`p-1.5 rounded-lg border text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition-all ${isAct
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          }`}
                       >
                         <span>{pal.label}</span>
                         <div className="flex gap-0.5">
@@ -2785,11 +3030,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                         onClick={() =>
                           onUpdateObject(selectedObject.id, { chartPalette: palId })
                         }
-                        className={`p-1.5 rounded-lg border text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                          isAct
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                        }`}
+                        className={`p-1.5 rounded-lg border text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition-all ${isAct
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          }`}
                       >
                         <span>{pal.label}</span>
                         <div className="flex gap-0.5">
@@ -2878,6 +3122,186 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
             </DesignAccordionSection>
           )}
 
+          {/* Color Pickers & Swatches */}
+          {!selectedObject.imageUrl && (
+            <DesignAccordionSection
+              isOpen={isSectionOpen('palette')}
+              onToggle={() => toggleSection('palette')}
+              title={
+                <>
+                  <Palette className="w-3.5 h-3.5 text-indigo-600" />
+                  Renk Paleti
+                </>
+              }
+            >
+
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-2 cursor-pointer">
+                  <input
+                    type="color"
+                    value={selectedObject.color}
+                    onChange={(e) =>
+                      onUpdateObject(selectedObject.id, { color: e.target.value })
+                    }
+                    className="w-6 h-6 rounded border-0 bg-transparent cursor-pointer"
+                  />
+                  <div className="min-w-0">
+                    <span className="text-[10px] text-slate-500 block">
+                      {selectedObject.assetId.startsWith('text-rough-')
+                        ? 'Çizgi & Metin'
+                        : 'Ana Renk'}
+                    </span>
+                    <span className="text-xs font-mono text-slate-900 uppercase">
+                      {selectedObject.color}
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-2 cursor-pointer">
+                  <input
+                    type="color"
+                    value={selectedObject.secondaryColor || '#6366f1'}
+                    onChange={(e) =>
+                      onUpdateObject(selectedObject.id, {
+                        secondaryColor: e.target.value,
+                      })
+                    }
+                    className="w-6 h-6 rounded border-0 bg-transparent cursor-pointer"
+                  />
+                  <div className="min-w-0">
+                    <span className="text-[10px] text-slate-500 block">
+                      {selectedObject.assetId.startsWith('text-rough-')
+                        ? 'Dolgu Rengi'
+                        : 'İkincil'}
+                    </span>
+                    <span className="text-xs font-mono text-slate-900 uppercase">
+                      {selectedObject.secondaryColor || '#6366f1'}
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {selectedObject.assetId.startsWith('text-rough-') && (
+                <div className="bg-white border border-slate-200 rounded-lg p-2">
+                  <div className="flex items-center justify-between text-[11px] mb-1">
+                    <span className="text-slate-600 font-medium">Çizgi Kalınlığı</span>
+                    <span className="font-mono text-indigo-700 font-semibold">
+                      {(selectedObject.strokeWidth ?? 2.3).toFixed(1)} px
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={6}
+                    step={0.5}
+                    value={selectedObject.strokeWidth ?? 2.3}
+                    onChange={(e) =>
+                      onUpdateObject(selectedObject.id, {
+                        strokeWidth: Number(e.target.value),
+                      })
+                    }
+                    className="w-full accent-indigo-600 cursor-pointer"
+                  />
+                </div>
+              )}
+
+              {/* Quick Studio Swatches */}
+              <div>
+                <span className="text-[10px] text-slate-500 block mb-1.5">
+                  Hızlı Stüdyo Renkleri
+                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {STUDIO_SWATCHES.map((swatch) => (
+                    <button
+                      key={swatch}
+                      onClick={() =>
+                        onUpdateObject(selectedObject.id, { color: swatch })
+                      }
+                      style={{ backgroundColor: swatch }}
+                      className={`w-5 h-5 rounded-md border transition-transform cursor-pointer ${selectedObject.color.toLowerCase() === swatch.toLowerCase()
+                        ? 'scale-110 ring-2 ring-indigo-500 border-white'
+                        : 'border-slate-300 hover:scale-105'
+                        }`}
+                      title={swatch}
+                    />
+                  ))}
+                </div>
+              </div>
+            </DesignAccordionSection>
+          )}
+
+          {/* Timeline Timing inside Design Tab */}
+          <DesignAccordionSection
+            isOpen={isSectionOpen('timing')}
+            onToggle={() => toggleSection('timing')}
+            title={
+              <>
+                <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                Zaman Çizelgesi Aralığı
+              </>
+            }
+            headerExtra={
+              <button
+                onClick={() =>
+                  onUpdateObject(selectedObject.id, {
+                    startTime: 0,
+                    duration: scene.duration,
+                  })
+                }
+                className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                title="Bu katmanı tüm sahne süresi boyunca görünür yap"
+              >
+                Tüm Sahneye Yay
+              </button>
+            }
+          >
+            <div className="grid grid-cols-2 gap-2">
+              <label className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex justify-between items-center">
+                <span className="text-[11px] text-slate-500">Başlangıç</span>
+                <input
+                  type="number"
+                  step={0.1}
+                  min={0}
+                  max={Number(Math.max(0, scene.duration - 0.5).toFixed(2))}
+                  value={Number(selectedObject.startTime.toFixed(2))}
+                  onChange={(e) => {
+                    const parsed = Number(e.target.value);
+                    if (!Number.isFinite(parsed)) return;
+                    onUpdateObject(selectedObject.id, {
+                      startTime: Number(
+                        Math.max(0, Math.min(scene.duration - 0.5, parsed)).toFixed(2)
+                      ),
+                    });
+                  }}
+                  className="w-14 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
+                />
+              </label>
+              <label className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex justify-between items-center">
+                <span className="text-[11px] text-slate-500">Süre (sn)</span>
+                <input
+                  type="number"
+                  step={0.1}
+                  min={0.5}
+                  max={Number(scene.duration.toFixed(2))}
+                  value={Number(selectedObject.duration.toFixed(2))}
+                  onChange={(e) => {
+                    const parsed = Number(e.target.value);
+                    if (!Number.isFinite(parsed)) return;
+                    onUpdateObject(selectedObject.id, {
+                      duration: Number(
+                        Math.max(
+                          0.5,
+                          Math.min(scene.duration - selectedObject.startTime, parsed)
+                        ).toFixed(2)
+                      ),
+                    });
+                  }}
+                  className="w-14 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
+                />
+              </label>
+            </div>
+          </DesignAccordionSection>
+
           {/* Quick Camera Focus on Selected Character / Object */}
           <button
             onClick={() => focusCameraOnObject(selectedObject)}
@@ -2919,23 +3343,22 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                       autoFlipX: selectedObject.motionPath?.autoFlipX ?? true,
                     },
                     ...(nextEnabled &&
-                    isArticulatedCharacter &&
-                    resolvedCharConfig &&
-                    resolvedCharConfig.pose === 'idle'
+                      isArticulatedCharacter &&
+                      resolvedCharConfig &&
+                      resolvedCharConfig.pose === 'idle'
                       ? {
-                          characterConfig: {
-                            ...resolvedCharConfig,
-                            pose: 'walk',
-                          },
-                        }
+                        characterConfig: {
+                          ...resolvedCharConfig,
+                          pose: 'walk',
+                        },
+                      }
                       : {}),
                   });
                 }}
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${
-                  selectedObject.motionPath?.enabled
-                    ? 'bg-amber-500 text-white'
-                    : 'bg-white border border-amber-300 text-amber-800 hover:bg-amber-100'
-                }`}
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${selectedObject.motionPath?.enabled
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-white border border-amber-300 text-amber-800 hover:bg-amber-100'
+                  }`}
               >
                 {selectedObject.motionPath?.enabled ? 'Aktif (Hedef B)' : '+ Rota Çiz'}
               </button>
@@ -2960,10 +3383,23 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
         <div className="space-y-4">
           <button
             onClick={() => onPreviewAnimation(selectedObject)}
-            className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer"
+            className={`w-full py-2 px-3 rounded-xl text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer ${
+              isPlaying
+                ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20'
+                : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'
+            }`}
           >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Seçili Animasyonu Şimdi Oynat</span>
+            {isPlaying ? (
+              <>
+                <Square className="w-3.5 h-3.5 fill-current" />
+                <span>Durdur</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>Seçili Animasyonu Şimdi Oynat</span>
+              </>
+            )}
           </button>
 
           {/* BANIMORA MOTION STUDIO (T3) */}
@@ -3005,11 +3441,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                           },
                         })
                       }
-                      className={`py-1.5 px-2 rounded-lg text-[10.5px] font-semibold border transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                          : 'bg-white hover:bg-indigo-50 border-indigo-200 text-slate-700'
-                      }`}
+                      className={`py-1.5 px-2 rounded-lg text-[10.5px] font-semibold border transition-all cursor-pointer ${isActive
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                        : 'bg-white hover:bg-indigo-50 border-indigo-200 text-slate-700'
+                        }`}
                     >
                       {dir.label}
                     </button>
@@ -3046,19 +3481,17 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
 
               return (
                 <div
-                  className={`p-3 rounded-xl border space-y-2.5 ${
-                    resolvedAssetClass === 'composite'
-                      ? 'bg-pink-50/70 border-pink-200'
-                      : 'bg-emerald-50/70 border-emerald-200'
-                  }`}
+                  className={`p-3 rounded-xl border space-y-2.5 ${resolvedAssetClass === 'composite'
+                    ? 'bg-pink-50/70 border-pink-200'
+                    : 'bg-emerald-50/70 border-emerald-200'
+                    }`}
                 >
                   <div className="flex items-center justify-between gap-1">
                     <span
-                      className={`text-xs font-bold flex items-center gap-1.5 ${
-                        resolvedAssetClass === 'composite'
-                          ? 'text-pink-900'
-                          : 'text-emerald-900'
-                      }`}
+                      className={`text-xs font-bold flex items-center gap-1.5 ${resolvedAssetClass === 'composite'
+                        ? 'text-pink-900'
+                        : 'text-emerald-900'
+                        }`}
                     >
                       {resolvedAssetClass === 'composite' ? (
                         <Puzzle className="w-3.5 h-3.5 text-pink-600" />
@@ -3325,23 +3758,22 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                       autoFlipX: selectedObject.motionPath?.autoFlipX ?? true,
                     },
                     ...(nextEnabled &&
-                    isArticulatedCharacter &&
-                    resolvedCharConfig &&
-                    resolvedCharConfig.pose === 'idle'
+                      isArticulatedCharacter &&
+                      resolvedCharConfig &&
+                      resolvedCharConfig.pose === 'idle'
                       ? {
-                          characterConfig: {
-                            ...resolvedCharConfig,
-                            pose: 'walk',
-                          },
-                        }
+                        characterConfig: {
+                          ...resolvedCharConfig,
+                          pose: 'walk',
+                        },
+                      }
                       : {}),
                   });
                 }}
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${
-                  selectedObject.motionPath?.enabled
-                    ? 'bg-amber-500 text-white'
-                    : 'bg-white border border-amber-300 text-amber-800 hover:bg-amber-100'
-                }`}
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${selectedObject.motionPath?.enabled
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-white border border-amber-300 text-amber-800 hover:bg-amber-100'
+                  }`}
               >
                 {selectedObject.motionPath?.enabled ? 'Aktif' : 'Etkinleştir'}
               </button>
@@ -3392,15 +3824,15 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                       },
                       ...(isArticulatedCharacter && resolvedCharConfig
                         ? {
-                            characterConfig: {
-                              ...resolvedCharConfig,
-                              pose: preset.pose,
-                              headDirection:
-                                preset.label === 'Masaya / Merkeze'
-                                  ? 'center'
-                                  : 'right',
-                            },
-                          }
+                          characterConfig: {
+                            ...resolvedCharConfig,
+                            pose: preset.pose,
+                            headDirection:
+                              preset.label === 'Masaya / Merkeze'
+                                ? 'center'
+                                : 'right',
+                          },
+                        }
                         : {}),
                     })
                   }
@@ -3432,11 +3864,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                               },
                             })
                           }
-                          className={`px-2 py-1 rounded-md text-[10px] font-medium border transition-colors cursor-pointer ${
-                            isCur
-                              ? 'bg-amber-500 text-white border-amber-500 font-semibold'
-                              : 'bg-white hover:bg-amber-50 border-amber-200 text-slate-700'
-                          }`}
+                          className={`px-2 py-1 rounded-md text-[10px] font-medium border transition-colors cursor-pointer ${isCur
+                            ? 'bg-amber-500 text-white border-amber-500 font-semibold'
+                            : 'bg-white hover:bg-amber-50 border-amber-200 text-slate-700'
+                            }`}
                         >
                           {c.label}
                         </button>
@@ -3501,11 +3932,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                   <button
                     key={opt.id}
                     onClick={() => updatePhase('enter', { type: opt.id })}
-                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-left border transition-all cursor-pointer truncate ${
-                      isSelected
-                        ? 'bg-indigo-600 border-indigo-600 text-white font-semibold'
-                        : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
-                    }`}
+                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-left border transition-all cursor-pointer truncate ${isSelected
+                      ? 'bg-indigo-600 border-indigo-600 text-white font-semibold'
+                      : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                      }`}
                   >
                     {opt.label}
                   </button>
@@ -3595,11 +4025,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                   <button
                     key={opt.id}
                     onClick={() => updatePhase('emphasis', { type: opt.id })}
-                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-left border transition-all cursor-pointer truncate ${
-                      isSelected
-                        ? 'bg-violet-600 border-violet-600 text-white font-semibold'
-                        : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
-                    }`}
+                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-left border transition-all cursor-pointer truncate ${isSelected
+                      ? 'bg-violet-600 border-violet-600 text-white font-semibold'
+                      : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                      }`}
                   >
                     {opt.label}
                   </button>
@@ -3670,11 +4099,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                   <button
                     key={opt.id}
                     onClick={() => updatePhase('exit', { type: opt.id })}
-                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-left border transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-rose-600 border-rose-600 text-white font-semibold'
-                        : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
-                    }`}
+                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-left border transition-all cursor-pointer ${isSelected
+                      ? 'bg-rose-600 border-rose-600 text-white font-semibold'
+                      : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                      }`}
                   >
                     {opt.label}
                   </button>

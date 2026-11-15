@@ -13,7 +13,7 @@ import type {
   PlayerEvaluationSettings,
   QuestionAttempt,
 } from '../types/studio';
-import { QuestionAssetPreview } from './InteractionQuestionModal';
+import { QuestionAssetPreview } from './shared/QuestionAssetPreview';
 
 interface StudentQuestionOverlayProps {
   question: InteractionQuestion;

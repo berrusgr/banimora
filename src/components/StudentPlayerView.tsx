@@ -8,15 +8,10 @@ import {
   RotateCcw,
   GraduationCap,
 } from 'lucide-react';
-import type {
-  CanvasObject,
-  LibraryAssetItem,
-  Scene,
-  SceneCamera,
-} from '../types/studio';
-import { CenterCanvas } from './CenterCanvas';
+import type { Scene } from '../types/studio';
+import { PlayerStage } from './PlayerStage';
 
-interface StudentPlayerViewProps {
+export interface StudentPlayerViewProps {
   projectName: string;
   scene: Scene;
   scenes: Scene[];
@@ -28,12 +23,6 @@ interface StudentPlayerViewProps {
   onSeekToTime: (timeSec: number) => void;
   onRestart: () => void;
   onExitStudentMode: () => void;
-  // Pass-through no-op callbacks required by CenterCanvas props in read-only playerMode
-  onUpdateSceneCamera: (camera: SceneCamera, commitHistory?: boolean) => void;
-  onUpdateObject: (id: string, patch: Partial<CanvasObject>, commitHistory?: boolean) => void;
-  onDropLibraryAsset: (item: LibraryAssetItem, pos: { x: number; y: number }) => void;
-  onDropExternalFile: (file: File, pos: { x: number; y: number }) => void;
-  onEditCharacterInStudio: (obj: CanvasObject) => void;
   children?: React.ReactNode;
 }
 
@@ -56,11 +45,6 @@ export const StudentPlayerView: React.FC<StudentPlayerViewProps> = ({
   onSeekToTime,
   onRestart,
   onExitStudentMode,
-  onUpdateSceneCamera,
-  onUpdateObject,
-  onDropLibraryAsset,
-  onDropExternalFile,
-  onEditCharacterInStudio,
   children,
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -147,35 +131,15 @@ export const StudentPlayerView: React.FC<StudentPlayerViewProps> = ({
         </button>
       </header>
 
-      {/* Main Stage Area (reusing CenterCanvas in read-only playerMode) */}
+      {/* Main Stage Area (decoupled read-only PlayerStage) */}
       <div className="flex-1 flex relative overflow-hidden">
-        <CenterCanvas
+        <PlayerStage
           scene={scene}
           previousSceneBackground={previousSceneBackground}
-          selectedObjectId={null}
-          selectedObjectIds={[]}
-          onSelectObject={() => {}}
-          onSelectObjects={() => {}}
-          selectedPartId={null}
-          onSelectPart={() => {}}
-          isCameraSelected={false}
-          selectedCameraMovementId={null}
-          onSelectCamera={() => {}}
-          onUpdateSceneCamera={onUpdateSceneCamera}
-          onAddCameraMovement={() => {}}
-          onUpdateObject={onUpdateObject}
-          onDuplicateObject={() => {}}
-          onDeleteObject={() => {}}
-          onLayerMove={() => {}}
-          onDropLibraryAsset={onDropLibraryAsset}
-          onDropExternalFile={onDropExternalFile}
-          onEditCharacterInStudio={onEditCharacterInStudio}
           currentTime={currentTime}
           isPlaying={isPlaying}
           transitionTriggerKey={transitionTriggerKey}
           zoom={100}
-          showGrid={false}
-          playerMode
         />
 
         {/* Overlay slot for question prompt / review / result screen */}

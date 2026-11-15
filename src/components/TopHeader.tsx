@@ -16,8 +16,12 @@ import {
   ChevronDown,
   Sliders,
   MonitorPlay,
+  CloudUpload,
+  Loader2,
 } from 'lucide-react';
 import type { ProjectMode } from '../types/studio';
+import type { CombinedSyncStatus } from '../utils/projectSyncCoordinator';
+import { getProjectSyncStatusDisplay } from '../utils/projectManagementUiHelpers';
 import {
   formatCompactDuration,
   MAX_TOTAL_PROJECT_DURATION,
@@ -40,11 +44,17 @@ interface TopHeaderProps {
   projectMode?: ProjectMode;
   onChangeProjectMode?: (mode: ProjectMode) => void;
   onNewProject?: () => void;
+  onOpenProjects?: () => void;
+  activeSyncState?: CombinedSyncStatus;
+  isAuthenticated?: boolean;
+  isCloudSaving?: boolean;
+  onSaveActiveToCloud?: () => void;
   onOpenAddieInfo?: () => void;
   onOpenInteractionEditor?: () => void;
   onOpenStudentPlayer?: () => void;
   onOpenPlayerSettings?: () => void;
   assureSlot?: React.ReactNode;
+  authSlot?: React.ReactNode;
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
@@ -64,11 +74,17 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   projectMode = 'classic',
   onChangeProjectMode,
   onNewProject,
+  onOpenProjects,
+  activeSyncState = 'local-only',
+  isAuthenticated = false,
+  isCloudSaving = false,
+  onSaveActiveToCloud,
   onOpenAddieInfo,
   onOpenInteractionEditor,
   onOpenStudentPlayer,
   onOpenPlayerSettings,
   assureSlot,
+  authSlot,
 }) => {
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const [jsonStatus, setJsonStatus] = useState<'saved' | 'loaded' | null>(null);
@@ -143,6 +159,52 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
               <span className="hidden 2xl:inline">Yeni</span>
             </button>
           )}
+          {onOpenProjects && (
+            <button
+              type="button"
+              onClick={onOpenProjects}
+              data-testid="open-projects-modal-btn"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-slate-700 hover:text-slate-900 text-xs font-semibold transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+              title="Yerel ve Bulut Projelerim"
+            >
+              <FolderOpen className="w-3.5 h-3.5 text-indigo-600" />
+              <span className="hidden lg:inline">Projelerim</span>
+            </button>
+          )}
+          {(() => {
+            const syncDisplay = getProjectSyncStatusDisplay(activeSyncState);
+            const showCloudSave =
+              isAuthenticated &&
+              Boolean(onSaveActiveToCloud) &&
+              (activeSyncState === 'local-only' || activeSyncState === 'dirty');
+            return (
+              <div className="hidden xl:flex items-center gap-1 shrink-0">
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-semibold whitespace-nowrap ${syncDisplay.badgeClassName}`}
+                  title={syncDisplay.label}
+                >
+                  {syncDisplay.shortLabel}
+                </span>
+                {showCloudSave && (
+                  <button
+                    type="button"
+                    onClick={onSaveActiveToCloud}
+                    disabled={isCloudSaving}
+                    data-testid="header-save-to-cloud-btn"
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 disabled:opacity-50 text-[11px] font-semibold transition-colors cursor-pointer whitespace-nowrap"
+                    title="Aktif Projeyi Buluta Kaydet"
+                  >
+                    {isCloudSaving ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <CloudUpload className="w-3 h-3" />
+                    )}
+                    <span>{isCloudSaving ? 'Kaydediliyor...' : 'Buluta Kaydet'}</span>
+                  </button>
+                )}
+              </div>
+            );
+          })()}
           {onChangeProjectMode && (
             <div className="relative shrink-0">
               <button
@@ -361,6 +423,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             {jsonStatus === 'saved' ? 'Kaydedildi' : 'JSON Kaydet'}
           </span>
         </button>
+
+        {authSlot}
 
         <button
           onClick={onOpenExport}

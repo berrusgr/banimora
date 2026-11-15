@@ -55,35 +55,35 @@ import { evaluateCharacterTimelineForRig } from '../utils/timelineRigBridge';
 interface CenterCanvasProps {
   scene: Scene;
   previousSceneBackground?: string;
-  selectedObjectId: string | null;
+  selectedObjectId?: string | null;
   selectedObjectIds?: string[];
-  onSelectObject: (id: string | null) => void;
+  onSelectObject?: (id: string | null) => void;
   onSelectObjects?: (ids: string[]) => void;
   selectedPartId?: string | null;
   onSelectPart?: (partId: string | null) => void;
-  isCameraSelected: boolean;
-  selectedCameraMovementId: string | null;
-  onSelectCamera: (movementId?: string | null) => void;
-  onUpdateSceneCamera: (camera: SceneCamera, commitHistory?: boolean) => void;
-  onAddCameraMovement: () => void;
-  onUpdateObject: (id: string, patch: Partial<CanvasObject>, commitHistory?: boolean) => void;
+  isCameraSelected?: boolean;
+  selectedCameraMovementId?: string | null;
+  onSelectCamera?: (movementId?: string | null) => void;
+  onUpdateSceneCamera?: (camera: SceneCamera, commitHistory?: boolean) => void;
+  onAddCameraMovement?: () => void;
+  onUpdateObject?: (id: string, patch: Partial<CanvasObject>, commitHistory?: boolean) => void;
   onBatchUpdateObjects?: (
     patches: Array<{ id: string; patch: Partial<CanvasObject> }>,
     commitHistory?: boolean
   ) => void;
-  onDuplicateObject: (id: string) => void;
-  onDeleteObject: (id: string) => void;
+  onDuplicateObject?: (id: string) => void;
+  onDeleteObject?: (id: string) => void;
   onDeleteObjects?: (ids: string[]) => void;
-  onLayerMove: (id: string, direction: 'up' | 'down') => void;
-  onDropLibraryAsset: (item: LibraryAssetItem, pos: { x: number; y: number }) => void;
-  onDropExternalFile: (file: File, pos: { x: number; y: number }) => void;
-  onEditCharacterInStudio: (obj: CanvasObject) => void;
+  onLayerMove?: (id: string, direction: 'up' | 'down') => void;
+  onDropLibraryAsset?: (item: LibraryAssetItem, pos: { x: number; y: number }) => void;
+  onDropExternalFile?: (file: File, pos: { x: number; y: number }) => void;
+  onEditCharacterInStudio?: (obj: CanvasObject) => void;
   currentTime: number;
   isPlaying: boolean;
   stageMotionPreview?: StageMotionPreviewRequest | null;
   transitionTriggerKey: number;
-  zoom: number;
-  showGrid: boolean;
+  zoom?: number;
+  showGrid?: boolean;
   playerMode?: boolean;
   canUndo?: boolean;
   canRedo?: boolean;
@@ -164,35 +164,37 @@ type InteractionMode =
     }
   | null;
 
+const NOOP = () => {};
+
 export const CenterCanvas: React.FC<CenterCanvasProps> = ({
   scene,
   previousSceneBackground,
-  selectedObjectId,
+  selectedObjectId = null,
   selectedObjectIds,
-  onSelectObject,
+  onSelectObject = NOOP,
   onSelectObjects,
   selectedPartId,
   onSelectPart,
-  isCameraSelected,
-  selectedCameraMovementId,
-  onSelectCamera,
-  onUpdateSceneCamera,
-  onAddCameraMovement,
-  onUpdateObject,
+  isCameraSelected = false,
+  selectedCameraMovementId = null,
+  onSelectCamera = NOOP,
+  onUpdateSceneCamera = NOOP,
+  onAddCameraMovement = NOOP,
+  onUpdateObject = NOOP,
   onBatchUpdateObjects,
-  onDuplicateObject,
-  onDeleteObject,
+  onDuplicateObject = NOOP,
+  onDeleteObject = NOOP,
   onDeleteObjects,
-  onLayerMove,
-  onDropLibraryAsset,
-  onDropExternalFile,
-  onEditCharacterInStudio,
+  onLayerMove = NOOP,
+  onDropLibraryAsset = NOOP,
+  onDropExternalFile = NOOP,
+  onEditCharacterInStudio = NOOP,
   currentTime,
   isPlaying,
   stageMotionPreview,
   transitionTriggerKey,
-  zoom,
-  showGrid,
+  zoom = 100,
+  showGrid = false,
   playerMode = false,
   canUndo = false,
   canRedo = false,

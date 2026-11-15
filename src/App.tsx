@@ -30,6 +30,10 @@ import { CenterCanvas } from './components/CenterCanvas';
 import { RightInspector } from './components/RightInspector';
 import { BottomTimeline } from './components/BottomTimeline';
 import { ExportModal } from './components/ExportModal';
+import { AuthModal } from './components/AuthModal';
+import { ProjectsModal } from './components/ProjectsModal';
+import { ProjectConflictDialog } from './components/ProjectConflictDialog';
+import { useAuth } from './contexts/AuthContext';
 import { CharacterStudioModal } from './components/CharacterStudioModal';
 import {
   AddieProjectInfoModal,
@@ -44,12 +48,13 @@ import { StudentResultOverlay } from './components/StudentResultOverlay';
 import {
   createLearningSession,
   findBlockingQuestionBeforeSeek,
-  findTriggeredQuestionInInterval,
   getSkippedQuestionsForReview,
   resolvePlayerSettings,
   skipQuestionInSession,
   submitQuestionAnswer,
 } from './utils/studentPlayerEngine';
+import { createLocalStudentRuntimeAdapter } from './utils/runtimeAdapter';
+import { usePlayerRuntime } from './runtime/usePlayerRuntime';
 import { soundEngine } from './utils/soundEffects';
 import { MAX_TOTAL_PROJECT_DURATION } from './utils/animationEngine';
 import {
@@ -57,11 +62,31 @@ import {
   createDefaultAddieData,
   createDefaultAddieProgress,
   downloadProjectJson,
+  generateNewProjectId,
   normalizeProjectEducationalMetadata,
   parseProjectJsonFile,
   saveAutoSaveProject,
   switchProjectModePreservingData,
 } from './utils/projectStorage';
+import type { AssetManifest, BanimoraProjectFileV2 } from './types/publishing';
+import { IndexedDbStorageError } from './utils/indexedDbStorage';
+import {
+  buildV2ProjectFromStudioState,
+  LocalProjectRepository,
+  migrateLocalStorageToIndexedDb,
+} from './utils/localProjectRepository';
+import { SupabaseProjectRepository } from './utils/supabaseProjectRepository';
+import {
+  ProjectSyncCoordinator,
+  type CombinedProjectEntry,
+  type CombinedSyncStatus,
+} from './utils/projectSyncCoordinator';
+import {
+  evaluateProjectSwitchConfirmation,
+  formatCloudRepositoryErrorMessage,
+  formatPayloadSizeWarningMessage,
+  getSyncStateAfterLocalRename,
+} from './utils/projectManagementUiHelpers';
 import type { SmartActionPackage } from './data/smartActionPackages';
 import {
   applySmartActionToScene,
@@ -174,6 +199,8 @@ export function App() {
   const [playAllScenes, setPlayAllScenes] = useState(true);
   const [projectFps, setProjectFps] = useState<24 | 30 | 60>(30);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { user: authUser, isAuthenticated, isLoading: isAuthLoading, signOut } = useAuth();
   const [recoveredAutoSave, setRecoveredAutoSave] = useState<BanimoraProjectFile | null>(null);
   const [educationalMetadata, setEducationalMetadata] =
     useState<ProjectEducationalMetadata>({ mode: 'classic' });
@@ -209,6 +236,66 @@ export function App() {
   educationalMetadataRef.current = educationalMetadata;
   const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
   const isInitialAutoSaveMountRef = useRef(true);
+  const projectRepoRef = useRef<LocalProjectRepository | null>(null);
+  const cloudRepoRef = useRef<SupabaseProjectRepository | null>(null);
+  const syncCoordinatorRef = useRef<ProjectSyncCoordinator | null>(null);
+  const currentProjectIdRef = useRef<string | null>(null);
+  const currentProjectRevisionRef = useRef<number | undefined>(undefined);
+  const currentProjectCreatedAtRef = useRef<string | undefined>(undefined);
+  const currentAssetManifestRef = useRef<AssetManifest | undefined>(undefined);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [activeSyncState, setActiveSyncState] = useState<CombinedSyncStatus>('local-only');
+  const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
+  const [combinedProjects, setCombinedProjects] = useState<CombinedProjectEntry[]>([]);
+  const [isProjectsLoading, setIsProjectsLoading] = useState(false);
+  const [cloudAvailable, setCloudAvailable] = useState(true);
+  const [busyProjectId, setBusyProjectId] = useState<string | null>(null);
+  const [isHeaderCloudSaving, setIsHeaderCloudSaving] = useState(false);
+  const [projectModalError, setProjectModalError] = useState<string | null>(null);
+  const [projectModalWarning, setProjectModalWarning] = useState<string | null>(null);
+  const [projectNotice, setProjectNotice] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+  const [conflictDialogState, setConflictDialogState] = useState<{
+    isOpen: boolean;
+    projectId: string;
+    projectName: string;
+    cloudProjectName?: string;
+    localUpdatedAt?: string;
+    cloudUpdatedAt?: string;
+    openAfterResolve?: boolean;
+    isSubmitting: boolean;
+    errorMessage: string | null;
+  } | null>(null);
+
+  const getProjectRepository = useCallback((): LocalProjectRepository => {
+    if (!projectRepoRef.current) {
+      projectRepoRef.current = new LocalProjectRepository();
+    }
+    return projectRepoRef.current;
+  }, []);
+
+  const getCloudRepository = useCallback((): SupabaseProjectRepository => {
+    if (!cloudRepoRef.current) {
+      cloudRepoRef.current = new SupabaseProjectRepository({
+        onPayloadWarning: (check) => {
+          setProjectModalWarning(formatPayloadSizeWarningMessage(check.byteLength));
+        },
+      });
+    }
+    return cloudRepoRef.current;
+  }, []);
+
+  const getSyncCoordinator = useCallback((): ProjectSyncCoordinator => {
+    if (!syncCoordinatorRef.current) {
+      syncCoordinatorRef.current = new ProjectSyncCoordinator({
+        localRepo: getProjectRepository(),
+        cloudRepo: getCloudRepository(),
+      });
+    }
+    return syncCoordinatorRef.current;
+  }, [getCloudRepository, getProjectRepository]);
 
   // Commit or replace scene state in Undo/Redo history
   const updateScenesState = useCallback(
@@ -302,14 +389,9 @@ export function App() {
 
   const [stageMotionPreview, setStageMotionPreview] =
     useState<StageMotionPreviewRequest | null>(null);
-  const lastFrameRef = useRef<number | null>(null);
-  const triggeredClipsRef = useRef<Set<string>>(new Set());
-  const currentTimeRef = useRef<number>(currentTime);
-  currentTimeRef.current = currentTime;
-  const scenesRef = useRef<Scene[]>(scenes);
-  scenesRef.current = scenes;
-  const activeSceneIdRef = useRef<string>(activeScene.id);
-  activeSceneIdRef.current = activeScene.id;
+  const studentRuntimeAdapterRef = useRef(
+    createLocalStudentRuntimeAdapter({ kind: 'studio-preview' })
+  );
 
   // Preload lip-sync audio amplitude envelopes for all scenes so mouths move on frame 1
   useEffect(() => {
@@ -332,214 +414,75 @@ export function App() {
     }
   }, [isPlaying, selectedObjectId, stageMotionPreview]);
 
-  useEffect(() => {
-    if (!isPlaying) {
-      lastFrameRef.current = null;
-      triggeredClipsRef.current.clear();
-      soundEngine.stopAll();
-      return;
-    }
-
-    let animId: number;
-    const step = (timestamp: number) => {
-      if (lastFrameRef.current === null) {
-        lastFrameRef.current = timestamp;
-      }
-      const deltaSec = (timestamp - lastFrameRef.current) / 1000;
-      lastFrameRef.current = timestamp;
-
-      const prev = currentTimeRef.current;
-      const next = prev + deltaSec;
-
-      if (
-        viewModeRef.current === 'student' &&
-        !activeStudentQuestionRef.current &&
-        studentSessionRef.current
-      ) {
-        const questions = educationalMetadataRef.current.interactions ?? [];
-        const triggered = findTriggeredQuestionInInterval(
-          questions,
-          activeScene.id,
-          prev * 1000,
-          next * 1000,
-          studentSessionRef.current.triggeredQuestionIds
-        );
-        if (triggered) {
-          triggeredClipsRef.current.clear();
-          soundEngine.stopAll();
-          const pinnedSec = Math.min(activeScene.duration, triggered.timestampMs / 1000);
-          currentTimeRef.current = pinnedSec;
-          setCurrentTime(pinnedSec);
-          setIsPlaying(false);
-          const updatedSession: LearningSession = {
-            ...studentSessionRef.current,
-            lastActivityAt: new Date().toISOString(),
-            currentSceneId: activeScene.id,
-            currentTimeMs: triggered.timestampMs,
-            triggeredQuestionIds: studentSessionRef.current.triggeredQuestionIds.includes(
-              triggered.id
-            )
-              ? studentSessionRef.current.triggeredQuestionIds
-              : [...studentSessionRef.current.triggeredQuestionIds, triggered.id],
-          };
-          studentSessionRef.current = updatedSession;
-          setStudentSession(updatedSession);
-          activeStudentQuestionRef.current = triggered;
-          setActiveStudentQuestion(triggered);
-          return;
+  // Tek merkezi RAF döngüsü ve tek zaman kaynağı (Studio Preview + Student Player ortak PlayerRuntime)
+  const { currentTimeRef } = usePlayerRuntime({
+    mode: viewMode === 'student' ? 'student' : 'studio-preview',
+    scenes,
+    activeSceneId: activeScene.id,
+    currentTime,
+    isPlaying,
+    loopPlayback,
+    playAllScenes,
+    interactions: educationalMetadata.interactions ?? [],
+    playerSettings: educationalMetadata.playerSettings,
+    session: studentSession,
+    activeQuestion: activeStudentQuestion,
+    runtimeAdapter: studentRuntimeAdapterRef.current,
+    audioPort: soundEngine,
+    callbacks: {
+      onTimeChange: setCurrentTime,
+      onPlayingChange: setIsPlaying,
+      onSceneChange: (nextScene, opts) => {
+        if (opts.triggerTransition && opts.previousBackgroundCss !== undefined) {
+          setPreviousSceneBg(opts.previousBackgroundCss);
+          setTransitionTriggerKey((k) => k + 1);
         }
-      }
-
-      activeScene.audioClips.forEach((clip) => {
-        const clipEnd = clip.startTime + Math.max(0.1, clip.duration);
-        if (
-          next >= clip.startTime &&
-          next < clipEnd &&
-          !triggeredClipsRef.current.has(clip.id)
-        ) {
-          triggeredClipsRef.current.add(clip.id);
-          soundEngine.playClip(clip, Math.max(0, next - clip.startTime));
-        }
-      });
-
-      // Also trigger any character Lip-Sync voice audio when playhead is within character's span
-      activeScene.objects.forEach((obj) => {
-        const lipUrl = obj.characterConfig?.lipSyncAudioUrl;
-        if (!obj.characterConfig?.lipSyncEnabled || !lipUrl) return;
-        // Skip if already played via scene.audioClips
-        if (activeScene.audioClips.some((c) => c.audioUrl === lipUrl)) return;
-        const lipKey = `lip-${obj.id}`;
-        const objEnd = obj.startTime + Math.max(0.1, obj.duration);
-        if (
-          next >= obj.startTime &&
-          next < objEnd &&
-          !triggeredClipsRef.current.has(lipKey)
-        ) {
-          triggeredClipsRef.current.add(lipKey);
-          soundEngine.playClip(
-            {
-              id: lipKey,
-              duration: obj.duration,
-              freqPattern: [],
-              audioUrl: lipUrl,
-            },
-            Math.max(0, next - obj.startTime)
-          );
-        }
-      });
-
-      if (next >= activeScene.duration) {
-        triggeredClipsRef.current.clear();
-        soundEngine.stopAll();
-
-        const allScenes = scenesRef.current;
-        const currentIdx = allScenes.findIndex((s) => s.id === activeSceneIdRef.current);
-        const isStudent = viewModeRef.current === 'student';
-        const hasNextScene =
-          (isStudent || playAllScenes) &&
-          currentIdx >= 0 &&
-          currentIdx < allScenes.length - 1;
-
-        if (hasNextScene) {
-          const nextScene = allScenes[currentIdx + 1];
-          if (nextScene.transition.type !== 'none') {
-            setPreviousSceneBg(
-              activeScene.background.imageUrl
-                ? `url("${activeScene.background.imageUrl}") center / cover no-repeat`
-                : activeScene.background.style
-            );
-            setTransitionTriggerKey((k) => k + 1);
-          }
+        setSelectedObjectId(null);
+        setSelectedPartId(null);
+        setIsCameraSelected(false);
+        setSelectedCameraMovementId(null);
+        setActiveSceneId(nextScene.id);
+      },
+      onLoopRestart: (firstScene) => {
+        if (firstScene) {
           setSelectedObjectId(null);
           setSelectedPartId(null);
           setIsCameraSelected(false);
           setSelectedCameraMovementId(null);
-          setActiveSceneId(nextScene.id);
-          currentTimeRef.current = 0;
-          setCurrentTime(0);
-          if (isStudent && studentSessionRef.current) {
-            const nextSession: LearningSession = {
-              ...studentSessionRef.current,
-              currentSceneId: nextScene.id,
-              currentTimeMs: 0,
-              lastActivityAt: new Date().toISOString(),
-            };
-            studentSessionRef.current = nextSession;
-            setStudentSession(nextSession);
-          }
-        } else if (!isStudent && loopPlayback) {
-          if (playAllScenes && allScenes.length > 1) {
-            const firstScene = allScenes[0];
-            setSelectedObjectId(null);
-            setSelectedPartId(null);
-            setIsCameraSelected(false);
-            setSelectedCameraMovementId(null);
-            setActiveSceneId(firstScene.id);
-          }
-          currentTimeRef.current = 0;
-          setCurrentTime(0);
-        } else {
-          currentTimeRef.current = activeScene.duration;
-          setCurrentTime(activeScene.duration);
-          setIsPlaying(false);
-          if (isStudent && studentSessionRef.current) {
-            const allQuestions = educationalMetadataRef.current.interactions ?? [];
-            const skipped = getSkippedQuestionsForReview(
-              allQuestions,
-              studentSessionRef.current
-            );
-            const settings = resolvePlayerSettings(
-              educationalMetadataRef.current.playerSettings
-            );
-            if (skipped.length > 0) {
-              const reviewSession: LearningSession = {
-                ...studentSessionRef.current,
-                status: 'reviewing_skipped',
-                currentTimeMs: activeScene.duration * 1000,
-                lastActivityAt: new Date().toISOString(),
-              };
-              studentSessionRef.current = reviewSession;
-              setStudentSession(reviewSession);
-              setStudentReviewQueue(skipped);
-              setStudentReviewIndex(0);
-            } else {
-              const completedSession: LearningSession = {
-                ...studentSessionRef.current,
-                status: 'completed',
-                currentTimeMs: activeScene.duration * 1000,
-                lastActivityAt: new Date().toISOString(),
-              };
-              studentSessionRef.current = completedSession;
-              setStudentSession(completedSession);
-              if (settings.showResultScreen) {
-                setShowStudentResultScreen(true);
-              } else {
-                setShowStudentCompletedNotice(true);
-              }
-            }
-          }
-          return;
+          setActiveSceneId(firstScene.id);
         }
-      } else {
-        currentTimeRef.current = next;
-        setCurrentTime(next);
-      }
-
-      animId = requestAnimationFrame(step);
-    };
-
-    animId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(animId);
-  }, [
-    isPlaying,
-    activeScene.id,
-    activeScene.duration,
-    activeScene.background,
-    activeScene.audioClips,
-    activeScene.objects,
-    loopPlayback,
-    playAllScenes,
-  ]);
+      },
+      onQuestionTriggered: (triggered, updatedSession) => {
+        studentSessionRef.current = updatedSession;
+        setStudentSession(updatedSession);
+        activeStudentQuestionRef.current = triggered;
+        setActiveStudentQuestion(triggered);
+      },
+      onSessionUpdate: (updatedSession) => {
+        studentSessionRef.current = updatedSession;
+        setStudentSession(updatedSession);
+      },
+      onStartSkippedReview: (skipped, reviewSession) => {
+        studentSessionRef.current = reviewSession;
+        setStudentSession(reviewSession);
+        setStudentReviewQueue(skipped);
+        setStudentReviewIndex(0);
+      },
+      onPlaybackCompleted: (completedSession) => {
+        if (!completedSession) return;
+        studentSessionRef.current = completedSession;
+        setStudentSession(completedSession);
+        const settings = resolvePlayerSettings(
+          educationalMetadataRef.current.playerSettings
+        );
+        if (settings.showResultScreen) {
+          setShowStudentResultScreen(true);
+        } else {
+          setShowStudentCompletedNotice(true);
+        }
+      },
+    },
+  });
 
   // Keyboard shortcuts
   // Merkezi klavye kısayolları `AdaptiveTimeline` içinde yönetilir.
@@ -1629,6 +1572,12 @@ export function App() {
       setPendingSmartActionTrial(null);
       setEducationalMetadata(nextEducationalMetadata);
       setRecoveredAutoSave(null);
+      currentProjectIdRef.current = generateNewProjectId();
+      currentProjectRevisionRef.current = undefined;
+      currentProjectCreatedAtRef.current = undefined;
+      currentAssetManifestRef.current = undefined;
+      setActiveProjectId(currentProjectIdRef.current);
+      setActiveSyncState('local-only');
     },
     []
   );
@@ -1823,16 +1772,52 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    const repo = getProjectRepository();
+    if (repo.isAvailable()) {
+      void migrateLocalStorageToIndexedDb(repo).then((migration) => {
+        if (migration.status === 'completed' && migration.projectId && !currentProjectIdRef.current) {
+          currentProjectIdRef.current = migration.projectId;
+          currentProjectRevisionRef.current = migration.revision;
+        }
+      });
+    }
+
+    const unsubscribe = repo.subscribeToChanges((event) => {
+      if (
+        currentProjectIdRef.current &&
+        event.projectId === currentProjectIdRef.current &&
+        (event.type === 'project-saved' || event.type === 'project-deleted') &&
+        (event.type === 'project-deleted' ||
+          (typeof event.revision === 'number' &&
+            (currentProjectRevisionRef.current === undefined ||
+              event.revision > currentProjectRevisionRef.current)))
+      ) {
+        setAutoSaveError(
+          'Bu proje başka bir sekmede güncellendi. Veri çakışmasını önlemek için sayfayı yenileyin veya projeyi dışa aktarın.'
+        );
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      repo.close();
+      projectRepoRef.current = null;
+    };
+  }, [getProjectRepository]);
+
+  useEffect(() => {
     if (isInitialAutoSaveMountRef.current) {
       isInitialAutoSaveMountRef.current = false;
       return;
     }
     hasUnsavedChangesRef.current = true;
+    setActiveSyncState((prev) => (prev === 'synced' ? 'dirty' : prev));
     // Keep existing recovery snapshot intact until user either restores or discards it.
     if (recoveredAutoSave) return;
 
+    let cancelled = false;
     const timer = window.setTimeout(() => {
-      const result = saveAutoSaveProject({
+      const studioState = {
         projectName,
         activeSceneId,
         scenes,
@@ -1845,17 +1830,67 @@ export function App() {
         loopPlayback,
         fps: projectFps,
         educationalMetadata,
-      });
-      if (!result.ok) {
-        setAutoSaveError(result.error || 'Otomatik kayıt başarısız oldu.');
-      } else {
-        hasUnsavedChangesRef.current = false;
-        setAutoSaveError(null);
+      };
+
+      const repo = getProjectRepository();
+      if (!repo.isAvailable()) {
+        const result = saveAutoSaveProject(studioState);
+        if (cancelled) return;
+        if (!result.ok) {
+          setAutoSaveError(result.error || 'Otomatik kayıt başarısız oldu.');
+        } else {
+          hasUnsavedChangesRef.current = false;
+          setAutoSaveError(null);
+        }
+        return;
       }
+
+      if (!currentProjectIdRef.current) {
+        currentProjectIdRef.current = generateNewProjectId();
+      }
+      const targetId = currentProjectIdRef.current;
+      const expectedRev = currentProjectRevisionRef.current ?? 0;
+      const v2Snapshot = buildV2ProjectFromStudioState(studioState, {
+        projectId: targetId,
+        revision: currentProjectRevisionRef.current,
+        createdAt: currentProjectCreatedAtRef.current,
+        existingManifest: currentAssetManifestRef.current,
+      });
+
+      void repo
+        .saveProject(v2Snapshot, expectedRev)
+        .then(({ project: savedProject, localRevision }) => {
+          if (cancelled) return;
+          currentProjectIdRef.current = savedProject.projectId;
+          currentProjectRevisionRef.current = localRevision;
+          currentProjectCreatedAtRef.current = savedProject.savedAt;
+          currentAssetManifestRef.current = savedProject.assetManifest;
+          setActiveProjectId(savedProject.projectId);
+          setActiveSyncState(savedProject.cloudMeta?.syncState ?? 'local-only');
+          hasUnsavedChangesRef.current = false;
+          setAutoSaveError(null);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          if (err instanceof IndexedDbStorageError && err.code === 'INDEXEDDB_UNAVAILABLE') {
+            const fallback = saveAutoSaveProject(studioState);
+            if (fallback.ok) {
+              hasUnsavedChangesRef.current = false;
+              setAutoSaveError(null);
+              return;
+            }
+          }
+          const message = err instanceof Error ? err.message : 'Otomatik kayıt başarısız oldu.';
+          setAutoSaveError(message);
+        });
     }, 2500);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [
+    getProjectRepository,
     recoveredAutoSave,
     projectName,
     activeSceneId,
@@ -1874,6 +1909,12 @@ export function App() {
   const handleLoadProjectJson = useCallback(async (file: File): Promise<boolean> => {
     try {
       const loaded = await parseProjectJsonFile(file);
+      currentProjectIdRef.current = generateNewProjectId();
+      currentProjectRevisionRef.current = undefined;
+      currentProjectCreatedAtRef.current = undefined;
+      currentAssetManifestRef.current = undefined;
+      setActiveProjectId(currentProjectIdRef.current);
+      setActiveSyncState('local-only');
       applyLoadedProject(loaded);
       setRecoveredAutoSave(null);
       return true;
@@ -1884,6 +1925,500 @@ export function App() {
       return false;
     }
   }, [applyLoadedProject]);
+
+  const showProjectNotice = useCallback((type: 'success' | 'error', text: string) => {
+    setProjectNotice({ type, text });
+    window.setTimeout(() => {
+      setProjectNotice((prev) => (prev?.text === text ? null : prev));
+    }, 4500);
+  }, []);
+
+  const refreshCombinedProjects = useCallback(async () => {
+    setIsProjectsLoading(true);
+    setProjectModalError(null);
+    try {
+      const result = await getSyncCoordinator().listCombinedProjects();
+      setCombinedProjects(result.projects);
+      setCloudAvailable(result.cloudAvailable);
+      if (result.cloudError && isAuthenticated && result.cloudError.code !== 'AUTH_REQUIRED') {
+        setProjectModalError(formatCloudRepositoryErrorMessage(result.cloudError));
+      }
+    } catch (err) {
+      setProjectModalError(formatCloudRepositoryErrorMessage(err));
+    } finally {
+      setIsProjectsLoading(false);
+    }
+  }, [getSyncCoordinator, isAuthenticated]);
+
+  const openV2ProjectInStudio = useCallback(
+    async (v2Project: BanimoraProjectFileV2, localRevisionOverride?: number) => {
+      const repo = getProjectRepository();
+      const hydrated = await repo.hydrateProjectMedia(v2Project);
+      const localRev =
+        localRevisionOverride ?? (await repo.getLocalRevision(v2Project.projectId)) ?? 1;
+
+      currentProjectIdRef.current = v2Project.projectId;
+      currentProjectRevisionRef.current = localRev;
+      currentProjectCreatedAtRef.current = v2Project.savedAt;
+      currentAssetManifestRef.current = v2Project.assetManifest;
+      setActiveProjectId(v2Project.projectId);
+      setActiveSyncState(v2Project.cloudMeta?.syncState ?? 'local-only');
+
+      applyLoadedProject({
+        format: 'banimora-project',
+        version: 1,
+        savedAt: hydrated.savedAt,
+        projectName: hydrated.projectName,
+        activeSceneId: hydrated.activeSceneId,
+        scenes: hydrated.scenes,
+        customCharacters: hydrated.customCharacters,
+        uploadedObjects: hydrated.uploadedObjects,
+        customBackgrounds: hydrated.customBackgrounds,
+        customAudioClips: hydrated.customAudioClips,
+        zoom: hydrated.zoom,
+        showGrid: hydrated.showGrid,
+        loopPlayback: hydrated.loopPlayback,
+        fps: hydrated.fps,
+        educationalMetadata: hydrated.educationalMetadata,
+      });
+      hasUnsavedChangesRef.current = false;
+      setRecoveredAutoSave(null);
+    },
+    [applyLoadedProject, getProjectRepository]
+  );
+
+  const ensureActiveProjectSavedLocally = useCallback(async (): Promise<string> => {
+    const repo = getProjectRepository();
+    if (!currentProjectIdRef.current) {
+      currentProjectIdRef.current = generateNewProjectId();
+    }
+    const targetId = currentProjectIdRef.current;
+
+    if (hasUnsavedChangesRef.current || currentProjectRevisionRef.current === undefined) {
+      const studioState = {
+        projectName,
+        activeSceneId,
+        scenes,
+        customCharacters,
+        uploadedObjects,
+        customBackgrounds,
+        customAudioClips,
+        zoom,
+        showGrid,
+        loopPlayback,
+        fps: projectFps,
+        educationalMetadata,
+      };
+      const expectedRev = currentProjectRevisionRef.current ?? 0;
+      const v2Snapshot = buildV2ProjectFromStudioState(studioState, {
+        projectId: targetId,
+        revision: currentProjectRevisionRef.current,
+        createdAt: currentProjectCreatedAtRef.current,
+        existingManifest: currentAssetManifestRef.current,
+      });
+      const { project: savedProject, localRevision } = await repo.saveProject(
+        v2Snapshot,
+        expectedRev
+      );
+      currentProjectIdRef.current = savedProject.projectId;
+      currentProjectRevisionRef.current = localRevision;
+      currentProjectCreatedAtRef.current = savedProject.savedAt;
+      currentAssetManifestRef.current = savedProject.assetManifest;
+      setActiveProjectId(savedProject.projectId);
+      setActiveSyncState(savedProject.cloudMeta?.syncState ?? 'local-only');
+      hasUnsavedChangesRef.current = false;
+    }
+
+    return currentProjectIdRef.current;
+  }, [
+    activeSceneId,
+    customAudioClips,
+    customBackgrounds,
+    customCharacters,
+    educationalMetadata,
+    getProjectRepository,
+    loopPlayback,
+    projectFps,
+    projectName,
+    scenes,
+    showGrid,
+    uploadedObjects,
+    zoom,
+  ]);
+
+  const handleOpenProjectsModal = useCallback(() => {
+    setIsProjectsModalOpen(true);
+    void refreshCombinedProjects();
+  }, [refreshCombinedProjects]);
+
+  const handleSaveEntryToCloud = useCallback(
+    async (projectId: string, entryName?: string) => {
+      if (busyProjectId || isHeaderCloudSaving) return;
+      setBusyProjectId(projectId);
+      setIsHeaderCloudSaving(true);
+      setProjectModalError(null);
+      try {
+        const result = await getSyncCoordinator().saveToCloud(projectId);
+        if (result.status === 'conflict') {
+          if (projectId === currentProjectIdRef.current) {
+            setActiveSyncState('conflict');
+          }
+          setConflictDialogState({
+            isOpen: true,
+            projectId: result.project.projectId,
+            projectName: result.project.projectName,
+            localUpdatedAt: result.project.savedAt,
+            openAfterResolve: false,
+            isSubmitting: false,
+            errorMessage: null,
+          });
+          await refreshCombinedProjects();
+          return;
+        }
+
+        const repo = getProjectRepository();
+        const savedId = result.project.projectId;
+        if (
+          projectId === currentProjectIdRef.current ||
+          result.rekeyedFromProjectId === currentProjectIdRef.current
+        ) {
+          currentProjectIdRef.current = savedId;
+          currentProjectRevisionRef.current =
+            (await repo.getLocalRevision(savedId)) ?? currentProjectRevisionRef.current;
+          currentAssetManifestRef.current = result.project.assetManifest;
+          setActiveProjectId(savedId);
+          setActiveSyncState('synced');
+        }
+
+        showProjectNotice(
+          'success',
+          `"${entryName ?? result.project.projectName}" buluta kaydedildi.`
+        );
+        if (isProjectsModalOpen) {
+          await refreshCombinedProjects();
+        }
+      } catch (err) {
+        const msg = formatCloudRepositoryErrorMessage(err);
+        if (isProjectsModalOpen) {
+          setProjectModalError(msg);
+        } else {
+          showProjectNotice('error', msg);
+        }
+      } finally {
+        setBusyProjectId(null);
+        setIsHeaderCloudSaving(false);
+      }
+    },
+    [
+      busyProjectId,
+      getProjectRepository,
+      getSyncCoordinator,
+      isHeaderCloudSaving,
+      isProjectsModalOpen,
+      refreshCombinedProjects,
+      showProjectNotice,
+    ]
+  );
+
+  const handleSaveActiveToCloud = useCallback(async () => {
+    if (!isAuthenticated) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (isHeaderCloudSaving || busyProjectId) return;
+    try {
+      const id = await ensureActiveProjectSavedLocally();
+      await handleSaveEntryToCloud(id, projectName);
+    } catch (err) {
+      showProjectNotice('error', formatCloudRepositoryErrorMessage(err));
+    }
+  }, [
+    busyProjectId,
+    ensureActiveProjectSavedLocally,
+    handleSaveEntryToCloud,
+    isAuthenticated,
+    isHeaderCloudSaving,
+    projectName,
+    showProjectNotice,
+  ]);
+
+  const handleOpenProjectFromModal = useCallback(
+    async (entry: CombinedProjectEntry) => {
+      if (busyProjectId) return;
+
+      const switchCheck = evaluateProjectSwitchConfirmation({
+        currentProjectId: currentProjectIdRef.current,
+        currentProjectName: projectName,
+        currentSyncState: activeSyncState,
+        hasUnsavedLocalChanges: hasUnsavedChangesRef.current,
+        targetProjectId: entry.projectId,
+        targetProjectName: entry.projectName,
+      });
+
+      if (switchCheck.requiresConfirmation && switchCheck.message) {
+        const confirmed = window.confirm(switchCheck.message);
+        if (!confirmed) return;
+      }
+
+      setBusyProjectId(entry.projectId);
+      setProjectModalError(null);
+      try {
+        if (entry.syncState === 'cloud-only') {
+          const openRes = await getSyncCoordinator().openFromCloud(entry.projectId);
+          if (openRes.status === 'conflict') {
+            setConflictDialogState({
+              isOpen: true,
+              projectId: entry.projectId,
+              projectName: openRes.project.projectName,
+              cloudProjectName: openRes.cloudProject?.projectName,
+              localUpdatedAt: openRes.project.savedAt,
+              cloudUpdatedAt: openRes.cloudProject?.savedAt,
+              openAfterResolve: true,
+              isSubmitting: false,
+              errorMessage: null,
+            });
+            return;
+          }
+          await openV2ProjectInStudio(openRes.project);
+        } else {
+          const localDoc = await getProjectRepository().loadProject(entry.projectId);
+          if (!localDoc) {
+            setProjectModalError('Proje yerel depoda bulunamadı.');
+            return;
+          }
+          await openV2ProjectInStudio(localDoc);
+        }
+
+        setIsProjectsModalOpen(false);
+        showProjectNotice('success', `"${entry.projectName}" açıldı.`);
+      } catch (err) {
+        setProjectModalError(formatCloudRepositoryErrorMessage(err));
+      } finally {
+        setBusyProjectId(null);
+      }
+    },
+    [
+      activeSyncState,
+      busyProjectId,
+      getProjectRepository,
+      getSyncCoordinator,
+      openV2ProjectInStudio,
+      projectName,
+      showProjectNotice,
+    ]
+  );
+
+  const handleRenameProjectFromModal = useCallback(
+    async (entry: CombinedProjectEntry, nextName: string) => {
+      if (busyProjectId) return;
+      setBusyProjectId(entry.projectId);
+      setProjectModalError(null);
+      try {
+        if (entry.syncState === 'cloud-only') {
+          await getCloudRepository().renameProject(entry.projectId, nextName);
+        } else {
+          const repo = getProjectRepository();
+          await repo.renameProject(entry.projectId, nextName);
+          if (entry.projectId === currentProjectIdRef.current) {
+            setProjectName(nextName);
+            currentProjectRevisionRef.current =
+              (await repo.getLocalRevision(entry.projectId)) ??
+              currentProjectRevisionRef.current;
+            setActiveSyncState((prev) =>
+              getSyncStateAfterLocalRename(
+                prev === 'cloud-only' ? 'local-only' : prev,
+              ),
+            );
+          }
+        }
+        await refreshCombinedProjects();
+        showProjectNotice('success', `Proje "${nextName}" olarak yeniden adlandırıldı.`);
+      } catch (err) {
+        setProjectModalError(formatCloudRepositoryErrorMessage(err));
+      } finally {
+        setBusyProjectId(null);
+      }
+    },
+    [
+      busyProjectId,
+      getCloudRepository,
+      getProjectRepository,
+      refreshCombinedProjects,
+      showProjectNotice,
+    ]
+  );
+
+  const handleDeleteLocalFromModal = useCallback(
+    async (entry: CombinedProjectEntry) => {
+      if (busyProjectId) return;
+      setBusyProjectId(entry.projectId);
+      setProjectModalError(null);
+      try {
+        await getProjectRepository().deleteProject(entry.projectId);
+        if (entry.projectId === currentProjectIdRef.current) {
+          currentProjectIdRef.current = null;
+          currentProjectRevisionRef.current = undefined;
+          currentProjectCreatedAtRef.current = undefined;
+          currentAssetManifestRef.current = undefined;
+          setActiveProjectId(null);
+          setActiveSyncState('local-only');
+        }
+        await refreshCombinedProjects();
+        showProjectNotice(
+          'success',
+          `"${entry.projectName}" bu cihazdan silindi.`
+        );
+      } catch (err) {
+        setProjectModalError(formatCloudRepositoryErrorMessage(err));
+      } finally {
+        setBusyProjectId(null);
+      }
+    },
+    [busyProjectId, getProjectRepository, refreshCombinedProjects, showProjectNotice]
+  );
+
+  const handleDeleteCloudFromModal = useCallback(
+    async (entry: CombinedProjectEntry) => {
+      if (busyProjectId) return;
+      setBusyProjectId(entry.projectId);
+      setProjectModalError(null);
+      try {
+        await getSyncCoordinator().deleteCloudProject(entry.projectId);
+        if (entry.projectId === currentProjectIdRef.current) {
+          setActiveSyncState('local-only');
+        }
+        await refreshCombinedProjects();
+        showProjectNotice(
+          'success',
+          `"${entry.projectName}" buluttan silindi. Yerel kopyanız korundu.`
+        );
+      } catch (err) {
+        setProjectModalError(formatCloudRepositoryErrorMessage(err));
+      } finally {
+        setBusyProjectId(null);
+      }
+    },
+    [busyProjectId, getSyncCoordinator, refreshCombinedProjects, showProjectNotice]
+  );
+
+  const handleResolveConflictFromModal = useCallback(
+    (entry: CombinedProjectEntry) => {
+      setConflictDialogState({
+        isOpen: true,
+        projectId: entry.projectId,
+        projectName: entry.projectName,
+        localUpdatedAt: entry.updatedAt,
+        openAfterResolve: false,
+        isSubmitting: false,
+        errorMessage: null,
+      });
+    },
+    []
+  );
+
+  const handleConflictKeepCloud = useCallback(async () => {
+    if (!conflictDialogState || conflictDialogState.isSubmitting) return;
+    setConflictDialogState((prev) =>
+      prev ? { ...prev, isSubmitting: true, errorMessage: null } : prev
+    );
+    try {
+      const resolved = await getSyncCoordinator().resolveConflictKeepCloud(
+        conflictDialogState.projectId
+      );
+      if (
+        conflictDialogState.openAfterResolve ||
+        conflictDialogState.projectId === currentProjectIdRef.current
+      ) {
+        await openV2ProjectInStudio(resolved);
+        setIsProjectsModalOpen(false);
+      }
+      setConflictDialogState(null);
+      await refreshCombinedProjects();
+      showProjectNotice(
+        'success',
+        `"${resolved.projectName}" için bulut sürümü uygulandı.`
+      );
+    } catch (err) {
+      setConflictDialogState((prev) =>
+        prev
+          ? {
+              ...prev,
+              isSubmitting: false,
+              errorMessage: formatCloudRepositoryErrorMessage(err),
+            }
+          : prev
+      );
+    }
+  }, [
+    conflictDialogState,
+    getSyncCoordinator,
+    openV2ProjectInStudio,
+    refreshCombinedProjects,
+    showProjectNotice,
+  ]);
+
+  const handleConflictKeepLocal = useCallback(async () => {
+    if (!conflictDialogState || conflictDialogState.isSubmitting) return;
+    setConflictDialogState((prev) =>
+      prev ? { ...prev, isSubmitting: true, errorMessage: null } : prev
+    );
+    try {
+      const resolved = await getSyncCoordinator().resolveConflictKeepLocal(
+        conflictDialogState.projectId
+      );
+      if (conflictDialogState.projectId === currentProjectIdRef.current) {
+        setActiveSyncState('synced');
+      }
+      setConflictDialogState(null);
+      await refreshCombinedProjects();
+      showProjectNotice(
+        'success',
+        `"${resolved.project.projectName}" cihazdaki sürümle buluta kaydedildi.`
+      );
+    } catch (err) {
+      setConflictDialogState((prev) =>
+        prev
+          ? {
+              ...prev,
+              isSubmitting: false,
+              errorMessage: formatCloudRepositoryErrorMessage(err),
+            }
+          : prev
+      );
+    }
+  }, [conflictDialogState, getSyncCoordinator, refreshCombinedProjects, showProjectNotice]);
+
+  const handleConflictSaveAsCopy = useCallback(
+    async (copyName?: string) => {
+      if (!conflictDialogState || conflictDialogState.isSubmitting) return;
+      setConflictDialogState((prev) =>
+        prev ? { ...prev, isSubmitting: true, errorMessage: null } : prev
+      );
+      try {
+        const res = await getSyncCoordinator().resolveConflictSaveAsCopy(
+          conflictDialogState.projectId,
+          copyName
+        );
+        setConflictDialogState(null);
+        await refreshCombinedProjects();
+        showProjectNotice(
+          'success',
+          `"${res.project.projectName}" yeni proje olarak buluta kaydedildi.`
+        );
+      } catch (err) {
+        setConflictDialogState((prev) =>
+          prev
+            ? {
+                ...prev,
+                isSubmitting: false,
+                errorMessage: formatCloudRepositoryErrorMessage(err),
+              }
+            : prev
+        );
+      }
+    },
+    [conflictDialogState, getSyncCoordinator, refreshCombinedProjects, showProjectNotice]
+  );
 
   const handleSavePlayerSettings = useCallback((nextSettings: PlayerEvaluationSettings) => {
     setEducationalMetadata((prev) => ({
@@ -2060,11 +2595,6 @@ export function App() {
           onSeekToTime={handleStudentSeekToTime}
           onRestart={startFreshStudentSession}
           onExitStudentMode={handleExitStudentPlayer}
-          onUpdateSceneCamera={() => {}}
-          onUpdateObject={() => {}}
-          onDropLibraryAsset={() => {}}
-          onDropExternalFile={() => {}}
-          onEditCharacterInStudio={() => {}}
         >
           {/* Resume vs New Session Prompt */}
           {showSessionResumePrompt && (
@@ -2265,10 +2795,48 @@ export function App() {
         projectMode={educationalMetadata.mode}
         onChangeProjectMode={handleChangeProjectMode}
         onNewProject={handleOpenNewProjectSelector}
+        onOpenProjects={handleOpenProjectsModal}
+        activeSyncState={activeSyncState}
+        isAuthenticated={isAuthenticated}
+        isCloudSaving={isHeaderCloudSaving}
+        onSaveActiveToCloud={handleSaveActiveToCloud}
         onOpenAddieInfo={handleOpenAddieInfo}
         onOpenInteractionEditor={() => handleOpenInteractionEditor(null)}
         onOpenStudentPlayer={handleEnterStudentPlayer}
         onOpenPlayerSettings={() => setIsPlayerSettingsOpen(true)}
+        authSlot={
+          isAuthLoading ? null : isAuthenticated && authUser ? (
+            <div className="flex items-center gap-1.5 pl-1">
+              <span
+                className="hidden lg:inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[11px] font-medium text-slate-700 max-w-[140px] truncate"
+                title={authUser.email ?? 'Giriş yapıldı'}
+              >
+                {(authUser.user_metadata?.display_name as string | undefined) ||
+                  authUser.email ||
+                  'Hesap'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  void signOut();
+                }}
+                className="px-2 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer whitespace-nowrap"
+                title="Hesaptan Çıkış Yap (Yerel projeleriniz korunur)"
+              >
+                Çıkış
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsAuthModalOpen(true)}
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer whitespace-nowrap"
+              title="Banimora Hesabına Giriş Yap / Kayıt Ol"
+            >
+              Giriş Yap
+            </button>
+          )
+        }
       />
 
       {educationalMetadata.mode === 'addie' && (
@@ -2276,6 +2844,26 @@ export function App() {
           progress={educationalMetadata.addieData?.progress}
           onSelectStage={handleSelectAddieStage}
         />
+      )}
+
+      {projectNotice && (
+        <div
+          role={projectNotice.type === 'error' ? 'alert' : 'status'}
+          className={`flex items-center justify-between gap-3 border-b px-4 py-1.5 text-xs ${
+            projectNotice.type === 'error'
+              ? 'bg-rose-50 border-rose-200 text-rose-900'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+          }`}
+        >
+          <span>{projectNotice.text}</span>
+          <button
+            type="button"
+            onClick={() => setProjectNotice(null)}
+            className="rounded border border-current/20 bg-white/80 px-2 py-0.5 font-medium hover:bg-white cursor-pointer"
+          >
+            Kapat
+          </button>
+        </div>
       )}
 
       {autoSaveError && (
@@ -2695,6 +3283,71 @@ export function App() {
         settings={educationalMetadata.playerSettings}
         onSave={handleSavePlayerSettings}
         onClose={() => setIsPlayerSettingsOpen(false)}
+      />
+
+      <ProjectsModal
+        isOpen={isProjectsModalOpen}
+        projects={combinedProjects}
+        activeProjectId={activeProjectId}
+        isLoading={isProjectsLoading}
+        isAuthenticated={isAuthenticated}
+        cloudAvailable={cloudAvailable}
+        busyProjectId={busyProjectId}
+        errorMessage={projectModalError}
+        warningMessage={projectModalWarning}
+        onClose={() => setIsProjectsModalOpen(false)}
+        onRefresh={() => {
+          void refreshCombinedProjects();
+        }}
+        onNewProject={() => {
+          setIsProjectsModalOpen(false);
+          handleOpenNewProjectSelector();
+        }}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onDismissError={() => setProjectModalError(null)}
+        onDismissWarning={() => setProjectModalWarning(null)}
+        onOpenProject={(entry) => {
+          void handleOpenProjectFromModal(entry);
+        }}
+        onSaveToCloud={(entry) => {
+          if (entry.projectId === currentProjectIdRef.current) {
+            void handleSaveActiveToCloud();
+          } else {
+            void handleSaveEntryToCloud(entry.projectId, entry.projectName);
+          }
+        }}
+        onRenameProject={handleRenameProjectFromModal}
+        onDeleteLocalProject={handleDeleteLocalFromModal}
+        onDeleteCloudProject={handleDeleteCloudFromModal}
+        onResolveConflict={handleResolveConflictFromModal}
+      />
+
+      <ProjectConflictDialog
+        isOpen={Boolean(conflictDialogState?.isOpen)}
+        projectName={conflictDialogState?.projectName ?? ''}
+        cloudProjectName={conflictDialogState?.cloudProjectName}
+        localUpdatedAt={conflictDialogState?.localUpdatedAt}
+        cloudUpdatedAt={conflictDialogState?.cloudUpdatedAt}
+        isSubmitting={Boolean(conflictDialogState?.isSubmitting)}
+        errorMessage={conflictDialogState?.errorMessage ?? null}
+        onClose={() => {
+          if (!conflictDialogState?.isSubmitting) {
+            setConflictDialogState(null);
+          }
+        }}
+        onKeepCloud={handleConflictKeepCloud}
+        onKeepLocal={handleConflictKeepLocal}
+        onSaveAsCopy={handleConflictSaveAsCopy}
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          if (isProjectsModalOpen) {
+            void refreshCombinedProjects();
+          }
+        }}
       />
     </div>
   );

@@ -16,7 +16,15 @@ import {
   Bone,
   Lock,
   Unlock,
+  Undo2,
+  Redo2,
+  ZoomIn,
+  ZoomOut,
+  Grid3X3,
+  Layout,
+  Maximize,
 } from 'lucide-react';
+import { WorkspaceMode } from '../utils/workspaceLayoutStorage';
 import {
   CameraFrameRect,
   CanvasObject,
@@ -77,6 +85,14 @@ interface CenterCanvasProps {
   zoom: number;
   showGrid: boolean;
   playerMode?: boolean;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  onZoomChange?: (zoom: number) => void;
+  onToggleGrid?: () => void;
+  workspaceMode?: WorkspaceMode;
+  onChangeWorkspaceMode?: (mode: WorkspaceMode) => void;
 }
 
 const LOGICAL_WIDTH = 960;
@@ -178,6 +194,14 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
   zoom,
   showGrid,
   playerMode = false,
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo,
+  onZoomChange,
+  onToggleGrid,
+  workspaceMode = 'standard',
+  onChangeWorkspaceMode,
 }) => {
   const viewportRef = useRef<HTMLElement>(null);
   const stageContainerRef = useRef<HTMLDivElement>(null);
@@ -685,31 +709,159 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
         playerMode ? 'bg-slate-950' : 'bg-slate-100 studio-dot-grid'
       }`}
     >
-      {/* Top Floating Scene Status Pill */}
+      {/* Top Floating Scene Status & Stage Controls */}
       {!playerMode && (
-      <div className="absolute top-3 left-4 flex items-center gap-2 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-slate-200 shadow-xs text-[11px] text-slate-600 z-10 pointer-events-none">
-        <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
-        <span className="font-bold text-slate-800">{scene.name}</span>
-        <span>• 16:9 Full HD</span>
-        {scene.transition.type !== 'none' && (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold">
-            <Wand2 className="w-2.5 h-2.5" />
-            Geçiş: {scene.transition.type.toUpperCase()} ({scene.transition.duration}s)
-          </span>
-        )}
-        {scene.camera?.enabled && (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200 font-semibold">
-            <Video className="w-2.5 h-2.5" />
-            Kamera: %{Math.round(cameraState.scale * 100)} Zoom
-            {scene.camera.movements.length > 0 &&
-              ` • ${scene.camera.movements.length} Hareket`}
-          </span>
-        )}
-        {isPlaying && (
-          <span className="ml-1 px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-bold">
-            CANLI OYNATILIYOR
-          </span>
-        )}
+      <div className="absolute top-2.5 inset-x-4 flex items-center justify-between gap-2 z-20 pointer-events-none">
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-slate-200 shadow-xs text-[11px] text-slate-600 min-w-0 truncate">
+          <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse shrink-0" />
+          <span className="font-bold text-slate-800 shrink-0">{scene.name}</span>
+          <span className="shrink-0">• 16:9 Full HD</span>
+          {scene.transition.type !== 'none' && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold shrink-0">
+              <Wand2 className="w-2.5 h-2.5" />
+              Geçiş: {scene.transition.type.toUpperCase()} ({scene.transition.duration}s)
+            </span>
+          )}
+          {scene.camera?.enabled && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200 font-semibold shrink-0">
+              <Video className="w-2.5 h-2.5" />
+              Kamera: %{Math.round(cameraState.scale * 100)} Zoom
+              {scene.camera.movements.length > 0 &&
+                ` • ${scene.camera.movements.length} Hareket`}
+            </span>
+          )}
+          {isPlaying && (
+            <span className="ml-1 px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-bold shrink-0">
+              CANLI OYNATILIYOR
+            </span>
+          )}
+        </div>
+
+        <div
+          data-testid="stage-top-toolbar"
+          className="pointer-events-auto flex items-center gap-1 bg-white/95 backdrop-blur-md px-1.5 py-0.5 rounded-xl border border-slate-200 shadow-xs shrink-0"
+        >
+          <button
+            type="button"
+            onClick={onUndo}
+            disabled={!canUndo || !onUndo}
+            title="Geri Al (Ctrl+Z)"
+            className={`p-1.5 rounded-lg transition-colors ${
+              canUndo && onUndo
+                ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 cursor-pointer'
+                : 'text-slate-300 cursor-not-allowed'
+            }`}
+          >
+            <Undo2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onRedo}
+            disabled={!canRedo || !onRedo}
+            title="Yinele (Ctrl+Y)"
+            className={`p-1.5 rounded-lg transition-colors ${
+              canRedo && onRedo
+                ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 cursor-pointer'
+                : 'text-slate-300 cursor-not-allowed'
+            }`}
+          >
+            <Redo2 className="w-3.5 h-3.5" />
+          </button>
+
+          <div className="w-px h-4 bg-slate-200 mx-0.5" />
+
+          <button
+            type="button"
+            onClick={() => onZoomChange?.(Math.max(60, zoom - 10))}
+            title="Uzaklaştır"
+            className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+          >
+            <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onZoomChange?.(100)}
+            title="Yakınlaştırmayı Sıfırla (%100)"
+            className="px-2 py-1 text-[11px] font-mono font-semibold text-slate-700 hover:bg-slate-100 rounded-md min-w-[46px] text-center cursor-pointer"
+          >
+            %{zoom}
+          </button>
+          <button
+            type="button"
+            onClick={() => onZoomChange?.(Math.min(140, zoom + 10))}
+            title="Yakınlaştır"
+            className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
+          </button>
+
+          <div className="w-px h-4 bg-slate-200 mx-0.5" />
+
+          <button
+            type="button"
+            onClick={onToggleGrid}
+            title="Izgara"
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              showGrid
+                ? 'bg-indigo-50 text-indigo-600 border border-indigo-200'
+                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Grid3X3 className="w-3.5 h-3.5" />
+          </button>
+
+          {onChangeWorkspaceMode && (
+            <>
+              <div className="w-px h-4 bg-slate-200 mx-0.5" />
+              <div
+                className="flex items-center bg-white rounded-lg border border-slate-200 p-0.5"
+                title="Çalışma Alanı Düzeni"
+              >
+                <button
+                  type="button"
+                  onClick={() => onChangeWorkspaceMode('standard')}
+                  data-testid="workspace-mode-standard"
+                  title="Standart Çalışma Alanı (Tüm paneller açık)"
+                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                    workspaceMode === 'standard'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <Layout className="w-3 h-3" />
+                  <span>Standart</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChangeWorkspaceMode('wide')}
+                  data-testid="workspace-mode-wide"
+                  title="Geniş Sahne Modu (Yan paneller daraltılır)"
+                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                    workspaceMode === 'wide'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>Geniş Sahne</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChangeWorkspaceMode('focus')}
+                  data-testid="workspace-mode-focus"
+                  title="Sahne Odaklı Mod (Maksimum sahne alanı)"
+                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                    workspaceMode === 'focus'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <Maximize className="w-3 h-3" />
+                  <span>Odak</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
       )}
 

@@ -2245,14 +2245,6 @@ export function App() {
         onProjectNameChange={setProjectName}
         totalProjectDuration={totalProjectDuration}
         sceneCount={scenes.length}
-        canUndo={historyIndex > 0}
-        canRedo={historyIndex < history.length - 1}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-        zoom={zoom}
-        onZoomChange={setZoom}
-        showGrid={showGrid}
-        onToggleGrid={() => setShowGrid((g) => !g)}
         hasCamera={Boolean(activeScene.camera?.enabled)}
         isCameraSelected={isCameraSelected}
         onAddOrSelectCamera={handleAddOrSelectCamera}
@@ -2270,8 +2262,6 @@ export function App() {
         }}
         onSaveProjectJson={handleSaveProjectJson}
         onLoadProjectJson={handleLoadProjectJson}
-        workspaceMode={workspaceLayout.mode}
-        onChangeWorkspaceMode={handleChangeWorkspaceMode}
         projectMode={educationalMetadata.mode}
         onChangeProjectMode={handleChangeProjectMode}
         onNewProject={handleOpenNewProjectSelector}
@@ -2389,6 +2379,14 @@ export function App() {
           stageMotionPreview={stageMotionPreview}
           zoom={zoom}
           showGrid={showGrid}
+          canUndo={historyIndex > 0}
+          canRedo={historyIndex < history.length - 1}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onZoomChange={setZoom}
+          onToggleGrid={() => setShowGrid((g) => !g)}
+          workspaceMode={workspaceLayout.mode}
+          onChangeWorkspaceMode={handleChangeWorkspaceMode}
         />
 
         {/* 4. RIGHT INSPECTOR (Object Design/Animation OR Camera & Scene Transition Inspector) */}

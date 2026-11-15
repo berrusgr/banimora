@@ -1,22 +1,15 @@
 import React, { useRef, useState } from 'react';
 import {
   Sparkles,
-  Undo2,
-  Redo2,
-  Grid3X3,
   Play,
   Pause,
   Download,
-  ZoomIn,
-  ZoomOut,
   Check,
   Clock,
   Video,
   Plus,
   Save,
   FolderOpen,
-  Layout,
-  Maximize,
   FilePlus2,
   GraduationCap,
   MessageSquarePlus,
@@ -25,7 +18,6 @@ import {
   MonitorPlay,
 } from 'lucide-react';
 import type { ProjectMode } from '../types/studio';
-import type { WorkspaceMode } from '../utils/workspaceLayoutStorage';
 import {
   formatCompactDuration,
   MAX_TOTAL_PROJECT_DURATION,
@@ -36,14 +28,6 @@ interface TopHeaderProps {
   onProjectNameChange: (name: string) => void;
   totalProjectDuration: number;
   sceneCount: number;
-  canUndo: boolean;
-  canRedo: boolean;
-  onUndo: () => void;
-  onRedo: () => void;
-  zoom: number;
-  onZoomChange: (zoom: number) => void;
-  showGrid: boolean;
-  onToggleGrid: () => void;
   hasCamera: boolean;
   isCameraSelected: boolean;
   onAddOrSelectCamera: () => void;
@@ -53,8 +37,6 @@ interface TopHeaderProps {
   onOpenExport: () => void;
   onSaveProjectJson: () => void;
   onLoadProjectJson: (file: File) => Promise<boolean> | boolean;
-  workspaceMode?: WorkspaceMode;
-  onChangeWorkspaceMode?: (mode: WorkspaceMode) => void;
   projectMode?: ProjectMode;
   onChangeProjectMode?: (mode: ProjectMode) => void;
   onNewProject?: () => void;
@@ -70,14 +52,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onProjectNameChange,
   totalProjectDuration,
   sceneCount,
-  canUndo,
-  canRedo,
-  onUndo,
-  onRedo,
-  zoom,
-  onZoomChange,
-  showGrid,
-  onToggleGrid,
   hasCamera,
   isCameraSelected,
   onAddOrSelectCamera,
@@ -87,8 +61,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onOpenExport,
   onSaveProjectJson,
   onLoadProjectJson,
-  workspaceMode = 'standard',
-  onChangeWorkspaceMode,
   projectMode = 'classic',
   onChangeProjectMode,
   onNewProject,
@@ -124,9 +96,9 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
     }
   };
   return (
-    <header className="min-h-12 py-1.5 border-b border-slate-200 bg-white/95 backdrop-blur-md px-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-30 shadow-2xs overflow-visible">
+    <header className="h-12 border-b border-slate-200 bg-white/95 backdrop-blur-md px-2.5 flex items-center justify-between gap-2 shrink-0 z-30 shadow-2xs overflow-visible">
       {/* LEFT: Logo, Editable Project Name & 10-Min Total Duration Badge */}
-      <div className="flex flex-wrap items-center gap-2 min-w-0">
+      <div className="flex items-center gap-2 min-w-0">
         <div className="flex items-center gap-2 pr-2.5 border-r border-slate-200 shrink-0">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-500 flex items-center justify-center shadow-md shadow-indigo-500/20">
             <Sparkles className="w-3.5 h-3.5 text-white" />
@@ -293,119 +265,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           )}
           {assureSlot}
         </div>
-      </div>
-
-      {/* CENTER: Undo, Redo, Zoom Ratio (%100), Grid Toggle */}
-      <div className="flex items-center gap-1 bg-slate-100 px-1.5 py-1 rounded-lg border border-slate-200 shrink-0">
-        <button
-          onClick={onUndo}
-          disabled={!canUndo}
-          className="p-1.5 rounded-md bg-white hover:bg-slate-50 disabled:opacity-35 disabled:pointer-events-none text-slate-700 border border-slate-200/80 transition-colors cursor-pointer"
-          title="Geri Al (Ctrl+Z)"
-        >
-          <Undo2 className="w-4 h-4" />
-        </button>
-        <button
-          onClick={onRedo}
-          disabled={!canRedo}
-          className="p-1.5 rounded-md bg-white hover:bg-slate-50 disabled:opacity-35 disabled:pointer-events-none text-slate-700 border border-slate-200/80 transition-colors cursor-pointer"
-          title="İleri Al (Ctrl+Y)"
-        >
-          <Redo2 className="w-4 h-4" />
-        </button>
-
-        <div className="h-4 w-px bg-slate-300 mx-1" />
-
-        {/* Zoom Controls */}
-        <button
-          onClick={() => onZoomChange(Math.max(60, zoom - 10))}
-          className="p-1.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 transition-colors cursor-pointer"
-          title="Uzaklaştır"
-        >
-          <ZoomOut className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => onZoomChange(100)}
-          className="px-2.5 py-1 rounded-md bg-white hover:bg-slate-50 text-slate-800 border border-slate-200/80 text-xs font-mono font-semibold min-w-[54px] text-center transition-colors cursor-pointer"
-          title="Yakınlaştırmayı Sıfırla (%100)"
-        >
-          %{zoom}
-        </button>
-        <button
-          onClick={() => onZoomChange(Math.min(140, zoom + 10))}
-          className="p-1.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 transition-colors cursor-pointer"
-          title="Yakınlaştır"
-        >
-          <ZoomIn className="w-3.5 h-3.5" />
-        </button>
-
-        <div className="h-4 w-px bg-slate-300 mx-1" />
-
-        {/* Grid Toggle */}
-        <button
-          onClick={onToggleGrid}
-          className={`p-1.5 rounded-md transition-colors border cursor-pointer ${
-            showGrid
-              ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-              : 'bg-white hover:bg-slate-50 border-slate-200/80 text-slate-600 hover:text-slate-900'
-          }`}
-          title="Izgara"
-        >
-          <Grid3X3 className="w-3.5 h-3.5" />
-        </button>
-
-        {onChangeWorkspaceMode && (
-          <>
-            <div className="h-4 w-px bg-slate-300 mx-1" />
-            <div
-              className="flex items-center gap-0.5 bg-white border border-slate-200/80 rounded-md p-0.5"
-              title="Çalışma Alanı Düzeni"
-            >
-              <button
-                type="button"
-                onClick={() => onChangeWorkspaceMode('standard')}
-                data-testid="workspace-mode-standard"
-                className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
-                  workspaceMode === 'standard'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-                title="Standart Çalışma Alanı (Tüm paneller açık)"
-              >
-                <Layout className="w-3 h-3" />
-                <span className="hidden xl:inline">Standart</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onChangeWorkspaceMode('wide')}
-                data-testid="workspace-mode-wide"
-                className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                  workspaceMode === 'wide'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-                title="Geniş Sahne Modu (Yan paneller daraltılır)"
-              >
-                <span className="hidden xl:inline">Geniş Sahne</span>
-                <span className="xl:hidden">Geniş</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onChangeWorkspaceMode('focus')}
-                data-testid="workspace-mode-focus"
-                className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
-                  workspaceMode === 'focus'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-                title="Sahne Odaklı Mod (Maksimum sahne alanı)"
-              >
-                <Maximize className="w-3 h-3" />
-                <span className="hidden xl:inline">Odak</span>
-              </button>
-            </div>
-          </>
-        )}
       </div>
 
       {/* RIGHT: Camera Tool (Add Camera / Add Camera Movement), Play Preview & Export MP4 */}

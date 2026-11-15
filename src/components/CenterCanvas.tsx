@@ -48,7 +48,9 @@ interface CenterCanvasProps {
   scene: Scene;
   previousSceneBackground?: string;
   selectedObjectId: string | null;
+  selectedObjectIds?: string[];
   onSelectObject: (id: string | null) => void;
+  onSelectObjects?: (ids: string[]) => void;
   selectedPartId?: string | null;
   onSelectPart?: (partId: string | null) => void;
   isCameraSelected: boolean;
@@ -57,8 +59,13 @@ interface CenterCanvasProps {
   onUpdateSceneCamera: (camera: SceneCamera, commitHistory?: boolean) => void;
   onAddCameraMovement: () => void;
   onUpdateObject: (id: string, patch: Partial<CanvasObject>, commitHistory?: boolean) => void;
+  onBatchUpdateObjects?: (
+    patches: Array<{ id: string; patch: Partial<CanvasObject> }>,
+    commitHistory?: boolean
+  ) => void;
   onDuplicateObject: (id: string) => void;
   onDeleteObject: (id: string) => void;
+  onDeleteObjects?: (ids: string[]) => void;
   onLayerMove: (id: string, direction: 'up' | 'down') => void;
   onDropLibraryAsset: (item: LibraryAssetItem, pos: { x: number; y: number }) => void;
   onDropExternalFile: (file: File, pos: { x: number; y: number }) => void;
@@ -69,13 +76,31 @@ interface CenterCanvasProps {
   transitionTriggerKey: number;
   zoom: number;
   showGrid: boolean;
+  playerMode?: boolean;
 }
 
 const LOGICAL_WIDTH = 960;
 const LOGICAL_HEIGHT = 540;
 
 type InteractionMode =
-  | { type: 'drag'; id: string; startMouseX: number; startMouseY: number; startX: number; startY: number }
+  | {
+      type: 'drag';
+      id: string;
+      startMouseX: number;
+      startMouseY: number;
+      startX: number;
+      startY: number;
+      groupItems?: Array<{ id: string; startX: number; startY: number }>;
+    }
+  | {
+      type: 'marquee';
+      startX: number;
+      startY: number;
+      currentX: number;
+      currentY: number;
+      additive: boolean;
+      baseIds: string[];
+    }
   | {
       type: 'resize';
       id: string;
@@ -127,7 +152,9 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
   scene,
   previousSceneBackground,
   selectedObjectId,
+  selectedObjectIds,
   onSelectObject,
+  onSelectObjects,
   selectedPartId,
   onSelectPart,
   isCameraSelected,
@@ -136,8 +163,10 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
   onUpdateSceneCamera,
   onAddCameraMovement,
   onUpdateObject,
+  onBatchUpdateObjects,
   onDuplicateObject,
   onDeleteObject,
+  onDeleteObjects,
   onLayerMove,
   onDropLibraryAsset,
   onDropExternalFile,
@@ -148,6 +177,7 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
   transitionTriggerKey,
   zoom,
   showGrid,
+  playerMode = false,
 }) => {
   const viewportRef = useRef<HTMLElement>(null);
   const stageContainerRef = useRef<HTMLDivElement>(null);
@@ -240,14 +270,15 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
     return () => ro.disconnect();
   }, []);
 
+  const interactionScale = scaleRatio * (zoom / 100);
+
   useEffect(() => {
     const el = stageContainerRef.current;
     if (!el) return;
 
     const updateScale = () => {
-      const rect = el.getBoundingClientRect();
-      if (rect.width > 0) {
-        setScaleRatio(rect.width / LOGICAL_WIDTH);
+      if (el.clientWidth > 0) {
+        setScaleRatio(el.clientWidth / LOGICAL_WIDTH);
       }
     };
 
@@ -259,15 +290,69 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
       observer.disconnect();
       window.removeEventListener('resize', updateScale);
     };
-  }, [zoom]);
+  }, [fitStageWidth]);
 
   useEffect(() => {
     if (!interaction) return;
 
     const handleMouseMove = (e: MouseEvent) => {
+      if (interaction.type === 'marquee') {
+        const rect = stageContainerRef.current?.getBoundingClientRect();
+        if (!rect || interactionScale <= 0) return;
+        const curX = Math.max(0, Math.min(LOGICAL_WIDTH, (e.clientX - rect.left) / interactionScale));
+        const curY = Math.max(0, Math.min(LOGICAL_HEIGHT, (e.clientY - rect.top) / interactionScale));
+        setInteraction((prev) =>
+          prev && prev.type === 'marquee'
+            ? { ...prev, currentX: curX, currentY: curY }
+            : prev
+        );
+        const minX = Math.min(interaction.startX, curX);
+        const maxX = Math.max(interaction.startX, curX);
+        const minY = Math.min(interaction.startY, curY);
+        const maxY = Math.max(interaction.startY, curY);
+        if (maxX - minX >= 4 || maxY - minY >= 4) {
+          const hitIds: string[] = [];
+          for (const o of scene.objects) {
+            if (o.hidden) continue;
+            const anim = computeObjectAnimation(o, currentTime, isPlaying);
+            if (!anim.isVisible && isPlaying) continue;
+            const rt = resolveSceneObjectRenderTransform(o, scene, currentTime, isPlaying, anim);
+            const ox1 = rt.x + rt.translateX;
+            const oy1 = rt.y + rt.translateY;
+            const ox2 = ox1 + o.width;
+            const oy2 = oy1 + o.height;
+            if (ox1 <= maxX && ox2 >= minX && oy1 <= maxY && oy2 >= minY) {
+              hitIds.push(o.id);
+            }
+          }
+          const nextIds = interaction.additive
+            ? Array.from(new Set([...interaction.baseIds, ...hitIds]))
+            : hitIds;
+          if (onSelectObjects) {
+            onSelectObjects(nextIds);
+          } else {
+            onSelectObject(nextIds[0] ?? null);
+          }
+        }
+        return;
+      }
+
       if (interaction.type === 'drag') {
-        const dx = (e.clientX - interaction.startMouseX) / scaleRatio;
-        const dy = (e.clientY - interaction.startMouseY) / scaleRatio;
+        const dx = (e.clientX - interaction.startMouseX) / interactionScale;
+        const dy = (e.clientY - interaction.startMouseY) / interactionScale;
+        if (interaction.groupItems && interaction.groupItems.length > 1 && onBatchUpdateObjects) {
+          onBatchUpdateObjects(
+            interaction.groupItems.map((item) => ({
+              id: item.id,
+              patch: {
+                x: Math.round(item.startX + dx),
+                y: Math.round(item.startY + dy),
+              },
+            })),
+            false
+          );
+          return;
+        }
         const nextStageX = Math.round(interaction.startX + dx);
         const nextStageY = Math.round(interaction.startY + dy);
         const draggedObj = scene.objects.find((o) => o.id === interaction.id);
@@ -316,8 +401,8 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
           false
         );
       } else if (interaction.type === 'resize') {
-        const dx = (e.clientX - interaction.startMouseX) / scaleRatio;
-        const dy = (e.clientY - interaction.startMouseY) / scaleRatio;
+        const dx = (e.clientX - interaction.startMouseX) / interactionScale;
+        const dy = (e.clientY - interaction.startMouseY) / interactionScale;
         let newX = interaction.startX;
         let newY = interaction.startY;
         let newW = interaction.startW;
@@ -363,8 +448,8 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
         if (nextRot < -180) nextRot += 360;
         onUpdateObject(interaction.id, { rotation: nextRot }, false);
       } else if (interaction.type === 'motion-target') {
-        const dx = (e.clientX - interaction.startMouseX) / scaleRatio;
-        const dy = (e.clientY - interaction.startMouseY) / scaleRatio;
+        const dx = (e.clientX - interaction.startMouseX) / interactionScale;
+        const dy = (e.clientY - interaction.startMouseY) / interactionScale;
         onUpdateObject(
           interaction.id,
           {
@@ -380,8 +465,8 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
         (interaction.type === 'camera-drag' || interaction.type === 'camera-resize') &&
         scene.camera
       ) {
-        const dx = (e.clientX - interaction.startMouseX) / scaleRatio;
-        const dy = (e.clientY - interaction.startMouseY) / scaleRatio;
+        const dx = (e.clientX - interaction.startMouseX) / interactionScale;
+        const dy = (e.clientY - interaction.startMouseY) / interactionScale;
         const init = interaction.initialRect;
         let nextRect: CameraFrameRect = { ...init };
 
@@ -451,6 +536,18 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
     };
 
     const handleMouseUp = () => {
+      if (
+        interaction.type === 'marquee' &&
+        !interaction.additive &&
+        Math.abs(interaction.currentX - interaction.startX) < 4 &&
+        Math.abs(interaction.currentY - interaction.startY) < 4
+      ) {
+        if (onSelectObjects) {
+          onSelectObjects([]);
+        } else {
+          onSelectObject(null);
+        }
+      }
       setInteraction(null);
     };
 
@@ -460,7 +557,7 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [interaction, scaleRatio, onUpdateObject]);
+  }, [interaction, interactionScale, onUpdateObject, onBatchUpdateObjects, onSelectObject, onSelectObjects, scene, currentTime, isPlaying]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -483,8 +580,8 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
       if (file.type.startsWith('image/')) {
-        const dropX = (e.clientX - rect.left) / scaleRatio - 90;
-        const dropY = (e.clientY - rect.top) / scaleRatio - 90;
+        const dropX = (e.clientX - rect.left) / interactionScale - 90;
+        const dropY = (e.clientY - rect.top) / interactionScale - 90;
         onDropExternalFile(file, {
           x: Math.max(20, Math.min(LOGICAL_WIDTH - 200, Math.round(dropX))),
           y: Math.max(20, Math.min(LOGICAL_HEIGHT - 200, Math.round(dropY))),
@@ -499,8 +596,8 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
 
     try {
       const item: LibraryAssetItem = JSON.parse(raw);
-      const dropX = (e.clientX - rect.left) / scaleRatio - item.defaultWidth / 2;
-      const dropY = (e.clientY - rect.top) / scaleRatio - item.defaultHeight / 2;
+      const dropX = (e.clientX - rect.left) / interactionScale - item.defaultWidth / 2;
+      const dropY = (e.clientY - rect.top) / interactionScale - item.defaultHeight / 2;
       onDropLibraryAsset(item, {
         x: Math.max(16, Math.min(LOGICAL_WIDTH - item.defaultWidth - 16, Math.round(dropX))),
         y: Math.max(16, Math.min(LOGICAL_HEIGHT - item.defaultHeight - 16, Math.round(dropY))),
@@ -509,6 +606,13 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
       // ignore invalid drag payload
     }
   };
+
+  const activeSelectedIds =
+    selectedObjectIds && selectedObjectIds.length > 0
+      ? selectedObjectIds
+      : selectedObjectId
+      ? [selectedObjectId]
+      : [];
 
   // Compute active Scene Transition progress (either during timeline playback at 0..transition.duration or manual preview)
   const timelineTransProgress =
@@ -573,13 +677,16 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
     <main
       ref={viewportRef}
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) {
+        if (!playerMode && e.target === e.currentTarget) {
           onSelectObject(null);
         }
       }}
-      className="flex-1 bg-slate-100 relative flex items-center justify-center overflow-hidden studio-dot-grid"
+      className={`flex-1 relative flex items-center justify-center overflow-hidden ${
+        playerMode ? 'bg-slate-950' : 'bg-slate-100 studio-dot-grid'
+      }`}
     >
       {/* Top Floating Scene Status Pill */}
+      {!playerMode && (
       <div className="absolute top-3 left-4 flex items-center gap-2 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-slate-200 shadow-xs text-[11px] text-slate-600 z-10 pointer-events-none">
         <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
         <span className="font-bold text-slate-800">{scene.name}</span>
@@ -604,15 +711,16 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
           </span>
         )}
       </div>
+      )}
 
       {/* 16:9 Aspect Ratio Active Canvas */}
       <div
         ref={stageContainerRef}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+        onDragOver={playerMode ? undefined : handleDragOver}
+        onDragLeave={playerMode ? undefined : handleDragLeave}
+        onDrop={playerMode ? undefined : handleDrop}
         onMouseDown={(e) => {
-          if (e.target === e.currentTarget) {
+          if (!playerMode && e.target === e.currentTarget) {
             onSelectObject(null);
           }
         }}
@@ -622,7 +730,9 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
           transformOrigin: 'center center',
         }}
         className={`aspect-video bg-slate-900 shadow-xl rounded-xl relative overflow-hidden transition-shadow ${
-          isDragOver
+          playerMode
+            ? 'ring-1 ring-slate-700/80 shadow-2xl'
+            : isDragOver
             ? 'ring-4 ring-indigo-500 shadow-indigo-500/25'
             : isCameraSelected
             ? 'ring-2 ring-orange-500 shadow-orange-500/15'
@@ -666,16 +776,34 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
           }}
           className="w-full h-full relative overflow-hidden"
         >
-          {showGrid && !isPlaying && (
+          {!playerMode && showGrid && !isPlaying && (
             <div className="absolute inset-0 canvas-inner-grid pointer-events-none z-0" />
           )}
 
           {/* Logical 960x540 Stage scaled smoothly to the 16:9 container (and Camera Zoom/Pan during Playback!) */}
           <div
             onMouseDown={(e) => {
-              if (e.target === e.currentTarget) {
+              if (e.target !== e.currentTarget) return;
+              if (isPlaying || e.button !== 0) {
                 onSelectObject(null);
+                return;
               }
+              const rect = stageContainerRef.current?.getBoundingClientRect();
+              if (!rect || interactionScale <= 0) {
+                onSelectObject(null);
+                return;
+              }
+              const sx = Math.max(0, Math.min(LOGICAL_WIDTH, (e.clientX - rect.left) / interactionScale));
+              const sy = Math.max(0, Math.min(LOGICAL_HEIGHT, (e.clientY - rect.top) / interactionScale));
+              setInteraction({
+                type: 'marquee',
+                startX: sx,
+                startY: sy,
+                currentX: sx,
+                currentY: sy,
+                additive: e.shiftKey,
+                baseIds: activeSelectedIds,
+              });
             }}
             style={{
               width: `${LOGICAL_WIDTH}px`,
@@ -782,7 +910,7 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                           height: `${primaryRect.height}px`,
                         }}
                         className={`absolute z-40 rounded-lg border-[3px] cursor-move transition-shadow ${
-                          isCameraSelected
+                          !playerMode && isCameraSelected
                             ? 'border-orange-500 shadow-[0_0_0_9999px_rgba(15,23,42,0.18)]'
                             : 'border-orange-500/80 hover:border-orange-500'
                         }`}
@@ -917,6 +1045,7 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
             )}
             {/* MOTION PATH TRAJECTORY OVERLAYS (Visible in Editor Mode) */}
             {!isPlaying &&
+              !playerMode &&
               scene.objects.map((obj) => {
                 if (!obj.motionPath?.enabled) return null;
                 const mp = obj.motionPath;
@@ -1019,8 +1148,25 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                 );
               })}
 
-            {scene.objects.map((obj, index) => {
-              const isSelected = obj.id === selectedObjectId && !isPlaying;
+            {(() => {
+              const boundSocketsByChar = new Map<string, { left: boolean; right: boolean }>();
+              for (const sceneObj of scene.objects) {
+                if (!sceneObj.hidden && sceneObj.attachment?.parentObjectId) {
+                  const socket = sceneObj.attachment.socketId;
+                  if (socket === 'leftPropSocket' || socket === 'rightPropSocket') {
+                    const entry = boundSocketsByChar.get(sceneObj.attachment.parentObjectId) ?? {
+                      left: false,
+                      right: false,
+                    };
+                    if (socket === 'leftPropSocket') entry.left = true;
+                    if (socket === 'rightPropSocket') entry.right = true;
+                    boundSocketsByChar.set(sceneObj.attachment.parentObjectId, entry);
+                  }
+                }
+              }
+
+              return scene.objects.map((obj, index) => {
+              const isSelected = !playerMode && activeSelectedIds.includes(obj.id) && !isPlaying;
               const anim = computeObjectAnimation(obj, currentTime, isPlaying);
 
               if (obj.hidden || (!anim.isVisible && isPlaying)) {
@@ -1035,10 +1181,30 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                 anim
               );
               const flipScaleX = (renderTransform.flipX ? -1 : 1) * renderTransform.scaleX;
-              const effectiveCharConfig =
+              const rawCharConfig =
                 obj.category === 'characters'
                   ? resolveEffectiveCharacterConfig(obj, scene.audioClips)
                   : undefined;
+              const charBoundSockets =
+                obj.category === 'characters' ? boundSocketsByChar.get(obj.id) : undefined;
+              const effectiveCharConfig =
+                rawCharConfig && charBoundSockets
+                  ? {
+                      ...rawCharConfig,
+                      leftHandGesture:
+                        charBoundSockets.left &&
+                        (!rawCharConfig.leftHandGesture ||
+                          rawCharConfig.leftHandGesture === 'open')
+                          ? ('hold' as const)
+                          : rawCharConfig.leftHandGesture,
+                      rightHandGesture:
+                        charBoundSockets.right &&
+                        (!rawCharConfig.rightHandGesture ||
+                          rawCharConfig.rightHandGesture === 'open')
+                          ? ('hold' as const)
+                          : rawCharConfig.rightHandGesture,
+                    }
+                  : rawCharConfig;
               const previewPreset =
                 !isPlaying &&
                 stageMotionPreview &&
@@ -1115,8 +1281,32 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                   onMouseDown={(e) => {
                     e.stopPropagation();
                     clickStartRef.current = { id: obj.id, x: e.clientX, y: e.clientY };
-                    onSelectObject(obj.id);
+
+                    let nextSelected = activeSelectedIds;
+                    if (e.shiftKey) {
+                      const toggled = activeSelectedIds.includes(obj.id)
+                        ? activeSelectedIds.filter((id) => id !== obj.id)
+                        : [...activeSelectedIds, obj.id];
+                      nextSelected = toggled;
+                      if (onSelectObjects) {
+                        onSelectObjects(toggled);
+                      } else {
+                        onSelectObject(toggled[0] ?? null);
+                      }
+                    } else if (!activeSelectedIds.includes(obj.id) || activeSelectedIds.length <= 1) {
+                      nextSelected = [obj.id];
+                      onSelectObject(obj.id);
+                    }
+
                     if (isPlaying || obj.locked) return;
+
+                    const groupItems =
+                      nextSelected.length > 1 && nextSelected.includes(obj.id)
+                        ? scene.objects
+                            .filter((o) => nextSelected.includes(o.id) && !o.locked && !o.attachment)
+                            .map((o) => ({ id: o.id, startX: o.x, startY: o.y }))
+                        : undefined;
+
                     setInteraction({
                       type: 'drag',
                       id: obj.id,
@@ -1124,6 +1314,7 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                       startMouseY: e.clientY,
                       startX: renderTransform.x,
                       startY: renderTransform.y,
+                      groupItems,
                     });
                   }}
                   onClick={(e) => {
@@ -1252,7 +1443,9 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                   </div>
 
                   {/* Active Animation Badge during Playback or Scrubbing */}
-                  {anim.activePhase !== 'idle' &&
+                  {!isPlaying &&
+                    !playerMode &&
+                    anim.activePhase !== 'idle' &&
                     anim.activePhase !== 'before' &&
                     anim.activePhase !== 'after' && (
                       <div
@@ -1299,203 +1492,13 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                   )}
 
                   {/* SELECTION HANDLES & FLOATING QUICK ACTION BAR */}
-                  {isSelected && (
+                  {isSelected && activeSelectedIds.length === 1 && (
                     <div
                       style={{
                         transform: `scale(${obj.flipX ? -1 : 1}, 1)`,
                       }}
                       className="absolute inset-0 pointer-events-none"
                     >
-                      {/* Quick Action Bar above selected object */}
-                      <div
-                        onMouseDown={(e) => e.stopPropagation()}
-                        className="pointer-events-auto absolute -top-11 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-white/95 backdrop-blur-md border border-slate-200 rounded-lg px-2 py-1 shadow-xl whitespace-nowrap z-50"
-                      >
-                        <span className="text-[10px] font-bold text-indigo-700 px-1.5 border-r border-slate-200">
-                          {obj.name}
-                        </span>
-
-                        {resolveObjectAssetClass(obj) === 'composite' && selectedPartId && (
-                          <button
-                            onClick={() => onSelectPart?.(null)}
-                            className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-pink-50 border border-pink-200 text-pink-700 text-[10px] font-semibold hover:bg-pink-100 cursor-pointer"
-                            title="Parça seçimini temizle ve bütün nesneye dön"
-                          >
-                            <span>
-                              Parça:{' '}
-                              {getMathAssetDefinition(obj.assetId)?.parts?.find(
-                                (p) => p.id === selectedPartId
-                              )?.name || selectedPartId}
-                            </span>
-                            <span className="text-pink-500">✕</span>
-                          </button>
-                        )}
-
-                        {obj.category === 'characters' && obj.assetId !== 'char-robot-mira' && (
-                          <>
-                            <button
-                              onClick={() => onEditCharacterInStudio(obj)}
-                              className="flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-semibold transition-colors cursor-pointer"
-                              title="Yüz, Saç, Göz, Aksesuar ve Uzuvları Özelleştir"
-                            >
-                              <UserCog className="w-3 h-3" />
-                              <span>Karakteri Özelleştir</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                const nextRig = !boneRigEditMode;
-                                setBoneRigEditMode(nextRig);
-                                if (nextRig) {
-                                  const baseCfg =
-                                    obj.characterConfig ||
-                                    DEFAULT_CHARACTER_CONFIGS[obj.assetId] ||
-                                    DEFAULT_CHARACTER_CONFIGS['char-pro-sinan'];
-                                  if (!baseCfg.rigMode || baseCfg.rigMode === 'preset') {
-                                    onUpdateObject(
-                                      obj.id,
-                                      {
-                                        characterConfig: {
-                                          ...baseCfg,
-                                          rigMode: 'hybrid',
-                                        },
-                                      },
-                                      true
-                                    );
-                                  }
-                                }
-                              }}
-                              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
-                                boneRigEditMode
-                                  ? 'bg-pink-600 text-white shadow-sm hover:bg-pink-500'
-                                  : 'bg-pink-50 text-pink-700 border border-pink-200 hover:bg-pink-100'
-                              }`}
-                              title="2D İskelet Modu (Bone Rigging) — Eklemleri fareyle tutup döndürün"
-                            >
-                              <Bone className="w-3 h-3" />
-                              <span>{boneRigEditMode ? '2D İskelet: Açık' : '2D İskelet (Rig)'}</span>
-                            </button>
-                          </>
-                        )}
-
-                        <button
-                          onClick={() => {
-                            const nextEnabled = !obj.motionPath?.enabled;
-                            onUpdateObject(
-                              obj.id,
-                              {
-                                motionPath: {
-                                  enabled: nextEnabled,
-                                  endX:
-                                    obj.motionPath?.endX ??
-                                    Math.min(LOGICAL_WIDTH - obj.width - 24, obj.x + 240),
-                                  endY: obj.motionPath?.endY ?? obj.y,
-                                  startTime: obj.motionPath?.startTime ?? 0,
-                                  duration: obj.motionPath?.duration ?? Math.max(1.5, scene.duration - 0.5),
-                                  curve: obj.motionPath?.curve ?? 'linear',
-                                  autoFlipX: obj.motionPath?.autoFlipX ?? true,
-                                },
-                              },
-                              true
-                            );
-                          }}
-                          className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
-                            obj.motionPath?.enabled
-                              ? 'bg-amber-500 text-white hover:bg-amber-600'
-                              : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
-                          }`}
-                          title="Hareket Yolu (Motion Path) Ekle / Kaldır"
-                        >
-                          <Route className="w-3 h-3" />
-                          <span>Hareket Yolu</span>
-                        </button>
-
-                        <div
-                          className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-50 border border-slate-200"
-                          title={`Opaklık: %${Math.round(obj.opacity ?? 100)}`}
-                        >
-                          <span className="text-[10px] font-semibold text-slate-600">
-                            Opaklık
-                          </span>
-                          <input
-                            type="range"
-                            min={0}
-                            max={100}
-                            step={5}
-                            value={Math.round(obj.opacity ?? 100)}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onChange={(e) =>
-                              onUpdateObject(
-                                obj.id,
-                                { opacity: Number(e.target.value) },
-                                true
-                              )
-                            }
-                            aria-label="Opaklık"
-                            className="w-14 accent-indigo-600 cursor-pointer h-1"
-                          />
-                          <span className="text-[10px] font-mono font-semibold text-slate-700 w-7 text-right">
-                            %{Math.round(obj.opacity ?? 100)}
-                          </span>
-                        </div>
-
-                        <button
-                          onClick={() => onDuplicateObject(obj.id)}
-                          className="p-1 rounded hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
-                          title="Kopyala (Duplicate)"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => onLayerMove(obj.id, 'up')}
-                          className="p-1 rounded hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
-                          title="Katmanı Yukarı Taşı"
-                        >
-                          <ArrowUp className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => onLayerMove(obj.id, 'down')}
-                          className="p-1 rounded hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
-                          title="Katmanı Aşağı Taşı"
-                        >
-                          <ArrowDown className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            onUpdateObject(obj.id, { flipX: !obj.flipX }, true)
-                          }
-                          className="p-1 rounded hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
-                          title="Yatay Çevir (Ayna)"
-                        >
-                          <FlipHorizontal className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            onUpdateObject(obj.id, { locked: !obj.locked }, true)
-                          }
-                          className={`p-1 rounded transition-colors cursor-pointer ${
-                            obj.locked
-                              ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                              : 'hover:bg-slate-100 text-slate-700'
-                          }`}
-                          title={obj.locked ? 'Kilidi Aç' : 'Nesneyi Kilitle'}
-                        >
-                          {obj.locked ? (
-                            <Lock className="w-3.5 h-3.5" />
-                          ) : (
-                            <Unlock className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                        <div className="w-px h-3.5 bg-slate-200 mx-0.5" />
-                        <button
-                          onClick={() => onDeleteObject(obj.id)}
-                          className="p-1 rounded hover:bg-red-50 text-red-600 transition-colors cursor-pointer"
-                          title="Sil (Delete)"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
                       {/* 2D Bone Rigging Helper HUD when boneRigEditMode is active */}
                       {boneRigEditMode &&
                         obj.category === 'characters' &&
@@ -1671,7 +1674,392 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                   )}
                 </div>
               );
+            });
+            })()}
+
+            {/* Foreground Finger Grip Overlays for Hand-Socket-Bound Props */}
+            {scene.objects.map((obj, index) => {
+              const socket = obj.attachment?.socketId;
+              if (
+                obj.hidden ||
+                !obj.attachment?.parentObjectId ||
+                (socket !== 'leftPropSocket' && socket !== 'rightPropSocket')
+              ) {
+                return null;
+              }
+              const anim = computeObjectAnimation(obj, currentTime, isPlaying);
+              if (!anim.isVisible && isPlaying) return null;
+
+              const renderTransform = resolveSceneObjectRenderTransform(
+                obj,
+                scene,
+                currentTime,
+                isPlaying,
+                anim
+              );
+              const sock = renderTransform.socketTransform;
+              if (!sock) return null;
+
+              const parentChar = scene.objects.find(
+                (o) => o.id === obj.attachment?.parentObjectId
+              );
+              const parentSkin =
+                parentChar?.characterConfig?.skinTone ??
+                (parentChar ? DEFAULT_CHARACTER_CONFIGS[parentChar.assetId]?.skinTone : undefined) ??
+                '#f2cab1';
+              const gripScaleX =
+                (renderTransform.flipX ? -1 : 1) * Math.max(0.55, Math.min(1.8, sock.worldScaleX));
+              const gripScaleY = Math.max(0.55, Math.min(1.8, sock.worldScaleY));
+
+              return (
+                <div
+                  key={`grip-${obj.id}`}
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: `${sock.stagePoint.x}px`,
+                    top: `${sock.stagePoint.y}px`,
+                    width: '22px',
+                    height: '22px',
+                    zIndex: index + 2,
+                    opacity: anim.opacity,
+                    transform: `translate(-50%, -50%) rotate(${sock.worldRotationDeg}deg) scale(${gripScaleX}, ${gripScaleY})`,
+                    transformOrigin: 'center center',
+                  }}
+                >
+                  <svg viewBox="-12 -12 24 24" className="w-full h-full overflow-visible">
+                    <ellipse
+                      cx="3.2"
+                      cy="-4.5"
+                      rx="2.2"
+                      ry="3.1"
+                      fill={parentSkin}
+                      stroke="rgba(45, 25, 15, 0.35)"
+                      strokeWidth="0.9"
+                    />
+                    <ellipse
+                      cx="4.2"
+                      cy="-1.5"
+                      rx="2.3"
+                      ry="3.2"
+                      fill={parentSkin}
+                      stroke="rgba(45, 25, 15, 0.35)"
+                      strokeWidth="0.9"
+                    />
+                    <ellipse
+                      cx="4.0"
+                      cy="1.6"
+                      rx="2.2"
+                      ry="3.1"
+                      fill={parentSkin}
+                      stroke="rgba(45, 25, 15, 0.35)"
+                      strokeWidth="0.9"
+                    />
+                    <ellipse
+                      cx="3.0"
+                      cy="4.6"
+                      rx="2.0"
+                      ry="2.8"
+                      fill={parentSkin}
+                      stroke="rgba(45, 25, 15, 0.35)"
+                      strokeWidth="0.9"
+                    />
+                    <ellipse
+                      cx="-3.5"
+                      cy="-1.2"
+                      rx="2.5"
+                      ry="3.6"
+                      transform="rotate(-22 -3.5 -1.2)"
+                      fill={parentSkin}
+                      stroke="rgba(45, 25, 15, 0.35)"
+                      strokeWidth="0.9"
+                    />
+                  </svg>
+                </div>
+              );
             })}
+
+            {/* Stage-Level Non-Rotated Quick Action Bar for Single Selected Object */}
+            {!isPlaying &&
+              activeSelectedIds.length === 1 &&
+              (() => {
+                const obj = scene.objects.find((o) => o.id === activeSelectedIds[0]);
+                if (!obj || obj.hidden) return null;
+
+                const anim = computeObjectAnimation(obj, currentTime, isPlaying);
+                const renderTransform = resolveSceneObjectRenderTransform(
+                  obj,
+                  scene,
+                  currentTime,
+                  isPlaying,
+                  anim
+                );
+
+                const centerX = renderTransform.x + renderTransform.translateX + obj.width / 2;
+                const centerY = renderTransform.y + renderTransform.translateY + obj.height / 2;
+                const rad = (renderTransform.rotationDeg * Math.PI) / 180;
+                const scaledW = Math.abs(obj.width * renderTransform.scaleX);
+                const scaledH = Math.abs(obj.height * renderTransform.scaleY);
+                const halfAabbW = (scaledW * Math.abs(Math.cos(rad)) + scaledH * Math.abs(Math.sin(rad))) / 2;
+                const halfAabbH = (scaledH * Math.abs(Math.cos(rad)) + scaledW * Math.abs(Math.sin(rad))) / 2;
+
+                const aboveTop = centerY - halfAabbH - 42;
+                const barTop = aboveTop >= 8 ? aboveTop : Math.min(LOGICAL_HEIGHT - 40, centerY + halfAabbH + 10);
+
+                const horizontalStyle: React.CSSProperties =
+                  centerX < 360
+                    ? { left: `${Math.max(8, centerX - halfAabbW)}px` }
+                    : centerX > 620
+                      ? { right: `${Math.max(8, LOGICAL_WIDTH - (centerX + halfAabbW))}px` }
+                      : { left: `${centerX}px`, transform: 'translateX(-50%)' };
+
+                return (
+                  <div
+                    key={`quick-bar-${obj.id}`}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    style={{
+                      top: `${barTop}px`,
+                      ...horizontalStyle,
+                    }}
+                    className="pointer-events-auto absolute flex items-center gap-1 bg-white/95 backdrop-blur-md border border-slate-200 rounded-lg px-2 py-1 shadow-xl whitespace-nowrap z-50"
+                  >
+                    <span className="text-[10px] font-bold text-indigo-700 px-1.5 border-r border-slate-200">
+                      {obj.name}
+                    </span>
+
+                    {resolveObjectAssetClass(obj) === 'composite' && selectedPartId && (
+                      <button
+                        onClick={() => onSelectPart?.(null)}
+                        className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-pink-50 border border-pink-200 text-pink-700 text-[10px] font-semibold hover:bg-pink-100 cursor-pointer"
+                        title="Parça seçimini temizle ve bütün nesneye dön"
+                      >
+                        <span>
+                          Parça:{' '}
+                          {getMathAssetDefinition(obj.assetId)?.parts?.find(
+                            (p) => p.id === selectedPartId
+                          )?.name || selectedPartId}
+                        </span>
+                        <span className="text-pink-500">✕</span>
+                      </button>
+                    )}
+
+                    {obj.category === 'characters' && obj.assetId !== 'char-robot-mira' && (
+                      <>
+                        <button
+                          onClick={() => onEditCharacterInStudio(obj)}
+                          className="flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-semibold transition-colors cursor-pointer"
+                          title="Yüz, Saç, Göz, Aksesuar ve Uzuvları Özelleştir"
+                        >
+                          <UserCog className="w-3 h-3" />
+                          <span>Karakteri Özelleştir</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            const nextRig = !boneRigEditMode;
+                            setBoneRigEditMode(nextRig);
+                            if (nextRig) {
+                              const baseCfg =
+                                obj.characterConfig ||
+                                DEFAULT_CHARACTER_CONFIGS[obj.assetId] ||
+                                DEFAULT_CHARACTER_CONFIGS['char-pro-sinan'];
+                              if (!baseCfg.rigMode || baseCfg.rigMode === 'preset') {
+                                onUpdateObject(
+                                  obj.id,
+                                  {
+                                    characterConfig: {
+                                      ...baseCfg,
+                                      rigMode: 'hybrid',
+                                    },
+                                  },
+                                  true
+                                );
+                              }
+                            }
+                          }}
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                            boneRigEditMode
+                              ? 'bg-pink-600 text-white shadow-sm hover:bg-pink-500'
+                              : 'bg-pink-50 text-pink-700 border border-pink-200 hover:bg-pink-100'
+                          }`}
+                          title="2D İskelet Modu (Bone Rigging) — Eklemleri fareyle tutup döndürün"
+                        >
+                          <Bone className="w-3 h-3" />
+                          <span>{boneRigEditMode ? '2D İskelet: Açık' : '2D İskelet (Rig)'}</span>
+                        </button>
+                      </>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        const nextEnabled = !obj.motionPath?.enabled;
+                        onUpdateObject(
+                          obj.id,
+                          {
+                            motionPath: {
+                              enabled: nextEnabled,
+                              endX:
+                                obj.motionPath?.endX ??
+                                Math.min(LOGICAL_WIDTH - obj.width - 24, obj.x + 240),
+                              endY: obj.motionPath?.endY ?? obj.y,
+                              startTime: obj.motionPath?.startTime ?? 0,
+                              duration: obj.motionPath?.duration ?? Math.max(1.5, scene.duration - 0.5),
+                              curve: obj.motionPath?.curve ?? 'linear',
+                              autoFlipX: obj.motionPath?.autoFlipX ?? true,
+                            },
+                          },
+                          true
+                        );
+                      }}
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                        obj.motionPath?.enabled
+                          ? 'bg-amber-500 text-white hover:bg-amber-600'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
+                      }`}
+                      title="Hareket Yolu (Motion Path) Ekle / Kaldır"
+                    >
+                      <Route className="w-3 h-3" />
+                      <span>Hareket Yolu</span>
+                    </button>
+
+                    <div
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-50 border border-slate-200"
+                      title={`Opaklık: %${Math.round(obj.opacity ?? 100)}`}
+                    >
+                      <span className="text-[10px] font-semibold text-slate-600">
+                        Opaklık
+                      </span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={Math.round(obj.opacity ?? 100)}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onChange={(e) =>
+                          onUpdateObject(
+                            obj.id,
+                            { opacity: Number(e.target.value) },
+                            true
+                          )
+                        }
+                        aria-label="Opaklık"
+                        className="w-14 accent-indigo-600 cursor-pointer h-1"
+                      />
+                      <span className="text-[10px] font-mono font-semibold text-slate-700 w-7 text-right">
+                        %{Math.round(obj.opacity ?? 100)}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => onDuplicateObject(obj.id)}
+                      className="p-1 rounded hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
+                      title="Kopyala (Duplicate)"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => onLayerMove(obj.id, 'up')}
+                      className="p-1 rounded hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
+                      title="Katmanı Yukarı Taşı"
+                    >
+                      <ArrowUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => onLayerMove(obj.id, 'down')}
+                      className="p-1 rounded hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
+                      title="Katmanı Aşağı Taşı"
+                    >
+                      <ArrowDown className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() =>
+                        onUpdateObject(obj.id, { flipX: !obj.flipX }, true)
+                      }
+                      className="p-1 rounded hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
+                      title="Yatay Çevir (Ayna)"
+                    >
+                      <FlipHorizontal className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() =>
+                        onUpdateObject(obj.id, { locked: !obj.locked }, true)
+                      }
+                      className={`p-1 rounded transition-colors cursor-pointer ${
+                        obj.locked
+                          ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                          : 'hover:bg-slate-100 text-slate-700'
+                      }`}
+                      title={obj.locked ? 'Kilidi Aç' : 'Nesneyi Kilitle'}
+                    >
+                      {obj.locked ? (
+                        <Lock className="w-3.5 h-3.5" />
+                      ) : (
+                        <Unlock className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                    <div className="w-px h-3.5 bg-slate-200 mx-0.5" />
+                    <button
+                      onClick={() => onDeleteObject(obj.id)}
+                      className="p-1 rounded hover:bg-red-50 text-red-600 transition-colors cursor-pointer"
+                      title="Sil (Delete)"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })()}
+
+            {/* Marquee Selection Rectangle */}
+            {!isPlaying &&
+              interaction?.type === 'marquee' &&
+              (Math.abs(interaction.currentX - interaction.startX) >= 4 ||
+                Math.abs(interaction.currentY - interaction.startY) >= 4) && (
+                <div
+                  className="absolute pointer-events-none z-50 border-2 border-indigo-500 bg-indigo-500/15 rounded-sm"
+                  style={{
+                    left: `${Math.min(interaction.startX, interaction.currentX)}px`,
+                    top: `${Math.min(interaction.startY, interaction.currentY)}px`,
+                    width: `${Math.abs(interaction.currentX - interaction.startX)}px`,
+                    height: `${Math.abs(interaction.currentY - interaction.startY)}px`,
+                  }}
+                />
+              )}
+
+            {/* Multi-Selection Floating Action Bar */}
+            {!isPlaying && activeSelectedIds.length > 1 && (
+              <div
+                onMouseDown={(e) => e.stopPropagation()}
+                className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-white/95 backdrop-blur border border-indigo-200 rounded-full px-3 py-1 shadow-lg text-xs"
+              >
+                <span className="font-bold text-indigo-700">
+                  {activeSelectedIds.length} nesne seçili
+                </span>
+                {onDeleteObjects && (
+                  <button
+                    type="button"
+                    onClick={() => onDeleteObjects(activeSelectedIds)}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 hover:bg-red-100 text-red-600 font-semibold transition cursor-pointer"
+                    title="Seçili nesneleri sil"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Sil</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSelectObjects) {
+                      onSelectObjects([]);
+                    } else {
+                      onSelectObject(null);
+                    }
+                  }}
+                  className="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold transition cursor-pointer"
+                >
+                  Temizle
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

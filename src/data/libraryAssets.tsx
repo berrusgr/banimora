@@ -1233,6 +1233,16 @@ export const VectorAssetRenderer: React.FC<VectorRendererProps> = ({
       );
     }
 
+    if (assetId.startsWith('el-')) {
+      return (
+        <ElementsSvgRenderer
+          assetId={assetId}
+          color={color}
+          secondaryColor={secondaryColor}
+        />
+      );
+    }
+
     if (resolvedCharConfig && assetId !== 'char-robot-mira') {
       const syncedConfig: CharacterConfig = {
         ...resolvedCharConfig,

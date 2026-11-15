@@ -1,11 +1,104 @@
 @import "tailwindcss";
 
+:root {
+  /* Brand Palette (Banimora Purple) */
+  --bm-brand-50: #eef2ff;
+  --bm-brand-100: #e0e7ff;
+  --bm-brand-200: #c7d2fe;
+  --bm-brand-500: #6366f1;
+  --bm-brand-600: #4f46e5;
+  --bm-brand-700: #4338ca;
+  --bm-violet-500: #8b5cf6;
+  --bm-violet-600: #7c3aed;
+
+  /* Semantic Colors */
+  --bm-success: #059669;
+  --bm-success-bg: #ecfdf5;
+  --bm-warning: #d97706;
+  --bm-warning-bg: #fffbeb;
+  --bm-danger: #dc2626;
+  --bm-danger-bg: #fef2f2;
+  --bm-info: #0284c7;
+  --bm-info-bg: #f0f9ff;
+
+  /* Surfaces & Borders */
+  --bm-surface: #ffffff;
+  --bm-surface-muted: #f8fafc;
+  --bm-surface-subtle: #f1f5f9;
+  --bm-canvas-bg: #f1f5f9;
+  --bm-border: #e2e8f0;
+  --bm-border-strong: #cbd5e1;
+
+  /* Typography */
+  --bm-text: #0f172a;
+  --bm-text-secondary: #475569;
+  --bm-text-muted: #64748b;
+
+  /* Radii & Shadows */
+  --bm-radius-sm: 6px;
+  --bm-radius-md: 8px;
+  --bm-radius-lg: 12px;
+  --bm-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --bm-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --bm-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+
+  /* Control Heights */
+  --bm-control-sm: 28px;
+  --bm-control-md: 32px;
+}
+
 @layer base {
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--bm-text);
+    background-color: var(--bm-surface-muted);
   }
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+  .bm-btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors cursor-pointer;
+    background-color: var(--bm-brand-600);
+    box-shadow: var(--bm-shadow-xs);
+  }
+  .bm-btn-primary:hover {
+    background-color: var(--bm-brand-700);
+  }
+  .bm-btn-secondary {
+    @apply inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer;
+    background-color: var(--bm-surface);
+    border-color: var(--bm-border);
+    color: var(--bm-text-secondary);
+  }
+  .bm-btn-secondary:hover {
+    background-color: var(--bm-surface-muted);
+    color: var(--bm-text);
+  }
+  .bm-input,
+  .bm-select {
+    @apply w-full rounded-lg border text-xs px-2.5 py-1.5 transition-colors focus:outline-none;
+    background-color: var(--bm-surface);
+    border-color: var(--bm-border);
+    color: var(--bm-text);
+  }
+  .bm-input:focus,
+  .bm-select:focus {
+    border-color: var(--bm-brand-500);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.16);
+  }
+  .bm-card {
+    @apply rounded-xl border transition-all;
+    background-color: var(--bm-surface);
+    border-color: var(--bm-border);
+    box-shadow: var(--bm-shadow-xs);
+  }
+  .bm-section {
+    @apply p-2.5 rounded-xl border;
+    background-color: var(--bm-surface-muted);
+    border-color: var(--bm-border);
   }
 }
 

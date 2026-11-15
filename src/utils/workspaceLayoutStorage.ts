@@ -3,6 +3,7 @@ export type WorkspaceMode = 'standard' | 'wide' | 'focus';
 export interface WorkspaceLayoutState {
   mode: WorkspaceMode;
   leftCollapsed: boolean;
+  leftWidthPx: number;
   rightCollapsed: boolean;
   rightWidthPx: number;
   timelineCollapsed: boolean;
@@ -11,18 +12,28 @@ export interface WorkspaceLayoutState {
 
 const WORKSPACE_LAYOUT_KEY = 'banimora.workspaceLayout.v1';
 
+export const MIN_LEFT_PANEL_WIDTH = 220;
+export const MAX_LEFT_PANEL_WIDTH = 360;
+export const DEFAULT_LEFT_PANEL_WIDTH = 272;
+
 export const MIN_RIGHT_PANEL_WIDTH = 240;
 export const MAX_RIGHT_PANEL_WIDTH = 380;
-export const DEFAULT_RIGHT_PANEL_WIDTH = 276;
+export const DEFAULT_RIGHT_PANEL_WIDTH = 280;
 
 export const DEFAULT_WORKSPACE_LAYOUT: WorkspaceLayoutState = {
   mode: 'standard',
   leftCollapsed: false,
+  leftWidthPx: DEFAULT_LEFT_PANEL_WIDTH,
   rightCollapsed: false,
   rightWidthPx: DEFAULT_RIGHT_PANEL_WIDTH,
   timelineCollapsed: false,
   timelineHeightPx: 220,
 };
+
+export function clampLeftPanelWidth(width: number): number {
+  if (!Number.isFinite(width)) return DEFAULT_LEFT_PANEL_WIDTH;
+  return Math.max(MIN_LEFT_PANEL_WIDTH, Math.min(MAX_LEFT_PANEL_WIDTH, Math.round(width)));
+}
 
 export function clampRightPanelWidth(width: number): number {
   if (!Number.isFinite(width)) return DEFAULT_RIGHT_PANEL_WIDTH;
@@ -99,6 +110,11 @@ export function loadWorkspaceLayout(): WorkspaceLayoutState {
           ? parsed.mode
           : DEFAULT_WORKSPACE_LAYOUT.mode,
       leftCollapsed: Boolean(parsed.leftCollapsed),
+      leftWidthPx: clampLeftPanelWidth(
+        typeof parsed.leftWidthPx === 'number'
+          ? parsed.leftWidthPx
+          : DEFAULT_LEFT_PANEL_WIDTH
+      ),
       rightCollapsed: Boolean(parsed.rightCollapsed),
       rightWidthPx: clampRightPanelWidth(
         typeof parsed.rightWidthPx === 'number'

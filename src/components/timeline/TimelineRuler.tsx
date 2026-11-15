@@ -2,6 +2,12 @@ import React from 'react';
 import { formatCompactDuration } from '../../utils/animationEngine';
 import { getAdaptiveRulerSteps, pixelXToTime, timeToPixelX } from './timelineUtils';
 
+export interface TimelineQuestionMarker {
+  id: string;
+  timeSec: number;
+  label: string;
+}
+
 interface TimelineRulerProps {
   totalDuration: number;
   scrollTime: number;
@@ -9,6 +15,8 @@ interface TimelineRulerProps {
   viewportWidthPx: number;
   playheadTime: number;
   onSeek: (time: number) => void;
+  questionMarkers?: TimelineQuestionMarker[];
+  onSelectQuestionMarker?: (questionId: string) => void;
 }
 
 export const TimelineRuler: React.FC<TimelineRulerProps> = ({
@@ -18,6 +26,8 @@ export const TimelineRuler: React.FC<TimelineRulerProps> = ({
   viewportWidthPx,
   playheadTime,
   onSeek,
+  questionMarkers,
+  onSelectQuestionMarker,
 }) => {
   const rulerRef = React.useRef<HTMLDivElement>(null);
 
@@ -100,6 +110,29 @@ export const TimelineRuler: React.FC<TimelineRulerProps> = ({
           />
         );
       })()}
+
+      {/* Etkileşimli Soru Marker'ları (Animasyon keyframe'lerinden bağımsız) */}
+      {questionMarkers?.map((marker) => {
+        const mx = timeToPixelX(marker.timeSec, scrollTime, zoomPxPerSec);
+        if (mx < -18 || mx > viewportWidthPx + 18) return null;
+        return (
+          <button
+            key={marker.id}
+            type="button"
+            data-testid={`timeline-question-marker-${marker.id}`}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectQuestionMarker?.(marker.id);
+            }}
+            style={{ transform: `translate3d(${mx}px, 0, 0)` }}
+            title={marker.label}
+            className="absolute bottom-0.5 left-0 -ml-2.5 px-1 h-4 rounded-sm bg-violet-600 hover:bg-violet-500 text-white text-[9px] font-extrabold leading-none flex items-center justify-center shadow-sm border border-white z-30 cursor-pointer"
+          >
+            ?
+          </button>
+        );
+      })}
 
       {/* Playhead Başlığı */}
       {playheadX >= -12 && playheadX <= viewportWidthPx + 12 && (

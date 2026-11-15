@@ -1,9 +1,69 @@
 import type {
+  AddieProgress,
+  AddieProjectData,
+  AddieStage,
+  AddieStageStatus,
   AudioClip,
   LibraryAssetItem,
+  ProjectEducationalMetadata,
+  ProjectMode,
   Scene,
   SceneBackground,
 } from '../types/studio';
+import { sanitizeInteractionQuestions } from './interactionQuestions.ts';
+import { normalizePlayerEvaluationSettings } from './studentPlayerEngine.ts';
+
+export const ADDIE_STAGE_ORDER: readonly AddieStage[] = [
+  'analysis',
+  'design',
+  'development',
+  'implementation',
+  'evaluation',
+] as const;
+
+const VALID_STAGE_STATUSES = new Set<AddieStageStatus>([
+  'not-started',
+  'in-progress',
+  'completed',
+]);
+
+export function createDefaultAddieProgress(): AddieProgress {
+  return {
+    currentStage: 'analysis',
+    stageStatus: {
+      analysis: 'in-progress',
+      design: 'not-started',
+      development: 'not-started',
+      implementation: 'not-started',
+      evaluation: 'not-started',
+    },
+  };
+}
+
+function sanitizeAddieProgress(raw: unknown): AddieProgress {
+  const defaults = createDefaultAddieProgress();
+  if (!raw || typeof raw !== 'object') return defaults;
+  const candidate = raw as Partial<AddieProgress>;
+  const currentStage: AddieStage = ADDIE_STAGE_ORDER.includes(
+    candidate.currentStage as AddieStage
+  )
+    ? (candidate.currentStage as AddieStage)
+    : defaults.currentStage;
+
+  const rawStatuses =
+    candidate.stageStatus && typeof candidate.stageStatus === 'object'
+      ? candidate.stageStatus
+      : {};
+  const stageStatus = { ...defaults.stageStatus };
+  for (const stage of ADDIE_STAGE_ORDER) {
+    const val = (rawStatuses as Partial<Record<AddieStage, AddieStageStatus>>)[stage];
+    if (val && VALID_STAGE_STATUSES.has(val)) {
+      stageStatus[stage] = val;
+    }
+  }
+
+  return { currentStage, stageStatus };
+}
 
 export interface BanimoraProjectFile {
   format: 'banimora-project';
@@ -20,6 +80,84 @@ export interface BanimoraProjectFile {
   showGrid?: boolean;
   loopPlayback?: boolean;
   fps?: 24 | 30 | 60;
+  educationalMetadata?: ProjectEducationalMetadata;
+}
+
+export function createDefaultAddieData(title = ''): AddieProjectData {
+  return {
+    title: typeof title === 'string' ? title : '',
+    subject: '',
+    targetAudience: '',
+    learningObjectives: [],
+    description: '',
+    instructionalPlan: '',
+    evaluationChecklist: {},
+    progress: createDefaultAddieProgress(),
+  };
+}
+
+function sanitizeAddieData(raw: unknown): AddieProjectData | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const candidate = raw as Partial<AddieProjectData>;
+  const objectives = Array.isArray(candidate.learningObjectives)
+    ? candidate.learningObjectives
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0)
+    : [];
+
+  const checklist: Record<string, boolean> = {};
+  if (candidate.evaluationChecklist && typeof candidate.evaluationChecklist === 'object') {
+    for (const [key, val] of Object.entries(candidate.evaluationChecklist)) {
+      if (typeof val === 'boolean') {
+        checklist[key] = val;
+      }
+    }
+  }
+
+  return {
+    title: typeof candidate.title === 'string' ? candidate.title : '',
+    subject: typeof candidate.subject === 'string' ? candidate.subject : '',
+    targetAudience:
+      typeof candidate.targetAudience === 'string' ? candidate.targetAudience : '',
+    learningObjectives: objectives,
+    description: typeof candidate.description === 'string' ? candidate.description : '',
+    instructionalPlan:
+      typeof candidate.instructionalPlan === 'string' ? candidate.instructionalPlan : '',
+    evaluationChecklist: checklist,
+    progress: sanitizeAddieProgress(candidate.progress),
+  };
+}
+
+export function normalizeProjectEducationalMetadata(
+  raw: unknown
+): ProjectEducationalMetadata {
+  if (!raw || typeof raw !== 'object') {
+    return { mode: 'classic' };
+  }
+  const candidate = raw as Partial<ProjectEducationalMetadata>;
+  const mode: ProjectMode = candidate.mode === 'addie' ? 'addie' : 'classic';
+  const addieData = sanitizeAddieData(candidate.addieData);
+  const interactions = Array.isArray(candidate.interactions)
+    ? sanitizeInteractionQuestions(candidate.interactions)
+    : undefined;
+  const playerSettings = normalizePlayerEvaluationSettings(candidate.playerSettings);
+  return {
+    mode,
+    ...(addieData ? { addieData } : {}),
+    ...(interactions && interactions.length > 0 ? { interactions } : {}),
+    ...(playerSettings ? { playerSettings } : {}),
+  };
+}
+
+export function switchProjectModePreservingData(
+  current: ProjectEducationalMetadata,
+  nextMode: ProjectMode
+): ProjectEducationalMetadata {
+  return {
+    ...current,
+    mode: nextMode,
+  };
 }
 
 function sanitizeFileName(name: string): string {
@@ -174,6 +312,8 @@ export async function parseProjectJsonFile(file: File): Promise<BanimoraProjectF
     zoom: typeof data.zoom === 'number' ? data.zoom : undefined,
     showGrid: typeof data.showGrid === 'boolean' ? data.showGrid : undefined,
     loopPlayback: typeof data.loopPlayback === 'boolean' ? data.loopPlayback : undefined,
+    fps: data.fps === 24 || data.fps === 30 || data.fps === 60 ? data.fps : undefined,
+    educationalMetadata: normalizeProjectEducationalMetadata(data.educationalMetadata),
   };
 }
 
@@ -238,6 +378,7 @@ export function loadAutoSaveProject(
     return {
       ...parsed,
       scenes: parsed.scenes.map(sanitizeLoadedScene),
+      educationalMetadata: normalizeProjectEducationalMetadata(parsed.educationalMetadata),
     };
   } catch {
     return null;

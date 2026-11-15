@@ -1,8 +1,9 @@
-import { AudioClip } from '../types/studio';
+import type { AudioClip } from '../types/studio';
 
-class SoundEngine {
+export class SoundEngine {
   private ctx: AudioContext | null = null;
   private activeHtmlAudios: Map<string, HTMLAudioElement> = new Map();
+  private activeOscillators: Set<{ osc: OscillatorNode; gain: GainNode }> = new Set();
 
   private getContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -41,6 +42,22 @@ class SoundEngine {
 
       osc.connect(gain);
       gain.connect(ctx.destination);
+
+      const entry = { osc, gain };
+      this.activeOscillators.add(entry);
+      osc.onended = () => {
+        this.activeOscillators.delete(entry);
+        try {
+          osc.disconnect();
+        } catch {
+          // Ignore already disconnected
+        }
+        try {
+          gain.disconnect();
+        } catch {
+          // Ignore already disconnected
+        }
+      };
 
       osc.start(now + idx * stepDuration);
       osc.stop(now + (idx + 1) * stepDuration + 0.02);
@@ -109,6 +126,26 @@ class SoundEngine {
       }
     });
     this.activeHtmlAudios.clear();
+
+    this.activeOscillators.forEach(({ osc, gain }) => {
+      try {
+        osc.onended = null;
+        osc.stop();
+      } catch {
+        // Ignore if oscillator already stopped or ended naturally
+      }
+      try {
+        osc.disconnect();
+      } catch {
+        // Ignore
+      }
+      try {
+        gain.disconnect();
+      } catch {
+        // Ignore
+      }
+    });
+    this.activeOscillators.clear();
   }
 }
 

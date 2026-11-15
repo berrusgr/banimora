@@ -185,11 +185,15 @@ interface RightInspectorProps {
   onContinueScene: () => void;
   onUploadBackgroundFile: (file: File) => void;
   onUpdateObject: (id: string, patch: Partial<CanvasObject>, commitHistory?: boolean) => void;
+  onEnsureMotionProp?: (characterId: string, presetId: string) => string | null;
   onApplySmartAction?: (
     characterId: string,
     pkg: SmartActionPackage,
     mode: SmartActionApplyMode
   ) => void;
+  pendingSmartActionTrial?: { characterId: string; pkgId: string } | null;
+  onConfirmSmartAction?: () => void;
+  onCancelSmartAction?: () => void;
   onUpdateAnimations: (id: string, animations: ObjectAnimations) => void;
   isPlaying?: boolean;
   onPreviewAnimation: (obj: CanvasObject) => void;
@@ -462,7 +466,11 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
   onContinueScene,
   onUploadBackgroundFile,
   onUpdateObject,
+  onEnsureMotionProp,
   onApplySmartAction,
+  pendingSmartActionTrial,
+  onConfirmSmartAction,
+  onCancelSmartAction,
   onUpdateAnimations,
   isPlaying = false,
   onPreviewAnimation,
@@ -1477,6 +1485,9 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                     selectedObject={selectedObject}
                     charConfig={resolvedCharConfig}
                     onApplySmartAction={onApplySmartAction}
+                    pendingSmartActionTrial={pendingSmartActionTrial}
+                    onConfirmSmartAction={onConfirmSmartAction}
+                    onCancelSmartAction={onCancelSmartAction}
                   />
                 ) : (
                   <div className="grid grid-cols-2 gap-1.5">
@@ -3085,6 +3096,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               sceneDuration={scene.duration}
               currentTime={currentTime}
               onUpdateObject={onUpdateObject}
+              onEnsureMotionProp={onEnsureMotionProp}
               stageMotionPreview={stageMotionPreview}
               onStageMotionPreviewChange={onStageMotionPreviewChange}
               rightOffsetPx={widthPx + 12}

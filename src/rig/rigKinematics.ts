@@ -837,15 +837,16 @@ export function computeTorsoChainWorldTransform(
   //    translate(collarAnchorInRootSpace.x, collarAnchorInRootSpace.y + speechHeadBobY)
   //    scale(headScale) rotate(cumChest + legacyHeadTiltDeg + speechHeadTilt) translate(-110, -114)
   // 2) Kanonik Boyun Grubu (data-canonical-bone="neck"):
-  //    rotate(neckAngle 110 122)
+  //    rotate(neckAngle 110 114) -- yaka ankrajına sabit
   // 3) Kanonik Kafa Grubu (data-canonical-bone="head"):
-  //    rotate(canonicalHeadAngleDeg 110 114)
+  //    rotate(canonicalHeadAngleDeg 110 105) -- üst boyun / çene altı eklemi
   const headScale = profile.proportions.headScale;
   const legacyHeadBaseWorldAngleDeg = cumChest + legacyHeadTiltDeg + speechHeadTilt;
   const neckWorldAngleDeg = legacyHeadBaseWorldAngleDeg + neckAngle;
   const totalHeadRotateDeg = neckWorldAngleDeg + canonicalHeadAngleDeg;
   const localHeadOrigin: Point2D = { x: 110, y: 114 };
-  const localNeckPivot: Point2D = { x: 110, y: 122 };
+  const localNeckPivot: Point2D = { x: 110, y: 114 };
+  const localCanonicalHeadPivot: Point2D = { x: 110, y: 105 };
 
   const mCollarBaseInRoot = multiplyMatrices2D(
     translationMatrix2D(collarAnchorInRootSpace.x, collarAnchorInRootSpace.y + speechHeadBobY),
@@ -858,7 +859,7 @@ export function computeTorsoChainWorldTransform(
   const mNeckInHeadSpace = rotationAroundPointMatrix2D(neckAngle, localNeckPivot);
   const neckWorldMatrix = multiplyMatrix2D(legacyHeadTiltMatrix, mNeckInHeadSpace);
 
-  // Boyun çizim alt grubu (`translate(110, 122) scale(neckScaleX, neckScaleY) translate(-110, -122)`)
+  // Boyun çizim alt grubu (`translate(110, 114) scale(neckScaleX, neckScaleY) translate(-110, -114)`)
   // Kafa (canonicalHeadAngleDeg) dönüşümünden ETKİLENMEZ!
   const neckScaleX = round4(0.85 + userNeckScale * 0.15);
   const neckScaleY = round4(userNeckScale);
@@ -870,7 +871,7 @@ export function computeTorsoChainWorldTransform(
   // Kanonik Kafa Dış Taşıyıcı Dünya Matrisi (M_headCarrierFront === M_headCarrierBack)
   const mCanonicalHeadInNeckSpace = rotationAroundPointMatrix2D(
     canonicalHeadAngleDeg,
-    localHeadOrigin
+    localCanonicalHeadPivot
   );
   const headWorldMatrix = multiplyMatrix2D(neckWorldMatrix, mCanonicalHeadInNeckSpace);
   const headBackHairCarrierWorldMatrix: Matrix2D = { ...headWorldMatrix };

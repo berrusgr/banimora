@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, Play, Search, Sparkles, Star, Wrench, AlertTriangle } from 'lucide-react';
+import { Check, Play, Search, Sparkles, Star, Wrench, AlertTriangle, X } from 'lucide-react';
 import type { CanvasObject, CharacterConfig } from '../types/studio';
 import {
   ALL_SMART_ACTION_PACKAGES,
@@ -27,6 +27,9 @@ export interface SmartActionLibrarySectionProps {
     pkg: SmartActionPackage,
     mode: SmartActionApplyMode
   ) => void;
+  pendingSmartActionTrial?: { characterId: string; pkgId: string } | null;
+  onConfirmSmartAction?: () => void;
+  onCancelSmartAction?: () => void;
 }
 
 type FilterMode = SmartActionCategoryId | 'all' | 'favorites' | 'recent';
@@ -35,6 +38,9 @@ export const SmartActionLibrarySection: React.FC<SmartActionLibrarySectionProps>
   selectedObject,
   charConfig,
   onApplySmartAction,
+  pendingSmartActionTrial,
+  onConfirmSmartAction,
+  onCancelSmartAction,
 }) => {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<FilterMode>('all');
@@ -108,14 +114,25 @@ export const SmartActionLibrarySection: React.FC<SmartActionLibrarySectionProps>
     setFavoriteIds(next);
   };
 
+  const hasPendingTrial = pendingSmartActionTrial?.characterId === selectedObject.id;
+
+  const handleSelectPackage = (pkg: SmartActionPackage) => {
+    setSelectedPkgId(pkg.id);
+    if (hasPendingTrial && pendingSmartActionTrial?.pkgId !== pkg.id) {
+      onApplySmartAction(selectedObject.id, pkg, 'prepare-scene');
+      setFeedbackMsg(`“${pkg.title}” sahnede önizleniyor — onaylamak için Uygula'ya basın.`);
+      window.setTimeout(() => setFeedbackMsg(null), 2600);
+    }
+  };
+
   const handleApply = (mode: SmartActionApplyMode) => {
     const key = selectedPkg.sourcePresetId ?? selectedPkg.id;
     const nextRecent = recordRecentPresetId(key);
     setRecentIds(nextRecent);
     onApplySmartAction(selectedObject.id, selectedPkg, mode);
     setFeedbackMsg(
-      mode === 'prepare-scene' && selectedPkg.sceneRequirements.length > 0
-        ? `“${selectedPkg.title}” sahne nesneleriyle uygulandı.`
+      mode === 'prepare-scene'
+        ? `“${selectedPkg.title}” sahnede önizleniyor — onaylamak için Uygula'ya basın.`
         : `“${selectedPkg.title}” hareketi karaktere eklendi.`
     );
     window.setTimeout(() => setFeedbackMsg(null), 2600);
@@ -182,11 +199,11 @@ export const SmartActionLibrarySection: React.FC<SmartActionLibrarySectionProps>
                 key={pkg.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => setSelectedPkgId(pkg.id)}
+                onClick={() => handleSelectPackage(pkg)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    setSelectedPkgId(pkg.id);
+                    handleSelectPackage(pkg);
                   }
                 }}
                 className={`w-full p-2 rounded-lg border text-left transition-all cursor-pointer ${
@@ -279,14 +296,51 @@ export const SmartActionLibrarySection: React.FC<SmartActionLibrarySectionProps>
           </div>
 
           <div className="grid grid-cols-1 gap-1.5">
-            <button
-              type="button"
-              onClick={() => handleApply('prepare-scene')}
-              className="w-full py-1.5 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Sahneyi Hazırla ve Uygula</span>
-            </button>
+            {hasPendingTrial ? (
+              <div className="p-2 rounded-lg bg-amber-50 border border-amber-300 space-y-1.5">
+                <div className="text-[10px] font-semibold text-amber-900 flex items-center justify-between gap-1">
+                  <span>Onay bekleyen deneme sahnede</span>
+                  <span className="px-1.5 py-0.5 rounded bg-amber-200/70 text-[9px] font-bold">
+                    Önizleme
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onConfirmSmartAction?.();
+                      setFeedbackMsg(`“${selectedPkg.title}” sahneye kalıcı olarak uygulandı.`);
+                      window.setTimeout(() => setFeedbackMsg(null), 2600);
+                    }}
+                    className="py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold flex items-center justify-center gap-1 shadow-xs transition-all cursor-pointer"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Uygula</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onCancelSmartAction?.();
+                      setFeedbackMsg('Onaylanmamış deneme sahneden kaldırıldı.');
+                      window.setTimeout(() => setFeedbackMsg(null), 2200);
+                    }}
+                    className="py-1.5 px-2 rounded-lg bg-white hover:bg-rose-50 border border-rose-300 text-rose-700 text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Vazgeç</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleApply('prepare-scene')}
+                className="w-full py-1.5 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Sahnede Dene</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => handleApply('motion-only')}

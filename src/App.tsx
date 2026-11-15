@@ -1,11 +1,19 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  AddieProjectData,
+  AddieStage,
   AnimationComboPreset,
   AudioClip,
   CanvasObject,
   CharacterConfig,
+  InteractionQuestion,
+  LearningSession,
   LibraryAssetItem,
   ObjectAnimations,
+  PlayerEvaluationSettings,
+  ProjectEducationalMetadata,
+  ProjectMode,
+  QuestionAssetRef,
   Scene,
   SceneBackground,
   SceneCamera,
@@ -23,15 +31,36 @@ import { RightInspector } from './components/RightInspector';
 import { BottomTimeline } from './components/BottomTimeline';
 import { ExportModal } from './components/ExportModal';
 import { CharacterStudioModal } from './components/CharacterStudioModal';
+import {
+  AddieProjectInfoModal,
+  ProjectModeSelectorModal,
+} from './components/AddieProjectModals';
+import { AddieProgressBar, AddieStageModal } from './components/AddieGuidanceUI';
+import { InteractionQuestionModal } from './components/InteractionQuestionModal';
+import { PlayerSettingsModal } from './components/PlayerSettingsModal';
+import { StudentPlayerView } from './components/StudentPlayerView';
+import { StudentQuestionOverlay } from './components/StudentQuestionOverlay';
+import { StudentResultOverlay } from './components/StudentResultOverlay';
+import {
+  createLearningSession,
+  findBlockingQuestionBeforeSeek,
+  findTriggeredQuestionInInterval,
+  getSkippedQuestionsForReview,
+  resolvePlayerSettings,
+  skipQuestionInSession,
+  submitQuestionAnswer,
+} from './utils/studentPlayerEngine';
 import { soundEngine } from './utils/soundEffects';
 import { MAX_TOTAL_PROJECT_DURATION } from './utils/animationEngine';
 import {
   BanimoraProjectFile,
-  clearAutoSaveProject,
+  createDefaultAddieData,
+  createDefaultAddieProgress,
   downloadProjectJson,
-  loadAutoSaveProject,
+  normalizeProjectEducationalMetadata,
   parseProjectJsonFile,
   saveAutoSaveProject,
+  switchProjectModePreservingData,
 } from './utils/projectStorage';
 import type { SmartActionPackage } from './data/smartActionPackages';
 import {
@@ -39,7 +68,12 @@ import {
   type SmartActionApplyMode,
 } from './utils/smartActionApplier';
 import {
+  ensureMotionPropAttachedToCharacter,
+  getMotionPropSpec,
+} from './utils/motionPropAutoBind';
+import {
   applyWorkspaceMode,
+  clampLeftPanelWidth,
   clampRightPanelWidth,
   clampTimelineHeight,
   deriveWorkspaceMode,
@@ -72,12 +106,17 @@ export function App() {
 
   // Default to null (no object selected) when a scene is selected so the user sees Scene Transitions (including Dissolve) in the Right Inspector immediately
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
+  const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
   const [isCameraSelected, setIsCameraSelected] = useState(false);
 
   useEffect(() => {
     setSelectedPartId(null);
   }, [selectedObjectId, activeSceneId]);
+
+  useEffect(() => {
+    setSelectedObjectIds((prev) => (prev.length === 0 ? prev : []));
+  }, [activeSceneId]);
 
   const hasUnsavedChangesRef = useRef(false);
 
@@ -135,9 +174,39 @@ export function App() {
   const [playAllScenes, setPlayAllScenes] = useState(true);
   const [projectFps, setProjectFps] = useState<24 | 30 | 60>(30);
   const [isExportOpen, setIsExportOpen] = useState(false);
-  const [recoveredAutoSave, setRecoveredAutoSave] = useState<BanimoraProjectFile | null>(() =>
-    loadAutoSaveProject()
-  );
+  const [recoveredAutoSave, setRecoveredAutoSave] = useState<BanimoraProjectFile | null>(null);
+  const [educationalMetadata, setEducationalMetadata] =
+    useState<ProjectEducationalMetadata>({ mode: 'classic' });
+  const [isModeSelectorOpen, setIsModeSelectorOpen] = useState<boolean>(true);
+  const [modeSelectorCanDismiss, setModeSelectorCanDismiss] = useState(false);
+  const [addieModalState, setAddieModalState] = useState<{
+    isOpen: boolean;
+    mode: 'create' | 'edit';
+  }>({ isOpen: false, mode: 'create' });
+  const [isAddieStageModalOpen, setIsAddieStageModalOpen] = useState(false);
+  const [interactionModalState, setInteractionModalState] = useState<{
+    isOpen: boolean;
+    questionId: string | null;
+  }>({ isOpen: false, questionId: null });
+  const [viewMode, setViewMode] = useState<'teacher' | 'student'>('teacher');
+  const [isPlayerSettingsOpen, setIsPlayerSettingsOpen] = useState(false);
+  const [studentSession, setStudentSession] = useState<LearningSession | null>(null);
+  const [showSessionResumePrompt, setShowSessionResumePrompt] = useState(false);
+  const [activeStudentQuestion, setActiveStudentQuestion] =
+    useState<InteractionQuestion | null>(null);
+  const [studentReviewQueue, setStudentReviewQueue] = useState<InteractionQuestion[]>([]);
+  const [studentReviewIndex, setStudentReviewIndex] = useState(0);
+  const [showStudentResultScreen, setShowStudentResultScreen] = useState(false);
+  const [showStudentCompletedNotice, setShowStudentCompletedNotice] = useState(false);
+
+  const viewModeRef = useRef(viewMode);
+  viewModeRef.current = viewMode;
+  const studentSessionRef = useRef(studentSession);
+  studentSessionRef.current = studentSession;
+  const activeStudentQuestionRef = useRef(activeStudentQuestion);
+  activeStudentQuestionRef.current = activeStudentQuestion;
+  const educationalMetadataRef = useRef(educationalMetadata);
+  educationalMetadataRef.current = educationalMetadata;
   const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
   const isInitialAutoSaveMountRef = useRef(true);
 
@@ -282,6 +351,45 @@ export function App() {
       const prev = currentTimeRef.current;
       const next = prev + deltaSec;
 
+      if (
+        viewModeRef.current === 'student' &&
+        !activeStudentQuestionRef.current &&
+        studentSessionRef.current
+      ) {
+        const questions = educationalMetadataRef.current.interactions ?? [];
+        const triggered = findTriggeredQuestionInInterval(
+          questions,
+          activeScene.id,
+          prev * 1000,
+          next * 1000,
+          studentSessionRef.current.triggeredQuestionIds
+        );
+        if (triggered) {
+          triggeredClipsRef.current.clear();
+          soundEngine.stopAll();
+          const pinnedSec = Math.min(activeScene.duration, triggered.timestampMs / 1000);
+          currentTimeRef.current = pinnedSec;
+          setCurrentTime(pinnedSec);
+          setIsPlaying(false);
+          const updatedSession: LearningSession = {
+            ...studentSessionRef.current,
+            lastActivityAt: new Date().toISOString(),
+            currentSceneId: activeScene.id,
+            currentTimeMs: triggered.timestampMs,
+            triggeredQuestionIds: studentSessionRef.current.triggeredQuestionIds.includes(
+              triggered.id
+            )
+              ? studentSessionRef.current.triggeredQuestionIds
+              : [...studentSessionRef.current.triggeredQuestionIds, triggered.id],
+          };
+          studentSessionRef.current = updatedSession;
+          setStudentSession(updatedSession);
+          activeStudentQuestionRef.current = triggered;
+          setActiveStudentQuestion(triggered);
+          return;
+        }
+      }
+
       activeScene.audioClips.forEach((clip) => {
         const clipEnd = clip.startTime + Math.max(0.1, clip.duration);
         if (
@@ -326,8 +434,11 @@ export function App() {
 
         const allScenes = scenesRef.current;
         const currentIdx = allScenes.findIndex((s) => s.id === activeSceneIdRef.current);
+        const isStudent = viewModeRef.current === 'student';
         const hasNextScene =
-          playAllScenes && currentIdx >= 0 && currentIdx < allScenes.length - 1;
+          (isStudent || playAllScenes) &&
+          currentIdx >= 0 &&
+          currentIdx < allScenes.length - 1;
 
         if (hasNextScene) {
           const nextScene = allScenes[currentIdx + 1];
@@ -346,7 +457,17 @@ export function App() {
           setActiveSceneId(nextScene.id);
           currentTimeRef.current = 0;
           setCurrentTime(0);
-        } else if (loopPlayback) {
+          if (isStudent && studentSessionRef.current) {
+            const nextSession: LearningSession = {
+              ...studentSessionRef.current,
+              currentSceneId: nextScene.id,
+              currentTimeMs: 0,
+              lastActivityAt: new Date().toISOString(),
+            };
+            studentSessionRef.current = nextSession;
+            setStudentSession(nextSession);
+          }
+        } else if (!isStudent && loopPlayback) {
           if (playAllScenes && allScenes.length > 1) {
             const firstScene = allScenes[0];
             setSelectedObjectId(null);
@@ -361,6 +482,42 @@ export function App() {
           currentTimeRef.current = activeScene.duration;
           setCurrentTime(activeScene.duration);
           setIsPlaying(false);
+          if (isStudent && studentSessionRef.current) {
+            const allQuestions = educationalMetadataRef.current.interactions ?? [];
+            const skipped = getSkippedQuestionsForReview(
+              allQuestions,
+              studentSessionRef.current
+            );
+            const settings = resolvePlayerSettings(
+              educationalMetadataRef.current.playerSettings
+            );
+            if (skipped.length > 0) {
+              const reviewSession: LearningSession = {
+                ...studentSessionRef.current,
+                status: 'reviewing_skipped',
+                currentTimeMs: activeScene.duration * 1000,
+                lastActivityAt: new Date().toISOString(),
+              };
+              studentSessionRef.current = reviewSession;
+              setStudentSession(reviewSession);
+              setStudentReviewQueue(skipped);
+              setStudentReviewIndex(0);
+            } else {
+              const completedSession: LearningSession = {
+                ...studentSessionRef.current,
+                status: 'completed',
+                currentTimeMs: activeScene.duration * 1000,
+                lastActivityAt: new Date().toISOString(),
+              };
+              studentSessionRef.current = completedSession;
+              setStudentSession(completedSession);
+              if (settings.showResultScreen) {
+                setShowStudentResultScreen(true);
+              } else {
+                setShowStudentCompletedNotice(true);
+              }
+            }
+          }
           return;
         }
       } else {
@@ -957,27 +1114,166 @@ export function App() {
     [activeScene.id, updateScenesState]
   );
 
-  // Apply Smart Action Package (objects + attachments + pose + motion clips) atomically in Undo/Redo
-  const handleApplySmartAction = useCallback(
-    (characterId: string, pkg: SmartActionPackage, mode: SmartActionApplyMode) => {
+  // Batch-update multiple objects atomically (used for multi-select group drag)
+  const handleBatchUpdateObjects = useCallback(
+    (
+      patches: Array<{ id: string; patch: Partial<CanvasObject> }>,
+      commitHistory = true
+    ) => {
+      if (patches.length === 0) return;
+      const patchMap = new Map(patches.map((p) => [p.id, p.patch]));
       updateScenesState(
         (prev) =>
           prev.map((s) =>
             s.id === activeScene.id
-              ? applySmartActionToScene({
-                  scene: s,
-                  characterId,
-                  actionPackage: pkg,
-                  mode,
-                  currentTime,
-                }).scene
+              ? {
+                  ...s,
+                  objects: s.objects.map((o) => {
+                    const p = patchMap.get(o.id);
+                    return p ? { ...o, ...p } : o;
+                  }),
+                }
+              : s
+          ),
+        commitHistory
+      );
+    },
+    [activeScene.id, updateScenesState]
+  );
+
+  // Delete multiple objects atomically
+  const handleDeleteObjects = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return;
+      const idSet = new Set(ids);
+      updateScenesState(
+        (prev) =>
+          prev.map((s) =>
+            s.id === activeScene.id
+              ? { ...s, objects: s.objects.filter((o) => !idSet.has(o.id)) }
               : s
           ),
         true
       );
+      setSelectedObjectIds((prev) => prev.filter((id) => !idSet.has(id)));
+      setSelectedObjectId((prev) => (prev && idSet.has(prev) ? null : prev));
     },
-    [activeScene.id, currentTime, updateScenesState]
+    [activeScene.id, updateScenesState]
   );
+
+  // Apply Smart Action Package (objects + attachments + pose + motion clips) atomically in Undo/Redo
+  const [pendingSmartActionTrial, setPendingSmartActionTrial] = useState<{
+    sceneId: string;
+    characterId: string;
+    pkgId: string;
+    addedObjectIds: string[];
+    appliedClipIds: string[];
+    prevPose?: CharacterConfig['pose'];
+    prevHeadDirection?: CharacterConfig['headDirection'];
+  } | null>(null);
+
+  const stripPendingTrialFromScene = (
+    scene: Scene,
+    trial: NonNullable<typeof pendingSmartActionTrial>
+  ): Scene => {
+    if (scene.id !== trial.sceneId) return scene;
+    const removeObjSet = new Set(trial.addedObjectIds);
+    const removeClipSet = new Set(trial.appliedClipIds);
+    return {
+      ...scene,
+      objects: scene.objects
+        .filter((o) => !removeObjSet.has(o.id))
+        .map((o) => {
+          if (o.id !== trial.characterId) return o;
+          const nextClips = (o.timelineData?.motionClips ?? []).filter(
+            (c) => !removeClipSet.has(c.id)
+          );
+          return {
+            ...o,
+            characterConfig: o.characterConfig
+              ? {
+                  ...o.characterConfig,
+                  pose: trial.prevPose ?? o.characterConfig.pose,
+                  headDirection: trial.prevHeadDirection ?? o.characterConfig.headDirection,
+                }
+              : o.characterConfig,
+            timelineData: o.timelineData
+              ? { ...o.timelineData, motionClips: nextClips }
+              : o.timelineData,
+          };
+        }),
+    };
+  };
+
+  const handleApplySmartAction = useCallback(
+    (characterId: string, pkg: SmartActionPackage, mode: SmartActionApplyMode) => {
+      if (mode === 'motion-only') {
+        updateScenesState(
+          (prev) =>
+            prev.map((s) =>
+              s.id === activeScene.id
+                ? applySmartActionToScene({
+                    scene: s,
+                    characterId,
+                    actionPackage: pkg,
+                    mode,
+                    currentTime,
+                  }).scene
+                : s
+            ),
+          true
+        );
+        return;
+      }
+
+      // 'prepare-scene': Önce varsa önceki onaylanmamış deneme nesnelerini temizle,
+      // yeni eylemi onay bekleyen deneme (pending trial) olarak sahneye uygula.
+      const cleanedScene = pendingSmartActionTrial
+        ? stripPendingTrialFromScene(activeScene, pendingSmartActionTrial)
+        : activeScene;
+      const charBefore = cleanedScene.objects.find((o) => o.id === characterId);
+      const prevPose = charBefore?.characterConfig?.pose;
+      const prevHeadDirection = charBefore?.characterConfig?.headDirection;
+
+      const applied = applySmartActionToScene({
+        scene: cleanedScene,
+        characterId,
+        actionPackage: pkg,
+        mode,
+        currentTime,
+      });
+
+      updateScenesState(
+        (prev) => prev.map((s) => (s.id === activeScene.id ? applied.scene : s)),
+        true
+      );
+
+      setPendingSmartActionTrial({
+        sceneId: activeScene.id,
+        characterId,
+        pkgId: pkg.id,
+        addedObjectIds: applied.addedObjectIds,
+        appliedClipIds: applied.appliedClipIds,
+        prevPose,
+        prevHeadDirection,
+      });
+    },
+    [activeScene, currentTime, pendingSmartActionTrial, updateScenesState]
+  );
+
+  const handleConfirmSmartAction = useCallback(() => {
+    setPendingSmartActionTrial(null);
+  }, []);
+
+  const handleCancelSmartAction = useCallback(() => {
+    if (!pendingSmartActionTrial) return;
+    const trial = pendingSmartActionTrial;
+    setPendingSmartActionTrial(null);
+    updateScenesState(
+      (prev) => prev.map((s) => stripPendingTrialFromScene(s, trial)),
+      true
+    );
+  }, [pendingSmartActionTrial, updateScenesState]);
 
   // Reorder Object Layer Stack (from visual top-to-bottom timeline order)
   const handleReorderObject = useCallback(
@@ -1300,6 +1596,7 @@ export function App() {
       showGrid,
       loopPlayback,
       fps: projectFps,
+      educationalMetadata,
     });
   }, [
     projectName,
@@ -1313,7 +1610,191 @@ export function App() {
     showGrid,
     loopPlayback,
     projectFps,
+    educationalMetadata,
   ]);
+
+  const resetToFreshProject = useCallback(
+    (nextName: string, nextEducationalMetadata: ProjectEducationalMetadata) => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setProjectName(nextName);
+      setHistory([INITIAL_SCENES]);
+      setHistoryIndex(0);
+      setActiveSceneId(INITIAL_SCENES[0].id);
+      setSelectedObjectId(null);
+      setSelectedObjectIds([]);
+      setSelectedPartId(null);
+      setIsCameraSelected(false);
+      setSelectedCameraMovementId(null);
+      setPendingSmartActionTrial(null);
+      setEducationalMetadata(nextEducationalMetadata);
+      setRecoveredAutoSave(null);
+    },
+    []
+  );
+
+  const handleOpenNewProjectSelector = useCallback(() => {
+    setModeSelectorCanDismiss(true);
+    setIsModeSelectorOpen(true);
+  }, []);
+
+  const handleSelectProjectModeFromStart = useCallback(
+    (selectedMode: ProjectMode) => {
+      if (selectedMode === 'classic') {
+        if (modeSelectorCanDismiss) {
+          resetToFreshProject('Yeni Proje', { mode: 'classic' });
+        } else {
+          setEducationalMetadata((prev) =>
+            switchProjectModePreservingData(prev, 'classic')
+          );
+        }
+        setIsModeSelectorOpen(false);
+        return;
+      }
+
+      setIsModeSelectorOpen(false);
+      setAddieModalState({ isOpen: true, mode: 'create' });
+    },
+    [modeSelectorCanDismiss, resetToFreshProject]
+  );
+
+  const handleCancelAddieModal = useCallback(() => {
+    const wasCreate = addieModalState.mode === 'create';
+    setAddieModalState({ isOpen: false, mode: 'edit' });
+    if (wasCreate) {
+      setIsModeSelectorOpen(true);
+    }
+  }, [addieModalState.mode]);
+
+  const handleSubmitAddieModal = useCallback(
+    (data: AddieProjectData) => {
+      if (addieModalState.mode === 'create') {
+        resetToFreshProject(data.title || 'Yeni Eğitsel Proje', {
+          mode: 'addie',
+          addieData: data,
+        });
+      } else {
+        setEducationalMetadata((prev) => ({
+          ...prev,
+          mode: 'addie',
+          addieData: data,
+        }));
+      }
+      setAddieModalState({ isOpen: false, mode: 'edit' });
+    },
+    [addieModalState.mode, resetToFreshProject]
+  );
+
+  const handleChangeProjectMode = useCallback((nextMode: ProjectMode) => {
+    setEducationalMetadata((prev) => switchProjectModePreservingData(prev, nextMode));
+  }, []);
+
+  const handleOpenAddieInfo = useCallback(() => {
+    setAddieModalState({ isOpen: true, mode: 'edit' });
+  }, []);
+
+  const handleUpdateAddieData = useCallback(
+    (updater: (prev: AddieProjectData) => AddieProjectData) => {
+      setEducationalMetadata((prev) => {
+        const base = prev.addieData ?? createDefaultAddieData(projectName);
+        const nextAddie = updater(base);
+        return {
+          ...prev,
+          addieData: nextAddie,
+        };
+      });
+    },
+    [projectName]
+  );
+
+  const handleSelectAddieStage = useCallback(
+    (stage: AddieStage) => {
+      handleUpdateAddieData((prev) => {
+        const prevProg = prev.progress ?? createDefaultAddieProgress();
+        const nextStatus =
+          prevProg.stageStatus[stage] === 'not-started'
+            ? 'in-progress'
+            : prevProg.stageStatus[stage];
+        return {
+          ...prev,
+          progress: {
+            currentStage: stage,
+            stageStatus: {
+              ...prevProg.stageStatus,
+              [stage]: nextStatus,
+            },
+          },
+        };
+      });
+      setIsAddieStageModalOpen(true);
+    },
+    [handleUpdateAddieData]
+  );
+
+  // Faz 3 Etkileşim Editörü bağlantısı
+  const handleOpenInteractionEditor = useCallback((questionId: string | null = null) => {
+    setIsPlaying(false);
+    setInteractionModalState({ isOpen: true, questionId });
+  }, []);
+
+  const handleSaveInteractionQuestion = useCallback((question: InteractionQuestion) => {
+    setEducationalMetadata((prev) => {
+      const existing = prev.interactions ?? [];
+      const idx = existing.findIndex((q) => q.id === question.id);
+      const nextInteractions =
+        idx >= 0
+          ? existing.map((q) => (q.id === question.id ? question : q))
+          : [...existing, question];
+      return {
+        ...prev,
+        interactions: nextInteractions,
+      };
+    });
+  }, []);
+
+  const handleDeleteInteractionQuestion = useCallback((questionId: string) => {
+    setEducationalMetadata((prev) => ({
+      ...prev,
+      interactions: (prev.interactions ?? []).filter((q) => q.id !== questionId),
+    }));
+  }, []);
+
+  const handleUploadQuestionImageAsset = useCallback(
+    (file: File): Promise<QuestionAssetRef | null> => {
+      return new Promise((resolve) => {
+        if (!file.type.startsWith('image/')) {
+          resolve(null);
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = String(reader.result || '');
+          const cleanName = file.name.replace(/\.[^/.]+$/, '') || 'Soru Görseli';
+          const customKey = `upload-obj-${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2, 6)}`;
+          const uploadedItem: LibraryAssetItem = {
+            id: 'obj-uploaded-image',
+            customKey,
+            name: cleanName,
+            subtitle: 'Yüklenen Özel Görsel',
+            category: 'objects',
+            defaultWidth: 180,
+            defaultHeight: 180,
+            defaultColor: '#6366f1',
+            defaultSecondaryColor: '#8b5cf6',
+            trackColor: '#6366f1',
+            imageUrl: dataUrl,
+          };
+          setUploadedObjects((prev) => [uploadedItem, ...prev]);
+          resolve({ assetId: customKey, source: 'uploaded', alt: cleanName });
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      });
+    },
+    []
+  );
 
   const applyLoadedProject = useCallback((loaded: BanimoraProjectFile) => {
     setIsPlaying(false);
@@ -1330,6 +1811,10 @@ export function App() {
     setUploadedObjects(loaded.uploadedObjects);
     setCustomBackgrounds(loaded.customBackgrounds);
     setCustomAudioClips(loaded.customAudioClips);
+    setEducationalMetadata(
+      normalizeProjectEducationalMetadata(loaded.educationalMetadata)
+    );
+    setIsModeSelectorOpen(false);
     if (typeof loaded.zoom === 'number') setZoom(loaded.zoom);
     if (typeof loaded.showGrid === 'boolean') setShowGrid(loaded.showGrid);
     if (typeof loaded.loopPlayback === 'boolean') setLoopPlayback(loaded.loopPlayback);
@@ -1359,6 +1844,7 @@ export function App() {
         showGrid,
         loopPlayback,
         fps: projectFps,
+        educationalMetadata,
       });
       if (!result.ok) {
         setAutoSaveError(result.error || 'Otomatik kayıt başarısız oldu.');
@@ -1381,6 +1867,8 @@ export function App() {
     zoom,
     showGrid,
     loopPlayback,
+    projectFps,
+    educationalMetadata,
   ]);
 
   const handleLoadProjectJson = useCallback(async (file: File): Promise<boolean> => {
@@ -1397,8 +1885,360 @@ export function App() {
     }
   }, [applyLoadedProject]);
 
+  const handleSavePlayerSettings = useCallback((nextSettings: PlayerEvaluationSettings) => {
+    setEducationalMetadata((prev) => ({
+      ...prev,
+      playerSettings: nextSettings,
+    }));
+  }, []);
+
+  const startFreshStudentSession = useCallback(() => {
+    const firstSceneId = scenes[0]?.id ?? activeScene.id;
+    const fresh = createLearningSession(projectName, firstSceneId);
+    studentSessionRef.current = fresh;
+    setStudentSession(fresh);
+    activeStudentQuestionRef.current = null;
+    setActiveStudentQuestion(null);
+    setStudentReviewQueue([]);
+    setStudentReviewIndex(0);
+    setShowStudentResultScreen(false);
+    setShowStudentCompletedNotice(false);
+    setShowSessionResumePrompt(false);
+    setIsPlaying(false);
+    setActiveSceneId(firstSceneId);
+    currentTimeRef.current = 0;
+    setCurrentTime(0);
+  }, [activeScene.id, projectName, scenes]);
+
+  const handleEnterStudentPlayer = useCallback(() => {
+    setIsPlaying(false);
+    setSelectedObjectId(null);
+    setSelectedObjectIds([]);
+    setSelectedPartId(null);
+    setIsCameraSelected(false);
+    setActiveStudentQuestion(null);
+    activeStudentQuestionRef.current = null;
+
+    const existing = studentSessionRef.current;
+    const hasProgress =
+      Boolean(existing) &&
+      existing!.projectId === projectName &&
+      (existing!.currentTimeMs > 0 ||
+        Object.keys(existing!.answers).length > 0 ||
+        existing!.status !== 'in_progress');
+
+    if (hasProgress) {
+      setShowSessionResumePrompt(true);
+    } else {
+      startFreshStudentSession();
+    }
+    setViewMode('student');
+  }, [projectName, startFreshStudentSession]);
+
+  const handleResumeStudentSession = useCallback(() => {
+    const existing = studentSessionRef.current;
+    if (!existing) {
+      startFreshStudentSession();
+      return;
+    }
+    setShowSessionResumePrompt(false);
+    if (scenes.some((s) => s.id === existing.currentSceneId)) {
+      setActiveSceneId(existing.currentSceneId);
+    }
+    const sec = existing.currentTimeMs / 1000;
+    currentTimeRef.current = sec;
+    setCurrentTime(sec);
+    const settings = resolvePlayerSettings(educationalMetadata.playerSettings);
+    if (existing.status === 'completed') {
+      if (settings.showResultScreen) {
+        setShowStudentResultScreen(true);
+      } else {
+        setShowStudentCompletedNotice(true);
+      }
+    } else if (existing.status === 'reviewing_skipped') {
+      const skipped = getSkippedQuestionsForReview(
+        educationalMetadata.interactions ?? [],
+        existing
+      );
+      if (skipped.length > 0) {
+        setStudentReviewQueue(skipped);
+        setStudentReviewIndex(0);
+      }
+    }
+  }, [
+    educationalMetadata.interactions,
+    educationalMetadata.playerSettings,
+    scenes,
+    startFreshStudentSession,
+  ]);
+
+  const handleExitStudentPlayer = useCallback(() => {
+    setIsPlaying(false);
+    if (studentSessionRef.current) {
+      const updated: LearningSession = {
+        ...studentSessionRef.current,
+        currentSceneId: activeScene.id,
+        currentTimeMs: Math.round(currentTimeRef.current * 1000),
+        lastActivityAt: new Date().toISOString(),
+      };
+      studentSessionRef.current = updated;
+      setStudentSession(updated);
+    }
+    setShowSessionResumePrompt(false);
+    setViewMode('teacher');
+  }, [activeScene.id]);
+
+  const handleStudentSeekToTime = useCallback(
+    (targetSec: number) => {
+      const clamped = Math.max(0, Math.min(activeScene.duration, targetSec));
+      if (studentSessionRef.current) {
+        const blocking = findBlockingQuestionBeforeSeek(
+          educationalMetadata.interactions ?? [],
+          activeScene.id,
+          currentTimeRef.current * 1000,
+          clamped * 1000,
+          studentSessionRef.current
+        );
+        if (blocking) {
+          setIsPlaying(false);
+          const pinnedSec = Math.min(activeScene.duration, blocking.timestampMs / 1000);
+          currentTimeRef.current = pinnedSec;
+          setCurrentTime(pinnedSec);
+          const nextSession: LearningSession = {
+            ...studentSessionRef.current,
+            currentSceneId: activeScene.id,
+            currentTimeMs: blocking.timestampMs,
+            triggeredQuestionIds:
+              studentSessionRef.current.triggeredQuestionIds.includes(blocking.id)
+                ? studentSessionRef.current.triggeredQuestionIds
+                : [...studentSessionRef.current.triggeredQuestionIds, blocking.id],
+          };
+          studentSessionRef.current = nextSession;
+          setStudentSession(nextSession);
+          activeStudentQuestionRef.current = blocking;
+          setActiveStudentQuestion(blocking);
+          return;
+        }
+      }
+      setIsPlaying(false);
+      currentTimeRef.current = clamped;
+      setCurrentTime(clamped);
+    },
+    [activeScene.duration, activeScene.id, educationalMetadata.interactions]
+  );
+
+  const resolvedPlayerSettings = resolvePlayerSettings(
+    educationalMetadata.playerSettings
+  );
+  const allProjectQuestions = educationalMetadata.interactions ?? [];
+  const activeReviewQuestion =
+    studentReviewQueue.length > 0 && studentReviewIndex < studentReviewQueue.length
+      ? studentReviewQueue[studentReviewIndex]
+      : null;
+
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col select-none bg-slate-100 text-slate-900">
+      {viewMode === 'student' ? (
+        <StudentPlayerView
+          projectName={projectName}
+          scene={activeScene}
+          scenes={scenes}
+          previousSceneBackground={previousSceneBg}
+          currentTime={currentTime}
+          isPlaying={isPlaying}
+          transitionTriggerKey={transitionTriggerKey}
+          onTogglePlay={() => {
+            if (activeStudentQuestion || activeReviewQuestion || showSessionResumePrompt) {
+              return;
+            }
+            if (!isPlaying && currentTime >= activeScene.duration - 0.05) {
+              currentTimeRef.current = 0;
+              setCurrentTime(0);
+            }
+            setIsPlaying((p) => !p);
+          }}
+          onSeekToTime={handleStudentSeekToTime}
+          onRestart={startFreshStudentSession}
+          onExitStudentMode={handleExitStudentPlayer}
+          onUpdateSceneCamera={() => {}}
+          onUpdateObject={() => {}}
+          onDropLibraryAsset={() => {}}
+          onDropExternalFile={() => {}}
+          onEditCharacterInStudio={() => {}}
+        >
+          {/* Resume vs New Session Prompt */}
+          {showSessionResumePrompt && (
+            <div
+              data-testid="student-session-resume-prompt"
+              className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/75 backdrop-blur-xs p-4"
+            >
+              <div className="w-full max-w-md rounded-2xl bg-white text-slate-900 border border-slate-200 shadow-2xl p-6 space-y-4">
+                <h2 className="text-base font-extrabold text-slate-900">
+                  Devam Eden Oturum Bulundu
+                </h2>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Bu çalışma oturumunda önceki ilerlemeniz ve cevaplarınız mevcut. Kaldığınız yerden devam edebilir veya yeni bir oturum başlatabilirsiniz.
+                </p>
+                <div className="flex items-center justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    data-testid="student-new-session-btn"
+                    onClick={startFreshStudentSession}
+                    className="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold cursor-pointer"
+                  >
+                    Yeni Başlat
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="student-resume-session-btn"
+                    onClick={handleResumeStudentSession}
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer"
+                  >
+                    Devam Et
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Active Question Overlay during Playback */}
+          {!showSessionResumePrompt &&
+            activeStudentQuestion &&
+            studentSession && (
+              <StudentQuestionOverlay
+                question={activeStudentQuestion}
+                uploadedObjects={uploadedObjects}
+                settings={resolvedPlayerSettings}
+                attempt={studentSession.answers[activeStudentQuestion.id]}
+                onSubmitAnswer={(optId) => {
+                  const res = submitQuestionAnswer(
+                    studentSessionRef.current ?? studentSession,
+                    activeStudentQuestion,
+                    optId,
+                    resolvedPlayerSettings
+                  );
+                  studentSessionRef.current = res.session;
+                  setStudentSession(res.session);
+                  return res;
+                }}
+                onSkipQuestion={() => {
+                  const nextSess = skipQuestionInSession(
+                    studentSessionRef.current ?? studentSession,
+                    activeStudentQuestion
+                  );
+                  studentSessionRef.current = nextSess;
+                  setStudentSession(nextSess);
+                  activeStudentQuestionRef.current = null;
+                  setActiveStudentQuestion(null);
+                  setIsPlaying(true);
+                }}
+                onContinue={() => {
+                  activeStudentQuestionRef.current = null;
+                  setActiveStudentQuestion(null);
+                  setIsPlaying(true);
+                }}
+              />
+            )}
+
+          {/* Skipped Questions Review Overlay at Video End */}
+          {!showSessionResumePrompt &&
+            !activeStudentQuestion &&
+            activeReviewQuestion &&
+            studentSession && (
+              <StudentQuestionOverlay
+                question={activeReviewQuestion}
+                uploadedObjects={uploadedObjects}
+                settings={resolvedPlayerSettings}
+                attempt={studentSession.answers[activeReviewQuestion.id]}
+                isReviewPhase
+                reviewIndex={studentReviewIndex}
+                reviewTotal={studentReviewQueue.length}
+                onSubmitAnswer={(optId) => {
+                  const res = submitQuestionAnswer(
+                    studentSessionRef.current ?? studentSession,
+                    activeReviewQuestion,
+                    optId,
+                    resolvedPlayerSettings,
+                    { isReviewPhase: true }
+                  );
+                  studentSessionRef.current = res.session;
+                  setStudentSession(res.session);
+                  return res;
+                }}
+                onContinue={() => {
+                  const nextIdx = studentReviewIndex + 1;
+                  if (nextIdx < studentReviewQueue.length) {
+                    setStudentReviewIndex(nextIdx);
+                  } else {
+                    setStudentReviewQueue([]);
+                    setStudentReviewIndex(0);
+                    const completed: LearningSession = {
+                      ...(studentSessionRef.current ?? studentSession),
+                      status: 'completed',
+                      lastActivityAt: new Date().toISOString(),
+                    };
+                    studentSessionRef.current = completed;
+                    setStudentSession(completed);
+                    if (resolvedPlayerSettings.showResultScreen) {
+                      setShowStudentResultScreen(true);
+                    } else {
+                      setShowStudentCompletedNotice(true);
+                    }
+                  }
+                }}
+              />
+            )}
+
+          {/* Final Result Screen (if enabled) */}
+          {!showSessionResumePrompt &&
+            showStudentResultScreen &&
+            studentSession && (
+              <StudentResultOverlay
+                questions={allProjectQuestions}
+                session={studentSession}
+                settings={resolvedPlayerSettings}
+                onRestartSession={startFreshStudentSession}
+                onExitStudentMode={handleExitStudentPlayer}
+              />
+            )}
+
+          {/* Minimal Completion Notice when Result Screen is Disabled */}
+          {!showSessionResumePrompt &&
+            !showStudentResultScreen &&
+            showStudentCompletedNotice && (
+              <div
+                data-testid="student-completed-notice"
+                className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/75 backdrop-blur-xs p-4"
+              >
+                <div className="w-full max-w-sm rounded-2xl bg-white text-slate-900 border border-slate-200 shadow-2xl p-6 text-center space-y-4">
+                  <h2 className="text-base font-extrabold text-slate-900">
+                    Video Tamamlandı
+                  </h2>
+                  <p className="text-xs text-slate-600">
+                    Bu etkinlik için sonuç ekranı kapalıdır.
+                  </p>
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleExitStudentPlayer}
+                      className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold cursor-pointer"
+                    >
+                      Öğretmen Görünümü
+                    </button>
+                    <button
+                      type="button"
+                      onClick={startFreshStudentSession}
+                      className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer"
+                    >
+                      Yeniden İzle
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+        </StudentPlayerView>
+      ) : (
+      <>
       {/* 1. TOP HEADER BAR (Light Theme, Camera Tool, Scene Bar moved to Timeline) */}
       <TopHeader
         projectName={projectName}
@@ -1432,40 +2272,20 @@ export function App() {
         onLoadProjectJson={handleLoadProjectJson}
         workspaceMode={workspaceLayout.mode}
         onChangeWorkspaceMode={handleChangeWorkspaceMode}
+        projectMode={educationalMetadata.mode}
+        onChangeProjectMode={handleChangeProjectMode}
+        onNewProject={handleOpenNewProjectSelector}
+        onOpenAddieInfo={handleOpenAddieInfo}
+        onOpenInteractionEditor={() => handleOpenInteractionEditor(null)}
+        onOpenStudentPlayer={handleEnterStudentPlayer}
+        onOpenPlayerSettings={() => setIsPlayerSettingsOpen(true)}
       />
 
-      {recoveredAutoSave && (
-        <div
-          role="status"
-          className="flex items-center justify-between gap-3 bg-indigo-50 border-b border-indigo-200 px-4 py-1.5 text-xs text-indigo-900"
-        >
-          <span>
-            Önceki oturumdan otomatik kaydedilmiş bir proje bulundu (
-            <strong>{recoveredAutoSave.projectName}</strong>). Kurtarmak ister misiniz?
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                applyLoadedProject(recoveredAutoSave);
-                setRecoveredAutoSave(null);
-              }}
-              className="rounded bg-indigo-600 px-2.5 py-1 font-medium text-white hover:bg-indigo-700"
-            >
-              Kurtar
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                clearAutoSaveProject();
-                setRecoveredAutoSave(null);
-              }}
-              className="rounded border border-indigo-300 bg-white px-2.5 py-1 font-medium text-indigo-700 hover:bg-indigo-100"
-            >
-              Yoksay
-            </button>
-          </div>
-        </div>
+      {educationalMetadata.mode === 'addie' && (
+        <AddieProgressBar
+          progress={educationalMetadata.addieData?.progress}
+          onSelectStage={handleSelectAddieStage}
+        />
       )}
 
       {autoSaveError && (
@@ -1508,6 +2328,16 @@ export function App() {
           onAddAudioClip={handleAddAudioClip}
           collapsed={workspaceLayout.leftCollapsed}
           onToggleCollapsed={handleToggleLeftCollapsed}
+          widthPx={workspaceLayout.leftWidthPx}
+          onResizeWidth={(w) =>
+            setWorkspaceLayout((prev) => ({
+              ...prev,
+              leftWidthPx: clampLeftPanelWidth(w),
+            }))
+          }
+          usedAssetIds={Array.from(
+            new Set(scenes.flatMap((s) => s.objects.map((o) => o.assetId)))
+          )}
         />
 
         {/* 3. CENTER 16:9 CANVAS WORKSPACE */}
@@ -1516,11 +2346,20 @@ export function App() {
           previousSceneBackground={previousSceneBg}
           transitionTriggerKey={transitionTriggerKey}
           selectedObjectId={selectedObjectId}
+          selectedObjectIds={selectedObjectIds}
           selectedPartId={selectedPartId}
           onSelectPart={setSelectedPartId}
           onSelectObject={(id) => {
             setSelectedObjectId(id);
+            setSelectedObjectIds(id ? [id] : []);
             if (id !== null) {
+              setIsCameraSelected(false);
+            }
+          }}
+          onSelectObjects={(ids) => {
+            setSelectedObjectIds(ids);
+            setSelectedObjectId(ids[0] ?? null);
+            if (ids.length > 0) {
               setIsCameraSelected(false);
             }
           }}
@@ -1528,6 +2367,7 @@ export function App() {
           selectedCameraMovementId={selectedCameraMovementId}
           onSelectCamera={(movId) => {
             setSelectedObjectId(null);
+            setSelectedObjectIds([]);
             setIsCameraSelected(true);
             if (movId !== undefined) {
               setSelectedCameraMovementId(movId);
@@ -1536,8 +2376,10 @@ export function App() {
           onUpdateSceneCamera={handleUpdateSceneCamera}
           onAddCameraMovement={handleAddCameraMovement}
           onUpdateObject={handleUpdateObject}
+          onBatchUpdateObjects={handleBatchUpdateObjects}
           onDuplicateObject={handleDuplicateObject}
           onDeleteObject={handleDeleteObject}
+          onDeleteObjects={handleDeleteObjects}
           onLayerMove={handleLayerMove}
           onDropLibraryAsset={(item, pos) => handleAddAsset(item, pos)}
           onDropExternalFile={(file, pos) => handleUploadObjectFile(file, pos)}
@@ -1581,7 +2423,36 @@ export function App() {
           onContinueScene={handleContinueScene}
           onUploadBackgroundFile={handleUploadBackgroundFile}
           onUpdateObject={handleUpdateObject}
+          onEnsureMotionProp={(characterId, presetId) => {
+            const spec = getMotionPropSpec(presetId);
+            if (!spec) return null;
+            const currentChar = activeScene.objects.find((o) => o.id === characterId);
+            if (!currentChar) return null;
+            const alreadyBound = activeScene.objects.some(
+              (o) =>
+                o.attachment?.parentObjectId === characterId &&
+                o.attachment?.socketId === spec.socketId
+            );
+            if (alreadyBound) return null;
+            updateScenesState(
+              (prev) =>
+                prev.map((s) =>
+                  s.id === activeScene.id
+                    ? ensureMotionPropAttachedToCharacter(s, characterId, presetId).scene
+                    : s
+                ),
+              true
+            );
+            return spec.name;
+          }}
           onApplySmartAction={handleApplySmartAction}
+          pendingSmartActionTrial={
+            pendingSmartActionTrial?.sceneId === activeScene.id
+              ? pendingSmartActionTrial
+              : null
+          }
+          onConfirmSmartAction={handleConfirmSmartAction}
+          onCancelSmartAction={handleCancelSmartAction}
           onUpdateAnimations={handleUpdateAnimations}
           isPlaying={isPlaying}
           onPreviewAnimation={(obj) => {
@@ -1678,7 +2549,39 @@ export function App() {
         onRedo={handleRedo}
         canUndo={historyIndex > 0}
         canRedo={historyIndex < history.length - 1}
-        disableGlobalShortcuts={isCharStudioOpen}
+        disableGlobalShortcuts={isCharStudioOpen || interactionModalState.isOpen}
+        questionMarkers={
+          educationalMetadata.mode === 'addie'
+            ? (educationalMetadata.interactions ?? [])
+                .filter((q) => q.sceneId === activeScene.id)
+                .map((q) => ({
+                  id: q.id,
+                  timeSec: q.timestampMs / 1000,
+                  label: `${(q.timestampMs / 1000).toFixed(1)}s — ${
+                    q.prompt.text?.trim() || 'Etkileşimli Soru'
+                  }`,
+                }))
+            : undefined
+        }
+        onSelectQuestionMarker={
+          educationalMetadata.mode === 'addie'
+            ? (qId) => {
+                const found = (educationalMetadata.interactions ?? []).find(
+                  (q) => q.id === qId
+                );
+                if (found) {
+                  setIsPlaying(false);
+                  setCurrentTime(found.timestampMs / 1000);
+                }
+                handleOpenInteractionEditor(qId);
+              }
+            : undefined
+        }
+        onAddQuestionAtCurrentTime={
+          educationalMetadata.mode === 'addie'
+            ? () => handleOpenInteractionEditor(null)
+            : undefined
+        }
         onUpdateAudioClip={handleUpdateAudioClip}
         onDeleteAudioClip={handleDeleteAudioClip}
         currentTime={currentTime}
@@ -1716,6 +2619,8 @@ export function App() {
         playAllScenes={playAllScenes}
         onTogglePlayAllScenes={() => setPlayAllScenes((v) => !v)}
       />
+      </>
+      )}
 
       {/* 6. 2D ARTICULATED CHARACTER STUDIO MODAL */}
       <CharacterStudioModal
@@ -1738,6 +2643,60 @@ export function App() {
         scenes={scenes}
         fps={projectFps}
         onFpsChange={setProjectFps}
+      />
+
+      {/* 8. PROJECT MODE SELECTOR & ADDIE PROJECT INFO MODALS */}
+      <ProjectModeSelectorModal
+        isOpen={isModeSelectorOpen}
+        canDismiss={modeSelectorCanDismiss}
+        onSelectMode={handleSelectProjectModeFromStart}
+        onClose={() => setIsModeSelectorOpen(false)}
+      />
+
+      <AddieProjectInfoModal
+        isOpen={addieModalState.isOpen}
+        mode={addieModalState.mode}
+        initialData={
+          addieModalState.mode === 'create'
+            ? createDefaultAddieData('')
+            : educationalMetadata.addieData ?? createDefaultAddieData(projectName)
+        }
+        onCancel={handleCancelAddieModal}
+        onSubmit={handleSubmitAddieModal}
+      />
+
+      <AddieStageModal
+        isOpen={isAddieStageModalOpen && educationalMetadata.mode === 'addie'}
+        addieData={educationalMetadata.addieData ?? createDefaultAddieData(projectName)}
+        onClose={() => setIsAddieStageModalOpen(false)}
+        onUpdateAddieData={handleUpdateAddieData}
+      />
+
+      <InteractionQuestionModal
+        isOpen={interactionModalState.isOpen && educationalMetadata.mode === 'addie'}
+        sceneId={activeScene.id}
+        sceneDuration={activeScene.duration}
+        currentTimeSec={currentTime}
+        questions={(educationalMetadata.interactions ?? []).filter(
+          (q) => q.sceneId === activeScene.id
+        )}
+        initialQuestionId={interactionModalState.questionId}
+        uploadedObjects={uploadedObjects}
+        onUploadImageAsset={handleUploadQuestionImageAsset}
+        onSaveQuestion={handleSaveInteractionQuestion}
+        onDeleteQuestion={handleDeleteInteractionQuestion}
+        onSeekToSec={(t) => {
+          setIsPlaying(false);
+          setCurrentTime(t);
+        }}
+        onClose={() => setInteractionModalState({ isOpen: false, questionId: null })}
+      />
+
+      <PlayerSettingsModal
+        isOpen={isPlayerSettingsOpen && educationalMetadata.mode === 'addie'}
+        settings={educationalMetadata.playerSettings}
+        onSave={handleSavePlayerSettings}
+        onClose={() => setIsPlayerSettingsOpen(false)}
       />
     </div>
   );

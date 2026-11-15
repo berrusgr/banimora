@@ -31,7 +31,7 @@ import {
 } from './timelineUtils';
 import { TimelineSplitter } from './TimelineSplitter';
 import { TimelineToolbar } from './TimelineToolbar';
-import { TimelineRuler } from './TimelineRuler';
+import { TimelineRuler, type TimelineQuestionMarker } from './TimelineRuler';
 import { AdvancedCharacterTrackList } from './AdvancedCharacterTrackList';
 import { SimpleTrackList } from './SimpleTrackList';
 
@@ -84,6 +84,9 @@ export interface AdaptiveTimelineProps {
   onToggleCollapsed?: () => void;
   heightPx?: number;
   onChangeHeightPx?: (height: number) => void;
+  questionMarkers?: TimelineQuestionMarker[];
+  onSelectQuestionMarker?: (questionId: string) => void;
+  onAddQuestionAtCurrentTime?: () => void;
 }
 
 export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
@@ -124,6 +127,9 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
   onToggleCollapsed,
   heightPx: controlledHeightPx,
   onChangeHeightPx,
+  questionMarkers,
+  onSelectQuestionMarker,
+  onAddQuestionAtCurrentTime,
 }) => {
   const [internalHeightPx, setInternalHeightPx] = useState(DEFAULT_TIMELINE_HEIGHT);
   const heightPx = controlledHeightPx ?? internalHeightPx;
@@ -846,6 +852,17 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
         <div className="w-56 h-7 shrink-0 border-r border-b border-slate-200 bg-slate-50 px-2.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-500">
           <span>Katmanlar / Kanallar</span>
           <div className="flex items-center gap-1">
+            {onAddQuestionAtCurrentTime && (
+              <button
+                type="button"
+                onClick={onAddQuestionAtCurrentTime}
+                data-testid="timeline-add-question-btn"
+                className="px-1.5 py-0.5 rounded bg-violet-100 hover:bg-violet-200 text-violet-800 font-bold text-[9.5px] normal-case cursor-pointer"
+                title="Mevcut zaman çizelgesi konumuna etkileşimli soru ekle"
+              >
+                + Soru
+              </button>
+            )}
             {onFpsChange && (
               <button
                 type="button"
@@ -871,6 +888,8 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
             viewportWidthPx={viewportWidthPx}
             playheadTime={currentTime}
             onSeek={onSeek}
+            questionMarkers={questionMarkers}
+            onSelectQuestionMarker={onSelectQuestionMarker}
           />
         </div>
       </div>

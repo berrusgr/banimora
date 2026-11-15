@@ -5505,11 +5505,11 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
             >
               <g
                 data-rig-group="back-hair-neck-carrier"
-                transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 122)` : undefined}
+                transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 114)` : undefined}
               >
                 <g
                   data-rig-group="back-hair-head-carrier"
-                  transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
+                  transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 105)` : undefined}
                 >
                   {renderDicebearBackHair()}
                 </g>
@@ -5742,6 +5742,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                           stroke={shirtShade}
                           strokeWidth="1.4"
                         />
+                        <ellipse cx="104" cy="70" rx="10" ry="7" fill={config.skinTone} />
                         <polygon points="94,68 114,68 104,84" fill={config.skinTone} />
                         <polygon
                           points="92,66 87,82 103,77"
@@ -6104,26 +6105,26 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                 >
                   <g
                     data-canonical-bone="neck"
-                    transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 122)` : undefined}
+                    transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 114)` : undefined}
                   >
                     {!useDicebear && (
                       <g
                         data-rig-group="vector-back-hair-head-carrier"
-                        transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
+                        transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 105)` : undefined}
                       >
                         {renderHairBack(config.hairStyle, config.hairColor)}
                       </g>
                     )}
 
-                    {/* Longer Slender Neck tapering cleanly into the Shirt Collar V-Opening */}
-                    <g transform={`translate(110, 122) scale(${neckScaleX}, ${neckScaleY}) translate(-110, -122)`}>
+                    {/* Slender Neck anchored at collar (110, 114) and tucked inside V-neck opening */}
+                    <g transform={`translate(110, 114) scale(${neckScaleX}, ${neckScaleY}) translate(-110, -114)`}>
                       <path
-                        d="M100 98 L120 98 L118 126 Q110 130 102 126 Z"
+                        d="M100 98 L120 98 L118 114 Q117 120 110 120 Q103 120 102 114 Z"
                         fill={config.skinTone}
                       />
                       {!useDicebear && (
                         <polygon
-                          points="100,104 120,104 119,117 101,112"
+                          points="100,104 120,104 119,115 101,112"
                           fill={neckShadowTone}
                         />
                       )}
@@ -6131,7 +6132,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
 
                     <g
                       data-canonical-bone="head"
-                      transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
+                      transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 105)` : undefined}
                     >
                       {config.photoAvatarMode === 'hybrid-head' && config.photoAvatarUrl ? (
                         renderHybridPhotoHead()
@@ -6465,11 +6466,11 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   >
                     <g
                       data-rig-group="back-hair-neck-carrier"
-                      transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 122)` : undefined}
+                      transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 114)` : undefined}
                     >
                       <g
                         data-rig-group="back-hair-head-carrier"
-                        transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
+                        transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 105)` : undefined}
                       >
                         {renderDicebearBackHair()}
                       </g>
@@ -6973,24 +6974,27 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
           >
             <g
               data-canonical-bone="neck"
-              transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 122)` : undefined}
+              transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 114)` : undefined}
             >
               {/* Back Hair Layer */}
               {!useDicebear && (
                 <g
                   data-rig-group="vector-back-hair-head-carrier"
-                  transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
+                  transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 105)` : undefined}
                 >
                   {renderHairBack(config.hairStyle, config.hairColor)}
                 </g>
               )}
 
-              {/* Neck (Lineless with soft chin shadow) */}
-              <g transform={`translate(110, 122) scale(${neckScaleX}, ${neckScaleY}) translate(-110, -122)`}>
-                <rect x="100" y="98" width="20" height="28" rx="6" fill={config.skinTone} />
+              {/* Neck (Lineless, anchored at collar 110,114 and tucked inside V-neck opening) */}
+              <g transform={`translate(110, 114) scale(${neckScaleX}, ${neckScaleY}) translate(-110, -114)`}>
+                <path
+                  d="M100 98 L120 98 L118 114 Q117 120 110 120 Q103 120 102 114 Z"
+                  fill={config.skinTone}
+                />
                 {!useDicebear && (
                   <path
-                    d="M100 104 Q110 113 120 104 L120 114 Q110 120 100 114 Z"
+                    d="M100 104 Q110 113 120 104 L120 114 Q110 118 100 114 Z"
                     fill={neckShadowTone}
                   />
                 )}
@@ -6998,7 +7002,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
 
               <g
                 data-canonical-bone="head"
-                transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
+                transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 105)` : undefined}
               >
                 {config.photoAvatarMode === 'hybrid-head' && config.photoAvatarUrl ? (
                   renderHybridPhotoHead()

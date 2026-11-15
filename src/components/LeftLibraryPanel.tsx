@@ -21,6 +21,7 @@ import {
   BarChart3,
   PanelLeftClose,
   PanelLeftOpen,
+  Star,
 } from 'lucide-react';
 import {
   CHART_TABLE_LIBRARY_ITEMS,
@@ -66,6 +67,9 @@ interface LeftLibraryPanelProps {
   onAddAudioClip: (clip: AudioClip) => void;
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
+  widthPx?: number;
+  onResizeWidth?: (width: number) => void;
+  usedAssetIds?: string[];
 }
 
 const DOCK_TABS: {
@@ -101,6 +105,9 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
   onAddAudioClip,
   collapsed = false,
   onToggleCollapsed,
+  widthPx = 272,
+  onResizeWidth,
+  usedAssetIds = [],
 }) => {
   const [activeCategory, setActiveCategory] = useState<AssetCategory>('characters');
   const [activeMathClass, setActiveMathClass] = useState<MathAssetClass>('static');
@@ -108,6 +115,44 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
   const [activeElementGroup, setActiveElementGroup] = useState<ElementSubCategory>('all');
   const [activeChartGroup, setActiveChartGroup] = useState<ChartTableGroup>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [libraryFilter, setLibraryFilter] = useState<'all' | 'favorites' | 'used'>('all');
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
+    try {
+      const raw = window.localStorage.getItem('banimora.libraryFavorites.v1');
+      return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const toggleFavoriteAsset = (assetId: string) => {
+    setFavoriteIds((prev) => {
+      const next = prev.includes(assetId)
+        ? prev.filter((id) => id !== assetId)
+        : [...prev, assetId];
+      try {
+        window.localStorage.setItem('banimora.libraryFavorites.v1', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+  const usedAssetSet = new Set(usedAssetIds);
+  const handleStartLeftResize = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onResizeWidth || collapsed) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = widthPx;
+    const onMove = (ev: MouseEvent) => {
+      onResizeWidth(startW + (ev.clientX - startX));
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
   const [playingPreviewId, setPlayingPreviewId] = useState<string | null>(null);
   const [isRecordingMic, setIsRecordingMic] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -233,11 +278,38 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
     e.dataTransfer.effectAllowed = 'copy';
   };
 
-  const allItems = [...customCharacters, ...uploadedObjects, ...LIBRARY_ITEMS];
+  const HANDHELD_PROP_IDS = new Set([
+    'el-edu-book',
+    'el-edu-notebook',
+    'el-edu-marker',
+    'el-tech-phone',
+    'el-life-coffee',
+    'el-travel-suitcase',
+    'el-sport-dumbbell',
+    'el-edu-magnifier',
+    'el-cel-trophy',
+    'el-med-stethoscope',
+  ]);
+  const handheldObjectsInNesneler: LibraryAssetItem[] = ELEMENT_LIBRARY_ITEMS.filter(
+    (item) => HANDHELD_PROP_IDS.has(item.id)
+  ).map((item) => ({
+    ...item,
+    category: 'objects',
+    mathClass: 'static',
+    mathTopic: 'daily-life',
+    customKey: `nesne-${item.id}`,
+  }));
+
+  const allItems = [
+    ...customCharacters,
+    ...uploadedObjects,
+    ...handheldObjectsInNesneler,
+    ...LIBRARY_ITEMS,
+  ];
   const allBackgrounds = [...customBackgrounds, ...SCENE_BACKGROUNDS];
   const allAudioClips = [...customAudioClips, ...STUDIO_AUDIO_LIBRARY];
 
-  const filteredItems =
+  const baseFilteredItems =
     activeCategory === 'charts'
       ? CHART_TABLE_LIBRARY_ITEMS.filter((item) => {
           const matchesGroup =
@@ -278,6 +350,12 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
             item.subtitle.toLowerCase().includes(searchQuery.toLowerCase());
           return matchesCategory && matchesMathClass && matchesMathTopic && matchesSearch;
         });
+
+  const filteredItems = baseFilteredItems.filter((item) => {
+    if (libraryFilter === 'favorites') return favoriteIds.includes(item.id);
+    if (libraryFilter === 'used') return usedAssetSet.has(item.id);
+    return true;
+  });
 
   const handleObjectInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -324,9 +402,10 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
   return (
     <aside
       data-testid="left-library-panel"
+      style={!collapsed ? { width: `${widthPx}px` } : undefined}
       className={`${
-        collapsed ? 'w-14' : 'w-[268px]'
-      } border-r border-slate-200 flex shrink-0 select-none z-20 bg-white transition-[width] duration-150`}
+        collapsed ? 'w-14' : ''
+      } border-r border-slate-200 flex shrink-0 select-none z-20 bg-white relative transition-[width] duration-150`}
     >
       {/* Hidden File Inputs for Custom Object, Background & Audio Uploads */}
       <input
@@ -581,15 +660,39 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
             activeCategory === 'elements' ||
             activeCategory === 'charts' ||
             activeCategory === 'text') && (
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Karakter veya nesne ara..."
-                className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none transition-colors"
-              />
+            <div className="space-y-1.5">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Karakter veya nesne ara..."
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none transition-colors"
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                {(
+                  [
+                    { id: 'all', label: 'Tümü' },
+                    { id: 'favorites', label: 'Sık Kullanılan' },
+                    { id: 'used', label: 'Projede' },
+                  ] as const
+                ).map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setLibraryFilter(f.id)}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold transition-colors cursor-pointer border whitespace-nowrap ${
+                      libraryFilter === f.id
+                        ? 'bg-indigo-50 text-indigo-700 border-indigo-300'
+                        : 'bg-white text-slate-500 border-slate-200 hover:text-slate-800'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -597,56 +700,6 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto pr-1 space-y-3">
           {/* 2-Column Draggable / Clickable Vector Cards */}
-          {/* ELEMENTS SUB-CATEGORIES */}
-          {activeCategory === 'elements' && (
-            <div className="flex flex-wrap gap-1">
-              {ELEMENT_CATEGORY_TABS.map((tab) => {
-                const isAct = activeElementGroup === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveElementGroup(tab.id)}
-                    className={`px-2 py-1 rounded-full text-[10.5px] font-semibold transition-all cursor-pointer border ${
-                      isAct
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* CHARTS & TABLES SUB-CATEGORIES */}
-          {activeCategory === 'charts' && (
-            <div className="flex flex-wrap gap-1">
-              {(
-                [
-                  { id: 'all', label: 'Tümü' },
-                  { id: 'charts', label: 'Grafikler' },
-                  { id: 'tables', label: 'Tablolar' },
-                ] as const
-              ).map((tab) => {
-                const isAct = activeChartGroup === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveChartGroup(tab.id)}
-                    className={`px-2.5 py-1 rounded-full text-[10.5px] font-semibold transition-all cursor-pointer border ${
-                      isAct
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
           {(activeCategory === 'characters' ||
             activeCategory === 'objects' ||
             activeCategory === 'elements' ||
@@ -689,6 +742,23 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
                         fontSize={11}
                       />
                     </div>
+
+                    {/* Top-left Favorite Star Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavoriteAsset(item.id);
+                      }}
+                      className={`absolute top-1.5 left-1.5 w-6 h-6 rounded-md flex items-center justify-center transition-opacity cursor-pointer z-10 ${
+                        favoriteIds.includes(item.id)
+                          ? 'bg-amber-50 text-amber-500 border border-amber-200 opacity-100'
+                          : 'bg-white/90 text-slate-400 hover:text-amber-500 border border-slate-200 opacity-0 group-hover:opacity-100'
+                      }`}
+                      title={favoriteIds.includes(item.id) ? 'Sık Kullanılanlardan Çıkar' : 'Sık Kullanılanlara Ekle'}
+                    >
+                      <Star className={`w-3 h-3 ${favoriteIds.includes(item.id) ? 'fill-amber-400' : ''}`} />
+                    </button>
 
                     {/* Top-right Add (+) Button - Unobstructed! */}
                     <button
@@ -1011,6 +1081,13 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
           )}
         </div>
       </div>
+      )}
+      {!collapsed && onResizeWidth && (
+        <div
+          onMouseDown={handleStartLeftResize}
+          className="w-1 hover:w-1.5 bg-transparent hover:bg-indigo-400/60 cursor-col-resize shrink-0 transition-all"
+          title="Panel Genişliğini Ayarla"
+        />
       )}
     </aside>
   );

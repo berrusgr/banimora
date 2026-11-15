@@ -84,6 +84,7 @@ export interface MotionStudioPanelProps {
   sceneDuration: number;
   currentTime: number;
   onUpdateObject: (id: string, patch: Partial<CanvasObject>) => void;
+  onEnsureMotionProp?: (characterId: string, presetId: string) => string | null;
   onOpenAdvancedTimeline?: () => void;
   stageMotionPreview?: StageMotionPreviewRequest | null;
   onStageMotionPreviewChange?: (preview: StageMotionPreviewRequest | null) => void;
@@ -111,6 +112,7 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
   sceneDuration,
   currentTime,
   onUpdateObject,
+  onEnsureMotionProp,
   onOpenAdvancedTimeline,
   stageMotionPreview,
   onStageMotionPreviewChange,
@@ -205,21 +207,10 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
         closeLibrary();
       }
     };
-    const handleMouseDown = (e: MouseEvent) => {
-      const drawerEl = libraryDrawerRef.current;
-      if (!drawerEl) return;
-      const path = typeof e.composedPath === 'function' ? e.composedPath() : [];
-      if (path.includes(drawerEl) || drawerEl.contains(e.target as Node)) {
-        return;
-      }
-      closeLibrary();
-    };
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('mousedown', handleMouseDown);
     return () => {
       window.clearTimeout(focusTimer);
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('mousedown', handleMouseDown);
     };
   }, [isLibraryOpen]);
 
@@ -335,11 +326,14 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
       ...prev,
       motionClips: [...(prev.motionClips ?? []), newClip],
     }));
+    const attachedPropName = onEnsureMotionProp?.(selectedObject.id, preset.id) ?? null;
     setRecentIds(recordRecentPresetId(preset.id));
     setMotionFeedback(
       compat.status === 'partial'
         ? `"${preset.name}" eklendi (Kısmi uyum: ${compat.reason ?? 'bazı kemikler filtrelendi'}).`
-        : `"${preset.name}" ${start.toFixed(1)}s konumuna eklendi.`
+        : attachedPropName
+          ? `"${preset.name}" eklendi ve "${attachedPropName}" el soketine bağlandı.`
+          : `"${preset.name}" ${start.toFixed(1)}s konumuna eklendi.`
     );
   };
 
@@ -466,10 +460,10 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <Sparkles className="w-4 h-4 text-indigo-600" />
-          <span className="text-xs font-bold text-slate-800">Banimora Motion Studio</span>
+          <span className="text-xs font-bold text-slate-800">Hareket Kütüphanesi</span>
         </div>
         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
-          {MOTION_PRESETS.length} Hareket
+          Hazır Eylemler
         </span>
       </div>
 
@@ -552,19 +546,312 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
       {/* A. ÖĞRETMEN ODAKLI ANİMASYON GÖRÜNÜMÜ */}
       {studioTab === 'library' && (
         <div className="space-y-2.5">
-          {/* Ana CTA: + Animasyon Ekle */}
+          {/* Ana CTA: + Animasyon Ekle (Sağ Panel İçi Bütünleşik Kütüphane) */}
           <button
             type="button"
-            onClick={() => setIsLibraryOpen(true)}
+            onClick={() => setIsLibraryOpen((prev) => !prev)}
             data-testid="open-motion-library-btn"
-            className="w-full py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm shadow-indigo-600/20 flex items-center justify-center gap-2 transition cursor-pointer"
+            className={`w-full py-2 px-3 rounded-lg text-xs font-semibold shadow-sm flex items-center justify-center gap-2 transition cursor-pointer ${
+              isLibraryOpen
+                ? 'bg-indigo-700 text-white ring-2 ring-indigo-300/60'
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+            }`}
           >
-            <Plus className="w-4 h-4" />
-            <span>+ Animasyon Ekle</span>
+            {isLibraryOpen ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+            <span>{isLibraryOpen ? 'Hareket Kütüphanesini Gizle' : 'Animasyon Ekle'}</span>
             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-white/20">
               {MOTION_PRESETS.length}
             </span>
           </button>
+
+          {/* BÜTÜNLEŞİK SAĞ PANEL İÇİ ANİMASYON KÜTÜPHANESİ (Sahneyi Kapatmaz) */}
+          {isLibraryOpen && (
+            <div
+              ref={libraryDrawerRef}
+              data-testid="motion-library-drawer"
+              className="rounded-xl border border-indigo-200 bg-white shadow-sm flex flex-col overflow-hidden"
+            >
+              {/* Arama + Kompakt Filtreler */}
+              <div className="p-2.5 border-b border-slate-200 bg-indigo-50/40 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                    <h3 className="text-[11px] font-bold text-slate-900 truncate">
+                      Hazır Hareket Kütüphanesi
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeLibrary}
+                    aria-label="Kütüphaneyi Kapat"
+                    className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-white transition cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Arama Kutusu */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Hareket ara (örn: yürüme, selam, şaşkın)"
+                    className="w-full pl-8 pr-7 py-1.5 text-[11px] rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSearchQuery('');
+                        searchInputRef.current?.focus();
+                      }}
+                      aria-label="Aramayı Temizle"
+                      className="absolute right-2 top-1.5 p-0.5 rounded text-slate-400 hover:text-slate-700"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Hızlı Filtreler: Tümü / Son / Favoriler */}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory('all')}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold transition cursor-pointer ${
+                      selectedCategory === 'all'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    Tümü ({MOTION_PRESETS.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory('recent')}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 transition cursor-pointer ${
+                      selectedCategory === 'recent'
+                        ? 'bg-sky-600 text-white'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Clock className="w-2.5 h-2.5" />
+                    <span>Son ({recentIds.length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory('favorites')}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 transition cursor-pointer ${
+                      selectedCategory === 'favorites'
+                        ? 'bg-rose-600 text-white'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Heart className="w-2.5 h-2.5" />
+                    <span>Favori ({favorites.length})</span>
+                  </button>
+                </div>
+
+                {/* Kompakt Kategori Seçicisi */}
+                <select
+                  value={
+                    selectedCategory !== 'recent' && selectedCategory !== 'favorites'
+                      ? selectedCategory
+                      : 'all'
+                  }
+                  onChange={(e) =>
+                    setSelectedCategory(e.target.value as 'all' | MotionCategoryId)
+                  }
+                  className="w-full px-2 py-1 text-[11px] font-medium rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:border-indigo-400"
+                >
+                  <option value="all">Tüm Kategoriler ({MOTION_PRESETS.length})</option>
+                  {(Object.keys(MOTION_CATEGORY_LABELS) as MotionCategoryId[]).map((cat) => (
+                    <option key={cat} value={cat}>
+                      {MOTION_CATEGORY_LABELS[cat].split(',')[0]} ({categoryCounts[cat] ?? 0})
+                    </option>
+                  ))}
+                </select>
+
+                {motionFeedback && (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10.5px] text-emerald-800 flex items-center gap-1.5">
+                    <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                    <span className="truncate">{motionFeedback}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Kompakt Tek Sütunlu Hareket Kartları */}
+              <div className="max-h-72 overflow-y-auto p-2 bg-slate-50/60 space-y-1.5">
+                {filteredPresets.length === 0 ? (
+                  <div className="py-8 text-center text-slate-400 space-y-1">
+                    <Search className="w-5 h-5 mx-auto text-slate-300" />
+                    <div className="text-[11px] font-medium text-slate-500">
+                      {selectedCategory === 'recent' && recentIds.length === 0
+                        ? 'Henüz son kullanılan hareket yok.'
+                        : selectedCategory === 'favorites' && favorites.length === 0
+                          ? 'Henüz favori hareket eklenmedi.'
+                          : 'Aramaya uygun hareket bulunamadı.'}
+                    </div>
+                  </div>
+                ) : (
+                  filteredPresets.map((preset) => {
+                    const compat = checkMotionMaskCompatibility(
+                      preset.mask,
+                      rigProfile,
+                      preset.requiredSocket
+                    );
+                    const isFav = favorites.includes(preset.id);
+                    const isStagePreviewing =
+                      stageMotionPreview?.objectId === selectedObject.id &&
+                      stageMotionPreview?.presetId === preset.id;
+                    const isPinned = pinnedStagePreviewId === preset.id;
+
+                    return (
+                      <div
+                        key={preset.id}
+                        draggable={compat.status !== 'unsupported'}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData(
+                            'application/x-banimora-motion',
+                            JSON.stringify({
+                              presetId: preset.id,
+                              speed: speedPreset,
+                              intensity: intensityPreset,
+                              weight: weightPreset,
+                              duration: durationPreset || preset.defaultDuration,
+                              mirrored: mirroredPreset,
+                              repeatMode: repeatModePreset,
+                              blendInSec: blendSecPreset,
+                              blendOutSec: blendSecPreset,
+                            })
+                          );
+                          e.dataTransfer.effectAllowed = 'copy';
+                        }}
+                        onMouseEnter={() => {
+                          if (compat.status === 'unsupported' || pinnedStagePreviewId) return;
+                          onStageMotionPreviewChange?.({
+                            objectId: selectedObject.id,
+                            presetId: preset.id,
+                            mirrored: mirroredPreset,
+                            speed: speedPreset,
+                            intensity: intensityPreset,
+                          });
+                        }}
+                        onMouseLeave={() => {
+                          if (pinnedStagePreviewId) return;
+                          onStageMotionPreviewChange?.(null);
+                        }}
+                        className={`rounded-lg border p-2 transition space-y-1.5 ${
+                          compat.status === 'unsupported'
+                            ? 'bg-slate-100/80 border-slate-200 opacity-65'
+                            : isStagePreviewing
+                              ? 'bg-indigo-50/70 border-indigo-400 shadow-xs'
+                              : 'bg-white border-slate-200 hover:border-indigo-300'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-1.5">
+                          <div className="min-w-0">
+                            <div className="text-[11px] font-bold text-slate-800 truncate">
+                              {preset.name}
+                            </div>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                                {MOTION_CATEGORY_LABELS[preset.category].split(',')[0]}
+                              </span>
+                              <span className="text-[9px] text-slate-400">
+                                {preset.defaultDuration}s
+                              </span>
+                              {compat.status === 'partial' && (
+                                <span
+                                  className="text-[9px] px-1 py-0.5 rounded bg-orange-100 text-orange-700 font-medium"
+                                  title={compat.reason}
+                                >
+                                  Kısmi
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFavorites(toggleFavoritePresetId(preset.id));
+                            }}
+                            className={`p-1 rounded hover:bg-rose-50 shrink-0 cursor-pointer ${
+                              isFav ? 'text-rose-500' : 'text-slate-300 hover:text-rose-400'
+                            }`}
+                            title={isFav ? 'Favorilerden çıkar' : 'Favorilere ekle'}
+                          >
+                            <Heart className="w-3 h-3" fill={isFav ? 'currentColor' : 'none'} />
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            disabled={compat.status === 'unsupported'}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isPinned) {
+                                setPinnedStagePreviewId(null);
+                                onStageMotionPreviewChange?.(null);
+                              } else {
+                                setPinnedStagePreviewId(preset.id);
+                                setPreviewPresetId(preset.id);
+                                onStageMotionPreviewChange?.({
+                                  objectId: selectedObject.id,
+                                  presetId: preset.id,
+                                  mirrored: mirroredPreset,
+                                  speed: speedPreset,
+                                  intensity: intensityPreset,
+                                });
+                              }
+                            }}
+                            className={`flex-1 py-1 px-2 rounded-md border text-[10px] font-semibold flex items-center justify-center gap-1 transition cursor-pointer ${
+                              isStagePreviewing
+                                ? 'bg-amber-50 border-amber-300 text-amber-800'
+                                : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700 disabled:opacity-40'
+                            }`}
+                          >
+                            {isPinned ? (
+                              <>
+                                <Square className="w-2.5 h-2.5 fill-current" />
+                                <span>Durdur</span>
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="w-3 h-3" />
+                                <span>Önizle</span>
+                              </>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={compat.status === 'unsupported'}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreviewPresetId(preset.id);
+                              handleAddPresetToTimeline(preset);
+                            }}
+                            className="flex-1 py-1 px-2 rounded-md bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white text-[10px] font-semibold flex items-center justify-center gap-1 transition cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Ekle</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Aktif Hareketler Özeti */}
           <div className="rounded-xl border border-slate-200 bg-white p-2.5 space-y-2">
@@ -883,309 +1170,6 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
                     />
                   </label>
                 </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* GENİŞ, SAHNEYİ KAPATMAYAN ANİMASYON KÜTÜPHANESİ ÇEKMECESİ */}
-      {isLibraryOpen && (
-        <div
-          ref={libraryDrawerRef}
-          data-testid="motion-library-drawer"
-          style={{ right: `${rightOffsetPx}px` }}
-          className="fixed top-14 bottom-4 z-50 w-[min(660px,calc(100vw-340px))] min-w-[420px] rounded-2xl border border-slate-200 bg-white shadow-2xl flex flex-col overflow-hidden"
-        >
-          {/* Çekmece Üst Başlığı ve Arama */}
-          <div className="p-3.5 border-b border-slate-200 bg-gradient-to-r from-indigo-50/80 to-white space-y-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
-                <h3 className="text-sm font-bold text-slate-900 truncate">
-                  Animasyon Kütüphanesi
-                </h3>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 shrink-0">
-                  {selectedObject.name}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={closeLibrary}
-                aria-label="Kütüphaneyi Kapat"
-                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Otomatik Odaklanan Arama Kutusu */}
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Ne aramak istersiniz? (örn: yürüme, şaşkın, selam, kitap, anlat)"
-                className="w-full pl-9 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSearchQuery('');
-                    searchInputRef.current?.focus();
-                  }}
-                  aria-label="Aramayı Temizle"
-                  className="absolute right-2.5 top-2 p-0.5 rounded text-slate-400 hover:text-slate-700"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            {/* Kategori Filtreleri */}
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => setSelectedCategory('all')}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition ${
-                  selectedCategory === 'all'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                Tümü ({MOTION_PRESETS.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedCategory('recent')}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition ${
-                  selectedCategory === 'recent'
-                    ? 'bg-sky-600 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                <Clock className="w-3 h-3" />
-                <span>Son Kullanılanlar ({recentIds.length})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedCategory('favorites')}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition ${
-                  selectedCategory === 'favorites'
-                    ? 'bg-rose-600 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                <Heart className="w-3 h-3" />
-                <span>Favoriler ({favorites.length})</span>
-              </button>
-              {(Object.keys(MOTION_CATEGORY_LABELS) as MotionCategoryId[]).map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition ${
-                    selectedCategory === cat
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {MOTION_CATEGORY_LABELS[cat].split(',')[0]} ({categoryCounts[cat] ?? 0})
-                </button>
-              ))}
-            </div>
-
-            {motionFeedback && (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] text-emerald-800 flex items-center justify-between gap-2">
-                <span className="flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>{motionFeedback}</span>
-                </span>
-                <span className="text-[10px] text-emerald-600 font-medium">
-                  Başka hareket de ekleyebilirsiniz
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Kart Grid */}
-          <div className="flex-1 overflow-y-auto p-3.5 bg-slate-50/60">
-            {filteredPresets.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center py-12 text-slate-400 space-y-2">
-                <Search className="w-7 h-7 text-slate-300" />
-                <div className="text-xs font-medium text-slate-500">
-                  {selectedCategory === 'recent' && recentIds.length === 0
-                    ? 'Henüz son kullanılan hareket yok.'
-                    : selectedCategory === 'favorites' && favorites.length === 0
-                      ? 'Henüz favori hareket eklenmedi.'
-                      : 'Aramaya uygun hareket bulunamadı.'}
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {filteredPresets.map((preset) => {
-                  const compat = checkMotionMaskCompatibility(
-                    preset.mask,
-                    rigProfile,
-                    preset.requiredSocket
-                  );
-                  const isFav = favorites.includes(preset.id);
-                  const isStagePreviewing =
-                    stageMotionPreview?.objectId === selectedObject.id &&
-                    stageMotionPreview?.presetId === preset.id;
-                  const isPinned = pinnedStagePreviewId === preset.id;
-
-                  return (
-                    <div
-                      key={preset.id}
-                      draggable={compat.status !== 'unsupported'}
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData(
-                          'application/x-banimora-motion',
-                          JSON.stringify({
-                            presetId: preset.id,
-                            speed: speedPreset,
-                            intensity: intensityPreset,
-                            weight: weightPreset,
-                            duration: durationPreset || preset.defaultDuration,
-                            mirrored: mirroredPreset,
-                            repeatMode: repeatModePreset,
-                            blendInSec: blendSecPreset,
-                            blendOutSec: blendSecPreset,
-                          })
-                        );
-                        e.dataTransfer.effectAllowed = 'copy';
-                      }}
-                      onMouseEnter={() => {
-                        if (compat.status === 'unsupported' || pinnedStagePreviewId) return;
-                        onStageMotionPreviewChange?.({
-                          objectId: selectedObject.id,
-                          presetId: preset.id,
-                          mirrored: mirroredPreset,
-                          speed: speedPreset,
-                          intensity: intensityPreset,
-                        });
-                      }}
-                      onMouseLeave={() => {
-                        if (pinnedStagePreviewId) return;
-                        onStageMotionPreviewChange?.(null);
-                      }}
-                      className={`rounded-xl border p-2.5 flex flex-col justify-between gap-2 transition ${
-                        compat.status === 'unsupported'
-                          ? 'bg-slate-100/80 border-slate-200 opacity-65'
-                          : isStagePreviewing
-                            ? 'bg-indigo-50/70 border-indigo-400 shadow-sm'
-                            : 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-sm'
-                      }`}
-                    >
-                      <div className="space-y-1.5">
-                        <div className="flex items-start justify-between gap-1.5">
-                          <div className="min-w-0">
-                            <h4 className="text-xs font-bold text-slate-800 leading-snug line-clamp-1">
-                              {preset.name}
-                            </h4>
-                            <div className="flex flex-wrap items-center gap-1 mt-0.5">
-                              <span className="text-[9.5px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                                {MOTION_CATEGORY_LABELS[preset.category].split(',')[0]}
-                              </span>
-                              <span className="text-[9.5px] text-slate-400">
-                                {preset.defaultDuration}s
-                              </span>
-                              {compat.status === 'partial' && (
-                                <span
-                                  className="text-[9px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 font-medium"
-                                  title={compat.reason}
-                                >
-                                  Kısmi Uyum
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setFavorites(toggleFavoritePresetId(preset.id));
-                            }}
-                            className={`p-1 rounded-lg hover:bg-rose-50 shrink-0 ${
-                              isFav ? 'text-rose-500' : 'text-slate-300 hover:text-rose-400'
-                            }`}
-                            title={isFav ? 'Favorilerden çıkar' : 'Favorilere ekle'}
-                          >
-                            <Heart className="w-3.5 h-3.5" fill={isFav ? 'currentColor' : 'none'} />
-                          </button>
-                        </div>
-
-                        <p className="text-[10.5px] text-slate-500 leading-snug line-clamp-2 min-h-[28px]">
-                          {compat.status === 'unsupported'
-                            ? compat.reason ?? 'Bu karakter iskeleti bu hareketi desteklemiyor.'
-                            : preset.description ||
-                              `${CHANNEL_LABELS[preset.defaultChannelId]} bölgesini canlandırır.`}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 pt-1 border-t border-slate-100">
-                        <button
-                          type="button"
-                          disabled={compat.status === 'unsupported'}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (isPinned) {
-                              setPinnedStagePreviewId(null);
-                              onStageMotionPreviewChange?.(null);
-                            } else {
-                              setPinnedStagePreviewId(preset.id);
-                              setPreviewPresetId(preset.id);
-                              onStageMotionPreviewChange?.({
-                                objectId: selectedObject.id,
-                                presetId: preset.id,
-                                mirrored: mirroredPreset,
-                                speed: speedPreset,
-                                intensity: intensityPreset,
-                              });
-                            }
-                          }}
-                          className={`flex-1 py-1 px-2 rounded-lg border text-[10.5px] font-semibold flex items-center justify-center gap-1 transition ${
-                            isStagePreviewing
-                              ? 'bg-amber-50 border-amber-300 text-amber-800'
-                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700 disabled:opacity-40'
-                          }`}
-                        >
-                          {isPinned ? (
-                            <>
-                              <Square className="w-2.5 h-2.5 fill-current" />
-                              <span>Durdur</span>
-                            </>
-                          ) : (
-                            <>
-                              <Eye className="w-3 h-3" />
-                              <span>Önizle</span>
-                            </>
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={compat.status === 'unsupported'}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPreviewPresetId(preset.id);
-                            handleAddPresetToTimeline(preset);
-                          }}
-                          className="flex-1 py-1 px-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white text-[10.5px] font-semibold flex items-center justify-center gap-1 transition"
-                        >
-                          <Plus className="w-3 h-3" />
-                          <span>Ekle</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             )}
           </div>

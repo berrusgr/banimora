@@ -1178,3 +1178,164 @@ export interface StageMotionPreviewRequest {
   speed?: number;
   intensity?: number;
 }
+
+export type ProjectMode = 'classic' | 'addie';
+
+export type AddieStage =
+  | 'analysis'
+  | 'design'
+  | 'development'
+  | 'implementation'
+  | 'evaluation';
+
+export type AddieStageStatus = 'not-started' | 'in-progress' | 'completed';
+
+export interface AddieProgress {
+  currentStage: AddieStage;
+  stageStatus: Record<AddieStage, AddieStageStatus>;
+}
+
+export interface AddieProjectData {
+  title: string;
+  subject: string;
+  targetAudience: string;
+  learningObjectives: string[];
+  description: string;
+  instructionalPlan?: string;
+  evaluationChecklist?: Record<string, boolean>;
+  progress?: AddieProgress;
+}
+
+export type InteractionQuestionType =
+  | 'multiple-choice'
+  | 'true-false'
+  | 'matching'
+  | 'fill-in-blank'
+  | 'short-answer';
+
+export type ActiveInteractionQuestionType = 'multiple-choice' | 'true-false';
+
+export interface QuestionAssetRef {
+  assetId: string;
+  source: 'library' | 'uploaded';
+  alt?: string;
+}
+
+export type QuestionImageFit = 'contain' | 'cover';
+export type QuestionImagePosition = 'top' | 'bottom' | 'left' | 'right';
+
+export interface QuestionContent {
+  text?: string;
+  image?: QuestionAssetRef;
+  imageFit?: QuestionImageFit;
+  imagePosition?: QuestionImagePosition;
+}
+
+export interface QuestionOption {
+  id: string;
+  content: QuestionContent;
+  semanticValue?: boolean;
+  displayLabel?: string;
+}
+
+export interface QuestionFeedback {
+  correctText: string;
+  incorrectText: string;
+}
+
+export type QuestionDesignThemeId =
+  | 'clean-light'
+  | 'indigo-edu'
+  | 'warm-sand'
+  | 'dark-slate';
+
+export type QuestionOptionsLayout = 'list' | 'grid';
+export type QuestionOptionsColumns = 1 | 2;
+export type QuestionImageSize = 'sm' | 'md' | 'lg';
+
+export interface QuestionDesignConfig {
+  themeId: QuestionDesignThemeId;
+  backgroundColor: string;
+  backgroundImage?: QuestionAssetRef;
+  textColor: string;
+  fontSizePx: number;
+  borderColor: string;
+  borderRadiusPx: number;
+  optionsLayout: QuestionOptionsLayout;
+  optionsColumns: QuestionOptionsColumns;
+  imageSize: QuestionImageSize;
+  imageFit: QuestionImageFit;
+}
+
+export interface InteractionQuestion {
+  id: string;
+  type: ActiveInteractionQuestionType;
+  sceneId: string;
+  timestampMs: number;
+  prompt: QuestionContent;
+  options: QuestionOption[];
+  correctOptionId: string;
+  feedback: QuestionFeedback;
+  design: QuestionDesignConfig;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type FeedbackTimingMode = 'immediate' | 'end_of_video';
+export type MaxWrongAttemptsSetting = 1 | 2 | 3 | 'unlimited';
+export type CorrectAnswerRevealMode = 'immediate' | 'end_of_video' | 'never';
+
+export interface PlayerEvaluationSettings {
+  feedbackTiming: FeedbackTimingMode;
+  maxWrongAttempts: MaxWrongAttemptsSetting;
+  allowSkipQuestion: boolean;
+  correctAnswerReveal: CorrectAnswerRevealMode;
+  showResultScreen: boolean;
+  passingThreshold: number; // 0-100
+}
+
+export type QuestionAttemptStatus =
+  | 'unanswered'
+  | 'correct'
+  | 'incorrect'
+  | 'skipped';
+
+export interface QuestionAttemptEntry {
+  selectedOptionId: string;
+  isCorrect: boolean;
+  attemptedAt: string;
+  isReviewAttempt?: boolean;
+}
+
+export interface QuestionAttempt {
+  questionId: string;
+  selectedOptionId: string | null;
+  attemptCount: number;
+  reviewAttemptCount: number;
+  status: QuestionAttemptStatus;
+  firstAttemptCorrect: boolean | null;
+  finalCorrect: boolean;
+  answeredAt: string | null;
+  attemptHistory: QuestionAttemptEntry[];
+}
+
+export type LearningSessionStatus = 'in_progress' | 'reviewing_skipped' | 'completed';
+
+export interface LearningSession {
+  sessionId: string;
+  projectId: string;
+  startedAt: string;
+  lastActivityAt: string;
+  currentSceneId: string;
+  currentTimeMs: number;
+  status: LearningSessionStatus;
+  triggeredQuestionIds: string[];
+  answers: Record<string, QuestionAttempt>;
+}
+
+export interface ProjectEducationalMetadata {
+  mode: ProjectMode;
+  addieData?: AddieProjectData;
+  interactions?: InteractionQuestion[];
+  playerSettings?: PlayerEvaluationSettings;
+}

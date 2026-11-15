@@ -59,6 +59,7 @@ interface LocomotionSpec {
 
 function makeLocomotion(spec: LocomotionSpec): MotionPresetDefinition {
   const isRunArms = spec.id.startsWith('run') || spec.id.startsWith('jog');
+  const walkArmSwing = Math.min(16, spec.hipAmp * 0.5);
   return {
     id: spec.id,
     name: spec.name,
@@ -67,7 +68,7 @@ function makeLocomotion(spec: LocomotionSpec): MotionPresetDefinition {
     tags: spec.tags ?? ['hareket', 'bacak', 'yürüme'],
     defaultChannelId: 'leftLeg',
     stage: 'L1_LOCOMOTION',
-    mask: isRunArms ? 'full' : 'lower-body',
+    mask: 'full',
     lockProcedural: false,
     defaultDuration: spec.defaultDuration ?? 3.0,
     cyclesPerSec: spec.cyclesPerSec,
@@ -90,7 +91,13 @@ function makeLocomotion(spec: LocomotionSpec): MotionPresetDefinition {
             rightShoulder: (-30 + s * 10) * intensity,
             rightElbow: (40 + upRight * 72) * intensity,
           }
-        : {};
+        : {
+            // Doğal yürüme kol salınımı (hafif omuz + dirsek kırılması, üst üste binen el/kol jestleri kolayca baskılar)
+            leftShoulder: (4 + walkArmSwing * s) * intensity,
+            leftElbow: (-6 - upRight * 10) * intensity,
+            rightShoulder: (-4 + walkArmSwing * s) * intensity,
+            rightElbow: (6 + upLeft * 10) * intensity,
+          };
       return {
         boneAngles: {
           pelvis: spec.pelvisAmp * s * intensity + (spec.spineLean ?? 0) * intensity * env,

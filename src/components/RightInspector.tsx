@@ -37,6 +37,8 @@ import {
   Table,
   ChevronDown,
   ChevronRight,
+  Link2,
+  Unlink,
 } from 'lucide-react';
 import { CHART_PALETTES } from './ChartsAndTablesRenderer';
 import {
@@ -72,10 +74,19 @@ import {
   resolveObjectAssetClass,
 } from '../data/mathAssetsRegistry';
 import {
+  computeObjectAnimation,
   formatCompactDuration,
   MAX_TOTAL_PROJECT_DURATION,
 } from '../utils/animationEngine';
-import { ensureAudioLipSyncAnalyzed } from '../utils/audioLipSync';
+import { ensureAudioLipSyncAnalyzed, resolveEffectiveCharacterConfig } from '../utils/audioLipSync';
+import type { PropSocketId } from '../types/rigStandard';
+import { buildCharacterRigProfile } from '../rig/rigProfiles';
+import {
+  detachObjectPreservingWorldTransform,
+  resolveAttachedObjectStageTransform,
+  validateObjectAttachment,
+} from '../rig/rigKinematics';
+import { resolveParentCharacterSocketTransform } from '../utils/sceneAttachmentResolver';
 
 type DesignSectionKey =
   | 'actions'
@@ -83,6 +94,7 @@ type DesignSectionKey =
   | 'expression'
   | 'lipsync'
   | 'transform'
+  | 'attachment'
   | 'composite'
   | 'text'
   | 'chart'
@@ -146,6 +158,7 @@ const DesignAccordionSection: React.FC<{
 
 interface RightInspectorProps {
   scene: Scene;
+  currentTime?: number;
   totalProjectDuration: number;
   maxAllowedSceneDuration: number;
   selectedObject: CanvasObject | null;
@@ -404,6 +417,7 @@ const EASING_OPTIONS: { id: EasingType; label: string }[] = [
 
 export const RightInspector: React.FC<RightInspectorProps> = ({
   scene,
+  currentTime = 0,
   totalProjectDuration,
   maxAllowedSceneDuration,
   selectedObject,
@@ -435,6 +449,9 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
   const [rigPoseSlot, setRigPoseSlot] = useState<'start' | 'target'>('start');
   const [appliedAllFeedback, setAppliedAllFeedback] = useState(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [attachParentId, setAttachParentId] = useState<string>('');
+  const [attachSocketId, setAttachSocketId] = useState<PropSocketId>('rightPropSocket');
+  const [attachError, setAttachError] = useState<string | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<
     Partial<Record<DesignSectionKey, boolean>>
   >({});
@@ -2242,6 +2259,218 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               </div>
             </div>
           </DesignAccordionSection>
+
+          {/* Karaktere Bağla (Faz 4A Socket Bağlantısı) */}
+          {(() => {
+            const attachableChars = scene.objects.filter((o) => {
+              if (o.id === selectedObject.id || o.category !== 'characters' || o.assetId === 'char-robot-mira') {
+                return false;
+              }
+              const effCfg =
+                resolveEffectiveCharacterConfig(o, scene.audioClips) ||
+                o.characterConfig ||
+                DEFAULT_CHARACTER_CONFIGS[o.assetId];
+              if (!effCfg) return false;
+              const prof = buildCharacterRigProfile(effCfg, o.assetId);
+              return prof.isSupported && prof.propSockets.length > 0;
+            });
+
+            const currentAtt = selectedObject.attachment;
+            const activeParentId =
+              currentAtt?.parentObjectId ??
+              (attachableChars.some((c) => c.id === attachParentId)
+                ? attachParentId
+                : attachableChars[0]?.id ?? '');
+            const activeSocketId: PropSocketId =
+              currentAtt?.socketId ?? attachSocketId;
+
+            const SOCKET_LABELS: Record<PropSocketId, string> = {
+              leftPropSocket: 'Sol el',
+              rightPropSocket: 'Sağ el',
+              backPropSocket: 'Sırt',
+            };
+
+            const handleAttach = (nextParentId: string, nextSocketId: PropSocketId) => {
+              setAttachError(null);
+              const normalizedObjects = scene.objects.map((o) =>
+                o.category === 'characters'
+                  ? {
+                      ...o,
+                      characterConfig:
+                        resolveEffectiveCharacterConfig(o, scene.audioClips) ||
+                        o.characterConfig ||
+                        DEFAULT_CHARACTER_CONFIGS[o.assetId],
+                    }
+                  : o
+              );
+              const candidate = {
+                parentObjectId: nextParentId,
+                socketId: nextSocketId,
+                localOffsetX: currentAtt?.parentObjectId === nextParentId && currentAtt?.socketId === nextSocketId
+                  ? (currentAtt.localOffsetX ?? 0)
+                  : 0,
+                localOffsetY: currentAtt?.parentObjectId === nextParentId && currentAtt?.socketId === nextSocketId
+                  ? (currentAtt.localOffsetY ?? 0)
+                  : 0,
+                localRotationDeg: currentAtt?.localRotationDeg ?? 0,
+                inheritScale: currentAtt?.inheritScale ?? true,
+                inheritRotation: currentAtt?.inheritRotation ?? true,
+                inheritFlip: currentAtt?.inheritFlip ?? true,
+              };
+              const validation = validateObjectAttachment(
+                normalizedObjects,
+                selectedObject.id,
+                candidate,
+                buildCharacterRigProfile
+              );
+              if (!validation.valid) {
+                setAttachError(validation.message ?? 'Soket bağlantısı doğrulanamadı.');
+                return;
+              }
+              onUpdateObject(selectedObject.id, { attachment: candidate }, true);
+            };
+
+            const handleDetach = () => {
+              setAttachError(null);
+              if (!currentAtt) return;
+              const parentObj = scene.objects.find((o) => o.id === currentAtt.parentObjectId);
+              if (parentObj) {
+                const socketTransform = resolveParentCharacterSocketTransform(
+                  parentObj,
+                  currentAtt.socketId,
+                  scene,
+                  currentTime,
+                  false
+                );
+                if (socketTransform) {
+                  const objAnim = computeObjectAnimation(selectedObject, currentTime, false);
+                  const resolved = resolveAttachedObjectStageTransform(
+                    selectedObject,
+                    socketTransform,
+                    objAnim
+                  );
+                  const patch = detachObjectPreservingWorldTransform(resolved);
+                  onUpdateObject(selectedObject.id, patch, true);
+                  return;
+                }
+              }
+              onUpdateObject(selectedObject.id, { attachment: undefined }, true);
+            };
+
+            return (
+              <DesignAccordionSection
+                isOpen={isSectionOpen('attachment')}
+                onToggle={() => toggleSection('attachment')}
+                title={
+                  <>
+                    <Link2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Karaktere Bağla
+                  </>
+                }
+                headerExtra={
+                  currentAtt ? (
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold">
+                      Bağlı
+                    </span>
+                  ) : undefined
+                }
+              >
+                {attachableChars.length === 0 ? (
+                  <p className="text-[11px] text-slate-500 leading-snug">
+                    Sahnede soket destekleyen başka bir karakter bulunmuyor.
+                  </p>
+                ) : (
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                        Hedef Karakter
+                      </label>
+                      <select
+                        value={activeParentId}
+                        onChange={(e) => {
+                          const nextId = e.target.value;
+                          setAttachParentId(nextId);
+                          setAttachError(null);
+                          if (currentAtt) {
+                            handleAttach(nextId, activeSocketId);
+                          }
+                        }}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                      >
+                        {attachableChars.map((ch) => (
+                          <option key={ch.id} value={ch.id}>
+                            {ch.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <span className="block text-[11px] font-medium text-slate-600 mb-1">
+                        Soket Noktası
+                      </span>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {(['leftPropSocket', 'rightPropSocket', 'backPropSocket'] as PropSocketId[]).map(
+                          (sockId) => {
+                            const isActive = activeSocketId === sockId;
+                            return (
+                              <button
+                                key={sockId}
+                                type="button"
+                                onClick={() => {
+                                  setAttachSocketId(sockId);
+                                  setAttachError(null);
+                                  if (currentAtt && activeParentId) {
+                                    handleAttach(activeParentId, sockId);
+                                  }
+                                }}
+                                className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer ${
+                                  isActive
+                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                }`}
+                              >
+                                {SOCKET_LABELS[sockId]}
+                              </button>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+
+                    {attachError && (
+                      <p className="text-[11px] text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-2 py-1">
+                        {attachError}
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-2 pt-0.5">
+                      {!currentAtt ? (
+                        <button
+                          type="button"
+                          onClick={() => handleAttach(activeParentId, activeSocketId)}
+                          disabled={!activeParentId}
+                          className="w-full py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                        >
+                          <Link2 className="w-3.5 h-3.5" />
+                          <span>Bağla</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleDetach}
+                          className="w-full py-1.5 px-3 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Unlink className="w-3.5 h-3.5" />
+                          <span>Bağlantıyı Kaldır</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </DesignAccordionSection>
+            );
+          })()}
 
           {/* 2-LEVEL COMPOSITE PART INSPECTOR (only for Parçalı Varlık) */}
           {resolvedAssetClass === 'composite' && mathDef?.parts && (

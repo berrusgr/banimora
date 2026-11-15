@@ -1357,6 +1357,7 @@ export function App() {
         {/* 4. RIGHT INSPECTOR (Object Design/Animation OR Camera & Scene Transition Inspector) */}
         <RightInspector
           scene={activeScene}
+          currentTime={currentTime}
           totalProjectDuration={totalProjectDuration}
           maxAllowedSceneDuration={maxAllowedSceneDuration}
           selectedObject={selectedObject}

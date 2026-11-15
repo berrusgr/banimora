@@ -2187,6 +2187,38 @@ export function renderEyebrows(
       </g>
     );
   }
+  if (expression === 'excited') {
+    return (
+      <g stroke={color} strokeWidth={strokeW} strokeLinecap="round" fill="none">
+        <path d="M85 56 Q94 47.5 103 55.5" />
+        <path d="M117 55.5 Q126 47.5 135 56" />
+      </g>
+    );
+  }
+  if (expression === 'confused') {
+    return (
+      <g stroke={color} strokeWidth={strokeW} strokeLinecap="round" fill="none">
+        <path d="M85 56 Q94 49.5 103 56" />
+        <path d="M117 61 L135 56.5" />
+      </g>
+    );
+  }
+  if (expression === 'wink') {
+    return (
+      <g stroke={color} strokeWidth={strokeW} strokeLinecap="round" fill="none">
+        <path d="M85 58 Q94 51.5 103 57.5" />
+        <path d="M117 59.5 Q125 56 135 59.5" />
+      </g>
+    );
+  }
+  if (expression === 'sleepy') {
+    return (
+      <g stroke={color} strokeWidth={strokeW} strokeLinecap="round" fill="none">
+        <path d="M85 60 Q94 58.5 103 60.5" />
+        <path d="M117 60.5 Q126 58.5 135 60" />
+      </g>
+    );
+  }
 
   switch (style) {
     case 'thick':
@@ -2261,6 +2293,48 @@ export function renderEyes(
       >
         <path d="M88.5 72.5 Q95 75.5 101.5 72.5" />
         <path d="M118.5 72.5 Q125 75.5 131.5 72.5" />
+      </g>
+    );
+  }
+
+  if (expression === 'sleepy') {
+    return (
+      <g>
+        {[95, 125].map((cx) => (
+          <g key={cx}>
+            <ellipse cx={cx} cy="72.5" rx="6.2" ry="5.5" fill="#ffffff" />
+            <circle cx={cx + pupilDx} cy="74" r="3.1" fill={eyeColor} />
+            <circle cx={cx + pupilDx + 0.9} cy="72.8" r="0.9" fill="#ffffff" />
+            <path
+              d={`M${cx - 6.8} 72.5 Q${cx} 69.5 ${cx + 6.8} 72.5 L${cx + 6.8} 66 L${cx - 6.8} 66 Z`}
+              fill={skinTone}
+            />
+            <path
+              d={`M${cx - 6.2} 72.5 Q${cx} 70.5 ${cx + 6.2} 72.5`}
+              stroke={lidShadow}
+              strokeWidth="2.0"
+              strokeLinecap="round"
+              fill="none"
+            />
+          </g>
+        ))}
+      </g>
+    );
+  }
+
+  if (expression === 'wink') {
+    return (
+      <g>
+        <ellipse cx={95} cy="72" rx="6.3" ry="6.2" fill="#ffffff" />
+        <circle cx={95 + pupilDx} cy="72" r="3.4" fill={eyeColor} />
+        <circle cx={95 + pupilDx + 1.1} cy="70.6" r="1.1" fill="#ffffff" />
+        <path
+          d="M118.5 72.5 Q125 68 131.5 72.5"
+          stroke={lidShadow}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          fill="none"
+        />
       </g>
     );
   }
@@ -2996,6 +3070,41 @@ export function renderMouth(
           strokeLinecap="round"
           fill="none"
         />
+      );
+    }
+    if (expression === 'excited') {
+      return (
+        <g>
+          <path d="M97 92.5 Q110 104 123 92.5 Z" fill="#881337" />
+          <path d="M100 93 Q110 96 120 93" stroke="#ffffff" strokeWidth="2.0" strokeLinecap="round" fill="none" />
+        </g>
+      );
+    }
+    if (expression === 'wink') {
+      return (
+        <path
+          d="M99 95 Q111 100.5 121 92.5"
+          stroke={strokeColor}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          fill="none"
+        />
+      );
+    }
+    if (expression === 'confused') {
+      return (
+        <path
+          d="M100 96.5 Q106 94 111 96.5 Q116 98.5 121 95"
+          stroke={strokeColor}
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          fill="none"
+        />
+      );
+    }
+    if (expression === 'sleepy') {
+      return (
+        <ellipse cx="110" cy="96.5" rx="3.8" ry="4.4" fill="#881337" />
       );
     }
 
@@ -4039,25 +4148,35 @@ export function renderArticulatedHand(
 
       case 'open':
       default:
+        // Doğal yan duruş (avuç içi bacağa dönük, el sırtı dışa bakan rahat profil)
         return (
           <g>
-            {/* Sculpted Palm */}
+            {/* Ana el gövdesi (yan/üç çeyrek profil, avuç içi görünmez) */}
             <path
-              d="M-4.8 0 L4.8 0 C5.6 3.0, 5.8 6.6, 5.4 9.0 C3.8 10.6, -3.8 10.6, -5.4 9.0 C-5.8 6.6, -5.6 3.0, -4.8 0 Z"
+              d="M-3.5 0 L3.6 0 C4.4 3.4, 4.5 7.2, 3.8 10.6 C3.4 13.0, 2.2 15.2, 0.7 15.6 C-0.5 15.9, -1.5 15.2, -2.0 13.8 C-2.8 14.4, -3.8 13.8, -3.9 12.2 C-4.2 8.8, -4.1 4.2, -3.5 0 Z"
               fill={skinTone}
               stroke={fingerCrease}
-              strokeWidth="0.55"
+              strokeWidth="0.65"
+              strokeLinejoin="round"
             />
-            {/* Soft Tonal Palm Crease */}
-            <path d="M-3.0 6.0 Q0 7.6 3.2 5.6" fill="none" stroke={palmShadow} strokeWidth="1.0" strokeLinecap="round" />
-            {/* 4 Tapered Fingers (Pinky, Ring, Middle, Index) */}
-            <path d="M-5.2 8.2 L-5.3 14.2 C-5.3 15.2, -3.4 15.2, -3.3 14.2 L-3.1 8.4 Z" fill={skinTone} stroke={fingerCrease} strokeWidth="0.6" strokeLinejoin="round" />
-            <path d="M-2.9 8.4 L-2.8 16.0 C-2.8 17.1, -0.7 17.1, -0.7 16.0 L-0.5 8.5 Z" fill={skinTone} stroke={fingerCrease} strokeWidth="0.6" strokeLinejoin="round" />
-            <path d="M-0.3 8.5 L-0.1 16.8 C-0.1 17.9, 2.0 17.9, 2.0 16.8 L2.1 8.5 Z" fill={skinTone} stroke={fingerCrease} strokeWidth="0.6" strokeLinejoin="round" />
-            <path d="M2.3 8.3 L2.6 15.4 C2.6 16.5, 4.7 16.4, 4.7 15.3 L4.8 8.0 Z" fill={skinTone} stroke={fingerCrease} strokeWidth="0.6" strokeLinejoin="round" />
-            {/* Anatomical Thumb (5th digit) */}
+            {/* Rahat kıvrılmış parmak ayrımları (hafif yan profil) */}
             <path
-              d="M4.2 2.2 C7.2 2.8, 9.2 5.4, 8.6 8.2 C8.0 9.6, 6.2 9.4, 5.2 8.2 C4.6 7.4, 4.2 6.4, 4.0 5.6 Z"
+              d="M0.4 9.2 C0.7 11.4, 0.6 13.5, 0.2 15.1"
+              fill="none"
+              stroke={fingerCrease}
+              strokeWidth="0.6"
+              strokeLinecap="round"
+            />
+            <path
+              d="M-1.8 9.0 C-1.6 11.2, -1.7 12.8, -2.0 13.9"
+              fill="none"
+              stroke={fingerCrease}
+              strokeWidth="0.6"
+              strokeLinecap="round"
+            />
+            {/* Öne/içe bakan doğal başparmak */}
+            <path
+              d="M-2.8 2.2 C-4.2 3.2, -4.4 6.2, -3.0 8.2 C-2.1 9.4, -0.8 8.8, -0.9 7.2 C-1.0 5.6, -1.6 4.0, -2.2 2.4 Z"
               fill={skinTone}
               stroke={fingerCrease}
               strokeWidth="0.65"
@@ -4166,6 +4285,19 @@ export function renderFacialSculptAndExpressionDetails(
           <path d="M118 48 Q125 43.5 132 48" stroke={deepCrease} strokeWidth="1.4" strokeLinecap="round" fill="none" />
           <ellipse cx="86" cy="82" rx="5.5" ry="3" fill="#fb7185" opacity="0.18" />
           <ellipse cx="134" cy="82" rx="5.5" ry="3" fill="#fb7185" opacity="0.18" />
+        </g>
+      )}
+
+      {(expression === 'excited' || expression === 'wink') && (
+        <g>
+          <ellipse cx="85" cy="82" rx="6" ry="3.2" fill="#fb7185" opacity="0.24" />
+          <ellipse cx="135" cy="82" rx="6" ry="3.2" fill="#fb7185" opacity="0.24" />
+        </g>
+      )}
+
+      {expression === 'confused' && (
+        <g>
+          <path d="M107 53 Q110 55 113 52" stroke={deepCrease} strokeWidth="1.4" strokeLinecap="round" fill="none" />
         </g>
       )}
     </g>

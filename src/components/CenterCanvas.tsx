@@ -1144,7 +1144,6 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                     top: `${renderTransform.y}px`,
                     width: `${obj.width}px`,
                     height: `${obj.height}px`,
-                    opacity: anim.opacity,
                     zIndex: index + 1,
                     transform: `translate(${renderTransform.translateX}px, ${renderTransform.translateY}px) rotate(${renderTransform.rotationDeg}deg) scale(${flipScaleX}, ${renderTransform.scaleY})`,
                     transformOrigin: 'center center',
@@ -1158,6 +1157,7 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                   }`}
                 >
                   {/* Vector / Articulated Character / Uploaded Image Content */}
+                  <div className="w-full h-full" style={{ opacity: anim.opacity }}>
                   <VectorAssetRenderer
                     assetId={obj.assetId}
                     color={obj.color}
@@ -1243,6 +1243,7 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                       }
                     }}
                   />
+                  </div>
 
                   {/* Active Animation Badge during Playback or Scrubbing */}
                   {anim.activePhase !== 'idle' &&

@@ -322,12 +322,16 @@ export type CharacterPoseType =
 export type CharacterExpressionType =
   | 'neutral'
   | 'happy'
+  | 'excited'
   | 'thinking'
+  | 'confused'
   | 'surprised'
   | 'serious'
   | 'sad'
   | 'angry'
-  | 'worried';
+  | 'worried'
+  | 'wink'
+  | 'sleepy';
 
 export type HeadDirectionType = 'left' | 'center' | 'right';
 

@@ -911,10 +911,14 @@ function mapExpressionToFacialParams(
   switch (expression) {
     case 'happy':
       return { leftBrowLift: 0.2, rightBrowLift: 0.2, browTilt: 0, leftEyeOpen: 1, rightEyeOpen: 1, gazeX, gazeY: 0, smileCurve: 0.85 };
+    case 'excited':
+      return { leftBrowLift: 0.6, rightBrowLift: 0.6, browTilt: 0, leftEyeOpen: 1.15, rightEyeOpen: 1.15, gazeX, gazeY: -0.05, smileCurve: 1 };
     case 'surprised':
       return { leftBrowLift: 0.9, rightBrowLift: 0.9, browTilt: 0, leftEyeOpen: 1.2, rightEyeOpen: 1.2, gazeX, gazeY: 0, smileCurve: -0.1 };
     case 'thinking':
       return { leftBrowLift: 0.65, rightBrowLift: -0.1, browTilt: 0.1, leftEyeOpen: 0.95, rightEyeOpen: 0.95, gazeX: gazeX || 0.45, gazeY: -0.2, smileCurve: 0 };
+    case 'confused':
+      return { leftBrowLift: 0.45, rightBrowLift: -0.35, browTilt: 0.35, leftEyeOpen: 1.05, rightEyeOpen: 0.85, gazeX, gazeY: 0, smileCurve: -0.25 };
     case 'sad':
       return { leftBrowLift: -0.2, rightBrowLift: -0.2, browTilt: -0.7, leftEyeOpen: 0.85, rightEyeOpen: 0.85, gazeX, gazeY: 0.25, smileCurve: -0.75 };
     case 'angry':
@@ -923,6 +927,10 @@ function mapExpressionToFacialParams(
       return { leftBrowLift: 0.15, rightBrowLift: 0.15, browTilt: -0.55, leftEyeOpen: 1.05, rightEyeOpen: 1.05, gazeX, gazeY: 0.1, smileCurve: -0.45 };
     case 'serious':
       return { leftBrowLift: -0.25, rightBrowLift: -0.25, browTilt: 0.2, leftEyeOpen: 0.92, rightEyeOpen: 0.92, gazeX, gazeY: 0, smileCurve: -0.15 };
+    case 'wink':
+      return { leftBrowLift: 0.2, rightBrowLift: -0.1, browTilt: 0.1, leftEyeOpen: 1, rightEyeOpen: 0, gazeX, gazeY: 0, smileCurve: 0.7 };
+    case 'sleepy':
+      return { leftBrowLift: -0.2, rightBrowLift: -0.2, browTilt: -0.15, leftEyeOpen: 0.4, rightEyeOpen: 0.4, gazeX, gazeY: 0.2, smileCurve: 0 };
     case 'neutral':
     default:
       return { leftBrowLift: 0, rightBrowLift: 0, browTilt: 0, leftEyeOpen: 1, rightEyeOpen: 1, gazeX, gazeY: 0, smileCurve: 0.1 };

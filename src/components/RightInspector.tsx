@@ -659,37 +659,31 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
         {/* =================================================================
             CAMERA TOOL SECTION (ADD CAMERA, ADD CAMERA MOVEMENT, ZOOM & PAN)
            ================================================================= */}
+        {!scene.camera?.enabled ? (
+          <button
+            onClick={onAddOrSelectCamera}
+            className="w-full py-2.5 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm shadow-orange-500/20 transition-all cursor-pointer"
+          >
+            <Video className="w-4 h-4" />
+            <span>Kamera Ekle</span>
+          </button>
+        ) : (
         <div className="p-3.5 rounded-xl bg-orange-50/80 border border-orange-200 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-orange-950 flex items-center gap-1.5">
               <Video className="w-4 h-4 text-orange-600" />
               Kamera Aracı (Zoom & Pan)
             </span>
-            {scene.camera?.enabled && (
-              <button
-                onClick={onRemoveCamera}
-                className="text-[10px] font-semibold text-rose-600 hover:underline cursor-pointer"
-                title="Sahnedeki kamerayı kaldır ve tam sahne görünümüne dön"
-              >
-                Kamerayı Kaldır
-              </button>
-            )}
+            <button
+              onClick={onRemoveCamera}
+              className="text-[10px] font-semibold text-rose-600 hover:underline cursor-pointer"
+              title="Sahnedeki kamerayı kaldır ve tam sahne görünümüne dön"
+            >
+              Kamerayı Kaldır
+            </button>
           </div>
 
-          <p className="text-[10px] text-orange-900/80 leading-snug">
-            Sahnedeki bir detaya veya karakterin yüz ifadesine yakınlaşmak (Zoom), mekanı taramak (Pan) ve odak yönetimi yapmak için turuncu kamera çerçevesini kullanın.
-          </p>
-
-          {!scene.camera?.enabled ? (
-            <button
-              onClick={onAddOrSelectCamera}
-              className="w-full py-2.5 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm shadow-orange-500/20 transition-all cursor-pointer"
-            >
-              <Video className="w-4 h-4" />
-              <span>Kamera Ekle (Add Camera)</span>
-            </button>
-          ) : (
-            <div className="space-y-2.5">
+          <div className="space-y-2.5">
               {/* Add Camera Movement Button */}
               <button
                 onClick={onAddCameraMovement}
@@ -944,8 +938,8 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Scene Name & Duration (Up to 10 Minutes / 600s) */}
         <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-3">

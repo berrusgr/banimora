@@ -667,7 +667,20 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
                         assetId={item.id}
                         color={item.defaultColor}
                         secondaryColor={item.defaultSecondaryColor}
-                        characterConfig={item.characterConfig}
+                        characterConfig={
+                          item.category === 'characters' && item.characterConfig
+                            ? {
+                                ...item.characterConfig,
+                                pose: 'idle',
+                                rigMode: 'preset',
+                                leftHandGesture: 'open',
+                                rightHandGesture: 'open',
+                                customJointAngles: undefined,
+                                targetJointAngles: undefined,
+                              }
+                            : item.characterConfig
+                        }
+                        animTime={0}
                         imageUrl={item.imageUrl}
                         chartData={item.chartData}
                         chartPalette={item.chartPalette}

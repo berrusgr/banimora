@@ -53,9 +53,9 @@ export function shadeColor(hex: string, percent: number): string {
   const full =
     cleaned.length === 3
       ? cleaned
-          .split('')
-          .map((c) => c + c)
-          .join('')
+        .split('')
+        .map((c) => c + c)
+        .join('')
       : cleaned.padEnd(6, '0');
   const num = parseInt(full, 16);
   const amt = Math.round(2.55 * percent);
@@ -510,12 +510,14 @@ export function computePoseJointAngles(
 
   const base = (): JointAngles => {
     switch (pose) {
-      case 'clipboard':
+      case 'clipboard': {
+        const writeMotion = Math.sin(animTime * 7);
+        const writeCos = Math.cos(animTime * 7);
         return {
           headTilt: -6 + s * 2,
-          leftShoulder: 4 + s * 1.5,
-          leftElbow: -3,
-          leftWrist: 0,
+          leftShoulder: 18 + s * 1.5,
+          leftElbow: -112 + writeMotion * 4,
+          leftWrist: -10 + writeCos * 5,
           rightShoulder: -28 + s * 4,
           rightElbow: -52 + c * 6,
           rightWrist: 0,
@@ -525,6 +527,7 @@ export function computePoseJointAngles(
           rightKnee: 0,
           bodyBobY: s * -1.2,
         };
+      }
       case 'wave':
         return {
           headTilt: s * 3.5,
@@ -622,22 +625,18 @@ export function computePoseJointAngles(
         const rc = Math.cos(rt);
         const isLeft = headDirection === 'left';
         const isRight = headDirection === 'right';
+        const upLeft = Math.max(0, -rs);
+        const upRight = Math.max(0, rs);
+        const leftBend = 40 + upLeft * 72;
+        const rightBend = 40 + upRight * 72;
         return {
-          headTilt: (isLeft ? -5 : 5) + rs * 4,
-          leftShoulder: 12 + rs * 16,
-          leftElbow: isLeft
-            ? 16 + Math.max(0, rs) * 10
-            : isRight
-              ? -16 - Math.max(0, -rs) * 10
-              : -16 - Math.max(0, -rs) * 10,
-          leftWrist: rs * 8,
-          rightShoulder: -12 - rs * 16,
-          rightElbow: isLeft
-            ? 16 + Math.max(0, -rs) * 10
-            : isRight
-              ? -16 - Math.max(0, rs) * 10
-              : 16 + Math.max(0, rs) * 10,
-          rightWrist: -rs * 8,
+          headTilt: (isLeft ? -5 : isRight ? 5 : rs * 3) + rs * 3,
+          leftShoulder: 30 + rs * 10,
+          leftElbow: isLeft ? leftBend : -leftBend,
+          leftWrist: rs * 6,
+          rightShoulder: -30 + rs * 10,
+          rightElbow: isRight ? -rightBend : rightBend,
+          rightWrist: -rs * 6,
           leftHip: -rs * 36,
           leftKnee: isLeft
             ? -(16 + Math.max(0, rs) * 36)
@@ -686,29 +685,29 @@ export function computePoseJointAngles(
         const fast = Math.sin(animTime * 12);
         const fastCos = Math.cos(animTime * 12);
         return {
-          headTilt: 6 + s * 1.5,
-          leftShoulder: 16 + fast * 2.5,
-          leftElbow: -115 + fastCos * 6,
-          leftWrist: -12 + fast * 8,
-          rightShoulder: -16 - fastCos * 2.5,
-          rightElbow: 115 - fast * 6,
-          rightWrist: 12 - fastCos * 8,
-          leftHip: 0,
-          leftKnee: 0,
-          rightHip: 0,
-          rightKnee: 0,
-          bodyBobY: s * -0.8,
+          headTilt: 5 + s * 1.5,
+          leftShoulder: -48 + fast * 2.5,
+          leftElbow: -42 + fastCos * 6,
+          leftWrist: -6 + fast * 8,
+          rightShoulder: -42 - fastCos * 2.5,
+          rightElbow: -48 - fast * 6,
+          rightWrist: -6 - fastCos * 8,
+          leftHip: -68,
+          leftKnee: 68,
+          rightHip: -68,
+          rightKnee: 68,
+          bodyBobY: 28,
         };
       }
       case 'phone-call':
         return {
-          headTilt: -7 + s * 2,
+          headTilt: -6 + s * 1.5,
           leftShoulder: 6 + s * 2,
           leftElbow: -6,
           leftWrist: 0,
-          rightShoulder: -72 + s * 2,
-          rightElbow: -88 + c * 3,
-          rightWrist: -10,
+          rightShoulder: -42 + s * 1.5,
+          rightElbow: -126 + c * 2,
+          rightWrist: -8,
           leftHip: 0,
           leftKnee: 0,
           rightHip: 0,
@@ -899,7 +898,7 @@ export function resolveHybridRigAngles(
   const presetRaw = computePoseJointAngles(config.pose, animTime * speed, headDirection);
 
   // Apply intensity scaling to dynamic preset angles (preserving seated hip/knee base when sitting)
-  const isSeated = config.pose === 'sit';
+  const isSeated = config.pose === 'sit' || config.pose === 'typing';
   const preset: JointAngles = {
     headTilt: presetRaw.headTilt * intensity,
     leftShoulder: presetRaw.leftShoulder * intensity,
@@ -2122,12 +2121,12 @@ export function renderEyebrows(
     style === 'thick'
       ? 4.4
       : style === 'confident'
-      ? 3.6
-      : style === 'soft-thin'
-      ? 2.5
-      : style === 'raised'
-      ? 3.3
-      : 3.6;
+        ? 3.6
+        : style === 'soft-thin'
+          ? 2.5
+          : style === 'raised'
+            ? 3.3
+            : 3.6;
 
   // In-place expression state for the 2 eyebrows
   if (expression === 'sad') {
@@ -3123,8 +3122,8 @@ export function renderMouth(
         headDirection === 'left'
           ? 'M73 73 L78 73 L81 88 C88 87, 96 84, 104 83 C114 84, 124 87, 132 88 L136 73 L141 73 L140 93 C138 107, 124 117, 102 117 C82 117, 74 108, 73 93 Z'
           : headDirection === 'right'
-          ? 'M79 73 L84 73 L88 88 C96 87, 106 84, 116 83 C124 84, 132 87, 139 88 L142 73 L147 73 L147 93 C146 108, 138 117, 118 117 C96 117, 82 107, 80 93 Z'
-          : 'M75 73 L80 73 L84 88 C91 87, 100 84, 110 83 C120 84, 129 87, 136 88 L140 73 L145 73 L144 93 C142 108, 130 117, 110 117 C90 117, 78 108, 76 93 Z';
+            ? 'M79 73 L84 73 L88 88 C96 87, 106 84, 116 83 C124 84, 132 87, 139 88 L142 73 L147 73 L147 93 C146 108, 138 117, 118 117 C96 117, 82 107, 80 93 Z'
+            : 'M75 73 L80 73 L84 88 C91 87, 100 84, 110 83 C120 84, 129 87, 136 88 L140 73 L145 73 L144 93 C142 108, 130 117, 110 117 C90 117, 78 108, 76 93 Z';
 
       return (
         <g>
@@ -3321,239 +3320,239 @@ export function renderAccessory(
 ): React.ReactNode {
   const renderRawAccessory = (): React.ReactNode => {
     switch (accessory) {
-    // Rectangular tortoiseshell / dark-reddish-brown frame glasses from Uploaded Image 3!
-    case 'tortoise-glasses':
-      return (
-        <g stroke="#4e2a23" strokeWidth="2.4" fill="rgba(255,255,255,0.12)">
-          <rect x="81" y="64.5" width="24" height="14" rx="4.5" />
-          <rect x="115" y="64.5" width="24" height="14" rx="4.5" />
-          <path d="M105 69.5 Q110 68 115 69.5" fill="none" strokeWidth="2.3" />
-          <line x1="75" y1="68.5" x2="81" y2="69.5" strokeWidth="2.2" />
-          <line x1="139" y1="69.5" x2="145" y2="68.5" strokeWidth="2.2" />
-        </g>
-      );
+      // Rectangular tortoiseshell / dark-reddish-brown frame glasses from Uploaded Image 3!
+      case 'tortoise-glasses':
+        return (
+          <g stroke="#4e2a23" strokeWidth="2.4" fill="rgba(255,255,255,0.12)">
+            <rect x="81" y="64.5" width="24" height="14" rx="4.5" />
+            <rect x="115" y="64.5" width="24" height="14" rx="4.5" />
+            <path d="M105 69.5 Q110 68 115 69.5" fill="none" strokeWidth="2.3" />
+            <line x1="75" y1="68.5" x2="81" y2="69.5" strokeWidth="2.2" />
+            <line x1="139" y1="69.5" x2="145" y2="68.5" strokeWidth="2.2" />
+          </g>
+        );
 
-    // Character 6 & 7 in Image 2: Delicate warm silver/gold wire glasses
-    case 'wire-glasses':
-      return (
-        <g stroke="#9ca3af" strokeWidth="1.8" fill="rgba(255,255,255,0.18)">
-          <rect x="83" y="66" width="22" height="12" rx="4" />
-          <rect x="115" y="66" width="22" height="12" rx="4" />
-          <line x1="105" y1="71" x2="115" y2="71" />
-          <line x1="76" y1="70" x2="83" y2="71" />
-          <line x1="137" y1="71" x2="144" y2="70" />
-        </g>
-      );
-    case 'round-glasses':
-      return (
-        <g stroke="#52525b" strokeWidth="2.2" fill="rgba(255,255,255,0.22)">
-          <circle cx="95" cy="72" r="10.5" />
-          <circle cx="125" cy="72" r="10.5" />
-          <line x1="105.5" y1="72" x2="114.5" y2="72" />
-          <line x1="76" y1="70" x2="84.5" y2="72" />
-          <line x1="135.5" y1="72" x2="144" y2="70" />
-        </g>
-      );
-    case 'square-glasses':
-      return (
-        <g stroke="#3f3f46" strokeWidth="2.4" fill="rgba(56,189,248,0.14)">
-          <rect x="82" y="64" width="24" height="15" rx="3" />
-          <rect x="114" y="64" width="24" height="15" rx="3" />
-          <line x1="106" y1="70" x2="114" y2="70" />
-        </g>
-      );
-    case 'sunglasses':
-      return (
-        <g fill="#27272a">
-          <rect x="81" y="64" width="25" height="16" rx="4" />
-          <rect x="114" y="64" width="25" height="16" rx="4" />
-          <line x1="106" y1="69" x2="114" y2="69" stroke="#d97706" strokeWidth="2.5" />
-          <line x1="86" y1="68" x2="93" y2="75" stroke="#ffffff" strokeWidth="1.8" opacity="0.35" />
-          <line x1="119" y1="68" x2="126" y2="75" stroke="#ffffff" strokeWidth="1.8" opacity="0.35" />
-        </g>
-      );
-    case 'science-goggles':
-      return (
-        <g>
-          <rect
-            x="79"
-            y="62"
-            width="62"
-            height="19"
-            rx="9"
-            fill="rgba(56,189,248,0.28)"
-            stroke="#38bdf8"
-            strokeWidth="2.4"
+      // Character 6 & 7 in Image 2: Delicate warm silver/gold wire glasses
+      case 'wire-glasses':
+        return (
+          <g stroke="#9ca3af" strokeWidth="1.8" fill="rgba(255,255,255,0.18)">
+            <rect x="83" y="66" width="22" height="12" rx="4" />
+            <rect x="115" y="66" width="22" height="12" rx="4" />
+            <line x1="105" y1="71" x2="115" y2="71" />
+            <line x1="76" y1="70" x2="83" y2="71" />
+            <line x1="137" y1="71" x2="144" y2="70" />
+          </g>
+        );
+      case 'round-glasses':
+        return (
+          <g stroke="#52525b" strokeWidth="2.2" fill="rgba(255,255,255,0.22)">
+            <circle cx="95" cy="72" r="10.5" />
+            <circle cx="125" cy="72" r="10.5" />
+            <line x1="105.5" y1="72" x2="114.5" y2="72" />
+            <line x1="76" y1="70" x2="84.5" y2="72" />
+            <line x1="135.5" y1="72" x2="144" y2="70" />
+          </g>
+        );
+      case 'square-glasses':
+        return (
+          <g stroke="#3f3f46" strokeWidth="2.4" fill="rgba(56,189,248,0.14)">
+            <rect x="82" y="64" width="24" height="15" rx="3" />
+            <rect x="114" y="64" width="24" height="15" rx="3" />
+            <line x1="106" y1="70" x2="114" y2="70" />
+          </g>
+        );
+      case 'sunglasses':
+        return (
+          <g fill="#27272a">
+            <rect x="81" y="64" width="25" height="16" rx="4" />
+            <rect x="114" y="64" width="25" height="16" rx="4" />
+            <line x1="106" y1="69" x2="114" y2="69" stroke="#d97706" strokeWidth="2.5" />
+            <line x1="86" y1="68" x2="93" y2="75" stroke="#ffffff" strokeWidth="1.8" opacity="0.35" />
+            <line x1="119" y1="68" x2="126" y2="75" stroke="#ffffff" strokeWidth="1.8" opacity="0.35" />
+          </g>
+        );
+      case 'science-goggles':
+        return (
+          <g>
+            <rect
+              x="79"
+              y="62"
+              width="62"
+              height="19"
+              rx="9"
+              fill="rgba(56,189,248,0.28)"
+              stroke="#38bdf8"
+              strokeWidth="2.4"
+            />
+            <line x1="110" y1="62" x2="110" y2="81" stroke="#38bdf8" strokeWidth="2" />
+          </g>
+        );
+      case 'headphones':
+        return (
+          <g>
+            <path
+              d="M71 74 C71 30, 149 30, 149 74"
+              fill="none"
+              stroke="#6366f1"
+              strokeWidth="5.5"
+              strokeLinecap="round"
+            />
+            <rect x="64" y="62" width="11" height="24" rx="5.5" fill="#4f46e5" />
+            <rect x="145" y="62" width="11" height="24" rx="5.5" fill="#4f46e5" />
+          </g>
+        );
+      case 'grad-cap':
+        return (
+          <g>
+            <polygon points="110,16 156,31 110,44 64,31" fill="#312e81" />
+            <rect x="86" y="37" width="48" height="9" rx="3" fill="#1e1b4b" />
+            <path d="M146 33 L152 54" stroke="#f59e0b" strokeWidth="2.6" strokeLinecap="round" />
+            <circle cx="152" cy="55" r="3" fill="#f59e0b" />
+          </g>
+        );
+      case 'stethoscope':
+        return (
+          <g>
+            <path
+              d="M92 116 C88 144, 132 144, 128 116"
+              fill="none"
+              stroke="#475569"
+              strokeWidth="3.2"
+            />
+            <line x1="110" y1="137" x2="110" y2="154" stroke="#475569" strokeWidth="3.2" />
+            <circle cx="110" cy="158" r="6.5" fill="#38bdf8" />
+          </g>
+        );
+      case 'crown-badge':
+        return (
+          <polygon
+            points="87,38 95,21 110,30 125,21 133,38"
+            fill="#facc15"
+            strokeLinejoin="round"
           />
-          <line x1="110" y1="62" x2="110" y2="81" stroke="#38bdf8" strokeWidth="2" />
-        </g>
-      );
-    case 'headphones':
-      return (
-        <g>
-          <path
-            d="M71 74 C71 30, 149 30, 149 74"
-            fill="none"
-            stroke="#6366f1"
-            strokeWidth="5.5"
-            strokeLinecap="round"
-          />
-          <rect x="64" y="62" width="11" height="24" rx="5.5" fill="#4f46e5" />
-          <rect x="145" y="62" width="11" height="24" rx="5.5" fill="#4f46e5" />
-        </g>
-      );
-    case 'grad-cap':
-      return (
-        <g>
-          <polygon points="110,16 156,31 110,44 64,31" fill="#312e81" />
-          <rect x="86" y="37" width="48" height="9" rx="3" fill="#1e1b4b" />
-          <path d="M146 33 L152 54" stroke="#f59e0b" strokeWidth="2.6" strokeLinecap="round" />
-          <circle cx="152" cy="55" r="3" fill="#f59e0b" />
-        </g>
-      );
-    case 'stethoscope':
-      return (
-        <g>
-          <path
-            d="M92 116 C88 144, 132 144, 128 116"
-            fill="none"
-            stroke="#475569"
-            strokeWidth="3.2"
-          />
-          <line x1="110" y1="137" x2="110" y2="154" stroke="#475569" strokeWidth="3.2" />
-          <circle cx="110" cy="158" r="6.5" fill="#38bdf8" />
-        </g>
-      );
-    case 'crown-badge':
-      return (
-        <polygon
-          points="87,38 95,21 110,30 125,21 133,38"
-          fill="#facc15"
-          strokeLinejoin="round"
-        />
-      );
-    case 'cap-hat':
-      return (
-        <g>
-          {/* Classic flat-vector cap */}
-          <path d="M72 44 C72 22, 148 22, 148 44 Z" fill="#2563eb" />
-          <path d="M70 43 Q110 38 158 46 Q135 51 70 46 Z" fill="#1d4ed8" />
-          <circle cx="110" cy="24" r="3" fill="#1e40af" />
-        </g>
-      );
-    case 'name-badge':
-      return (
-        <g>
-          {/* Neck lanyard + ID badge */}
-          <path d="M96 112 L108 144 M124 112 L112 144" stroke="#4f46e5" strokeWidth="2.6" strokeLinecap="round" />
-          <rect x="98" y="143" width="24" height="16" rx="2.5" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1.2" />
-          <rect x="101" y="146" width="7" height="9" rx="1" fill="#6366f1" opacity="0.85" />
-          <rect x="110" y="147" width="9" height="2" rx="0.8" fill="#475569" />
-          <rect x="110" y="151" width="7" height="1.8" rx="0.8" fill="#94a3b8" />
-        </g>
-      );
-    case 'gold-earrings':
-      return (
-        <g>
-          {/* Left ear gold-bronze stud + delicate dangle */}
-          <circle cx="71.5" cy="80.5" r="2.1" fill="#d97706" stroke="#92400e" strokeWidth="0.7" />
-          <line x1="71.5" y1="82.6" x2="70.5" y2="89.5" stroke="#b45309" strokeWidth="1.2" strokeLinecap="round" />
-          <circle cx="70.5" cy="91" r="1.8" fill="#f59e0b" stroke="#92400e" strokeWidth="0.6" />
-          {/* Right ear gold-bronze stud + delicate dangle */}
-          <circle cx="148.5" cy="80.5" r="2.1" fill="#d97706" stroke="#92400e" strokeWidth="0.7" />
-          <line x1="148.5" y1="82.6" x2="149.5" y2="89.5" stroke="#b45309" strokeWidth="1.2" strokeLinecap="round" />
-          <circle cx="149.5" cy="91" r="1.8" fill="#f59e0b" stroke="#92400e" strokeWidth="0.6" />
-        </g>
-      );
-    case 'pearl-earrings':
-      return (
-        <g>
-          <circle cx="71.5" cy="80.5" r="2.8" fill="#fefce8" stroke="#64748b" strokeWidth="0.95" />
-          <circle cx="70.7" cy="79.6" r="0.9" fill="#ffffff" />
-          <circle cx="148.5" cy="80.5" r="2.8" fill="#fefce8" stroke="#64748b" strokeWidth="0.95" />
-          <circle cx="147.7" cy="79.6" r="0.9" fill="#ffffff" />
-        </g>
-      );
-    case 'gold-necklace':
-      return (
-        <g>
-          <path
-            d="M 94,111 Q 110,126 126,111"
-            fill="none"
-            stroke="#d97706"
-            strokeWidth="2.3"
-            strokeLinecap="round"
-          />
-          <circle cx="110" cy="121.5" r="3.2" fill="#fbbf24" stroke="#92400e" strokeWidth="0.9" />
-          <circle cx="109.1" cy="120.6" r="1.0" fill="#fef3c7" />
-        </g>
-      );
-    case 'pearl-necklace':
-      return (
-        <g>
-          <path d="M 94,111 Q 110,124 126,111" fill="none" stroke="#94a3b8" strokeWidth="1.1" />
-          {[
-            [95, 112],
-            [99, 115.5],
-            [104, 118],
-            [110, 119],
-            [116, 118],
-            [121, 115.5],
-            [125, 112],
-          ].map(([px, py], i) => (
-            <circle key={i} cx={px} cy={py} r="2.3" fill="#fefce8" stroke="#64748b" strokeWidth="0.8" />
-          ))}
-        </g>
-      );
-    case 'vr-headset':
-      return (
-        <g>
-          {/* Side strap */}
-          <path d="M 71,62 L 82,62 M 138,62 L 149,62" stroke="#334155" strokeWidth="4.5" strokeLinecap="round" />
-          {/* Sleek VR visor */}
-          <rect x="80" y="52" width="60" height="22" rx="7" fill="#f8fafc" stroke="#1e293b" strokeWidth="2.2" />
-          <rect x="84" y="55.5" width="52" height="15" rx="4.5" fill="#0f172a" />
-          {/* Glowing cyan visor strip */}
-          <line x1="89" y1="63" x2="131" y2="63" stroke="#22d3ee" strokeWidth="2.4" strokeLinecap="round" />
-          <line x1="89" y1="59" x2="104" y2="59" stroke="#94a3b8" strokeWidth="1.2" strokeLinecap="round" opacity="0.55" />
-        </g>
-      );
-    case 'ar-glasses':
-      return (
-        <g>
-          {/* Slim futuristic smart frame */}
-          <rect x="82" y="56" width="23" height="14" rx="3.5" fill="rgba(34,211,238,0.2)" stroke="#0f172a" strokeWidth="2.2" />
-          <rect x="115" y="56" width="23" height="14" rx="3.5" fill="rgba(34,211,238,0.2)" stroke="#0f172a" strokeWidth="2.2" />
-          <path d="M 105,61 Q 110,59 115,61" fill="none" stroke="#0f172a" strokeWidth="2.2" />
-          <line x1="72" y1="60" x2="82" y2="61" stroke="#0f172a" strokeWidth="2.2" />
-          <line x1="138" y1="61" x2="148" y2="60" stroke="#0f172a" strokeWidth="2.2" />
-          {/* HUD accent & temple LED */}
-          <line x1="86" y1="60" x2="96" y2="60" stroke="#06b6d4" strokeWidth="1.5" strokeLinecap="round" />
-          <line x1="119" y1="60" x2="129" y2="60" stroke="#06b6d4" strokeWidth="1.5" strokeLinecap="round" />
-          <circle cx="141" cy="60.5" r="1.4" fill="#22d3ee" />
-        </g>
-      );
-    case 'bluetooth-earpiece':
-      return (
-        <g>
-          {/* Compact wireless earpiece + sleek mic boom on right ear */}
-          <rect x="145.5" y="70" width="5.5" height="11" rx="2.5" fill="#1e293b" stroke="#475569" strokeWidth="0.8" />
-          <path d="M 148,79 Q 144,85 135,87" fill="none" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
-          <circle cx="148.2" cy="74" r="1.3" fill="#38bdf8" />
-        </g>
-      );
-    case 'smart-pin':
-      return (
-        <g>
-          {/* Wearable AI / camera lapel pin on chest */}
-          <rect x="118" y="131" width="11" height="13" rx="3" fill="#0f172a" stroke="#475569" strokeWidth="1.1" />
-          <circle cx="123.5" cy="135.5" r="2.2" fill="#1e293b" stroke="#38bdf8" strokeWidth="0.9" />
-          <circle cx="123.5" cy="140.5" r="1.1" fill="#22c55e" />
-        </g>
-      );
-    case 'none':
-    default:
-      return null;
+        );
+      case 'cap-hat':
+        return (
+          <g>
+            {/* Classic flat-vector cap */}
+            <path d="M72 44 C72 22, 148 22, 148 44 Z" fill="#2563eb" />
+            <path d="M70 43 Q110 38 158 46 Q135 51 70 46 Z" fill="#1d4ed8" />
+            <circle cx="110" cy="24" r="3" fill="#1e40af" />
+          </g>
+        );
+      case 'name-badge':
+        return (
+          <g>
+            {/* Neck lanyard + ID badge */}
+            <path d="M96 112 L108 144 M124 112 L112 144" stroke="#4f46e5" strokeWidth="2.6" strokeLinecap="round" />
+            <rect x="98" y="143" width="24" height="16" rx="2.5" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1.2" />
+            <rect x="101" y="146" width="7" height="9" rx="1" fill="#6366f1" opacity="0.85" />
+            <rect x="110" y="147" width="9" height="2" rx="0.8" fill="#475569" />
+            <rect x="110" y="151" width="7" height="1.8" rx="0.8" fill="#94a3b8" />
+          </g>
+        );
+      case 'gold-earrings':
+        return (
+          <g>
+            {/* Left ear gold-bronze stud + delicate dangle */}
+            <circle cx="71.5" cy="80.5" r="2.1" fill="#d97706" stroke="#92400e" strokeWidth="0.7" />
+            <line x1="71.5" y1="82.6" x2="70.5" y2="89.5" stroke="#b45309" strokeWidth="1.2" strokeLinecap="round" />
+            <circle cx="70.5" cy="91" r="1.8" fill="#f59e0b" stroke="#92400e" strokeWidth="0.6" />
+            {/* Right ear gold-bronze stud + delicate dangle */}
+            <circle cx="148.5" cy="80.5" r="2.1" fill="#d97706" stroke="#92400e" strokeWidth="0.7" />
+            <line x1="148.5" y1="82.6" x2="149.5" y2="89.5" stroke="#b45309" strokeWidth="1.2" strokeLinecap="round" />
+            <circle cx="149.5" cy="91" r="1.8" fill="#f59e0b" stroke="#92400e" strokeWidth="0.6" />
+          </g>
+        );
+      case 'pearl-earrings':
+        return (
+          <g>
+            <circle cx="71.5" cy="80.5" r="2.8" fill="#fefce8" stroke="#64748b" strokeWidth="0.95" />
+            <circle cx="70.7" cy="79.6" r="0.9" fill="#ffffff" />
+            <circle cx="148.5" cy="80.5" r="2.8" fill="#fefce8" stroke="#64748b" strokeWidth="0.95" />
+            <circle cx="147.7" cy="79.6" r="0.9" fill="#ffffff" />
+          </g>
+        );
+      case 'gold-necklace':
+        return (
+          <g>
+            <path
+              d="M 94,111 Q 110,126 126,111"
+              fill="none"
+              stroke="#d97706"
+              strokeWidth="2.3"
+              strokeLinecap="round"
+            />
+            <circle cx="110" cy="121.5" r="3.2" fill="#fbbf24" stroke="#92400e" strokeWidth="0.9" />
+            <circle cx="109.1" cy="120.6" r="1.0" fill="#fef3c7" />
+          </g>
+        );
+      case 'pearl-necklace':
+        return (
+          <g>
+            <path d="M 94,111 Q 110,124 126,111" fill="none" stroke="#94a3b8" strokeWidth="1.1" />
+            {[
+              [95, 112],
+              [99, 115.5],
+              [104, 118],
+              [110, 119],
+              [116, 118],
+              [121, 115.5],
+              [125, 112],
+            ].map(([px, py], i) => (
+              <circle key={i} cx={px} cy={py} r="2.3" fill="#fefce8" stroke="#64748b" strokeWidth="0.8" />
+            ))}
+          </g>
+        );
+      case 'vr-headset':
+        return (
+          <g>
+            {/* Side strap */}
+            <path d="M 71,62 L 82,62 M 138,62 L 149,62" stroke="#334155" strokeWidth="4.5" strokeLinecap="round" />
+            {/* Sleek VR visor */}
+            <rect x="80" y="52" width="60" height="22" rx="7" fill="#f8fafc" stroke="#1e293b" strokeWidth="2.2" />
+            <rect x="84" y="55.5" width="52" height="15" rx="4.5" fill="#0f172a" />
+            {/* Glowing cyan visor strip */}
+            <line x1="89" y1="63" x2="131" y2="63" stroke="#22d3ee" strokeWidth="2.4" strokeLinecap="round" />
+            <line x1="89" y1="59" x2="104" y2="59" stroke="#94a3b8" strokeWidth="1.2" strokeLinecap="round" opacity="0.55" />
+          </g>
+        );
+      case 'ar-glasses':
+        return (
+          <g>
+            {/* Slim futuristic smart frame */}
+            <rect x="82" y="56" width="23" height="14" rx="3.5" fill="rgba(34,211,238,0.2)" stroke="#0f172a" strokeWidth="2.2" />
+            <rect x="115" y="56" width="23" height="14" rx="3.5" fill="rgba(34,211,238,0.2)" stroke="#0f172a" strokeWidth="2.2" />
+            <path d="M 105,61 Q 110,59 115,61" fill="none" stroke="#0f172a" strokeWidth="2.2" />
+            <line x1="72" y1="60" x2="82" y2="61" stroke="#0f172a" strokeWidth="2.2" />
+            <line x1="138" y1="61" x2="148" y2="60" stroke="#0f172a" strokeWidth="2.2" />
+            {/* HUD accent & temple LED */}
+            <line x1="86" y1="60" x2="96" y2="60" stroke="#06b6d4" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="119" y1="60" x2="129" y2="60" stroke="#06b6d4" strokeWidth="1.5" strokeLinecap="round" />
+            <circle cx="141" cy="60.5" r="1.4" fill="#22d3ee" />
+          </g>
+        );
+      case 'bluetooth-earpiece':
+        return (
+          <g>
+            {/* Compact wireless earpiece + sleek mic boom on right ear */}
+            <rect x="145.5" y="70" width="5.5" height="11" rx="2.5" fill="#1e293b" stroke="#475569" strokeWidth="0.8" />
+            <path d="M 148,79 Q 144,85 135,87" fill="none" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="148.2" cy="74" r="1.3" fill="#38bdf8" />
+          </g>
+        );
+      case 'smart-pin':
+        return (
+          <g>
+            {/* Wearable AI / camera lapel pin on chest */}
+            <rect x="118" y="131" width="11" height="13" rx="3" fill="#0f172a" stroke="#475569" strokeWidth="1.1" />
+            <circle cx="123.5" cy="135.5" r="2.2" fill="#1e293b" stroke="#38bdf8" strokeWidth="0.9" />
+            <circle cx="123.5" cy="140.5" r="1.1" fill="#22c55e" />
+          </g>
+        );
+      case 'none':
+      default:
+        return null;
     }
   };
 
@@ -3562,14 +3561,14 @@ export function renderAccessory(
   if (scale === 1 && offsetY === 0) return node;
   const anchorY =
     accessory === 'stethoscope' ||
-    accessory === 'name-badge' ||
-    accessory === 'gold-necklace' ||
-    accessory === 'pearl-necklace' ||
-    accessory === 'smart-pin'
+      accessory === 'name-badge' ||
+      accessory === 'gold-necklace' ||
+      accessory === 'pearl-necklace' ||
+      accessory === 'smart-pin'
       ? 130
       : accessory === 'grad-cap' || accessory === 'cap-hat' || accessory === 'crown-badge'
-      ? 32
-      : 70;
+        ? 32
+        : 70;
   return (
     <g
       transform={`translate(110, ${anchorY + offsetY}) scale(${scale}) translate(-110, -${anchorY})`}
@@ -3996,6 +3995,7 @@ export function resolveHandGesture(
     case 'workout':
       return 'fist';
     case 'clipboard':
+      return 'hold';
     case 'phone-call':
     case 'surgery':
       return side === 'right' ? 'hold' : 'open';
@@ -4343,9 +4343,85 @@ export interface ArticulatedCharacterRigProps {
   useLegacyRendererFallback?: boolean;
 }
 
+function renderActionBackgroundProps(
+  pose: CharacterPoseType,
+  yOffset = 0
+): React.ReactNode {
+  if (pose !== 'typing') return null;
+  return (
+    <g transform={`translate(0, ${yOffset})`}>
+      {/* Office Chair behind seated character */}
+      {/* Backrest support stem */}
+      <path
+        d="M72 178 L72 212 L88 212"
+        fill="none"
+        stroke="#334155"
+        strokeWidth="5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Ergonomic backrest */}
+      <rect x="61" y="128" width="16" height="58" rx="7" fill="#1e293b" stroke="#475569" strokeWidth="1.4" />
+      <rect x="65" y="135" width="9" height="44" rx="4" fill="#334155" />
+      {/* Seat cushion */}
+      <rect x="70" y="204" width="60" height="12" rx="5.5" fill="#1e293b" stroke="#475569" strokeWidth="1.2" />
+      {/* Gas-lift cylinder */}
+      <rect x="97" y="216" width="6" height="54" fill="#475569" />
+      <rect x="95" y="216" width="10" height="10" rx="2" fill="#334155" />
+      {/* 5-star wheeled base */}
+      <path d="M100 268 L74 286 M100 268 L126 286 M100 268 L100 288" stroke="#334155" strokeWidth="4.5" strokeLinecap="round" />
+      <circle cx="72" cy="288" r="4" fill="#0f172a" />
+      <circle cx="100" cy="290" r="4" fill="#0f172a" />
+      <circle cx="128" cy="288" r="4" fill="#0f172a" />
+    </g>
+  );
+}
+
+function renderClipboardPenProp(
+  wristX: number,
+  wristY: number,
+  wristAngle: number
+): React.ReactNode {
+  return (
+    <g transform={`translate(${wristX}, ${wristY + 7}) rotate(${wristAngle})`}>
+      <g transform="translate(1, 2) rotate(-22)">
+        {/* Pen barrel held between gripping fingers */}
+        <rect x="-1.6" y="-12" width="3.2" height="24" rx="1.2" fill="#2563eb" stroke="#1e40af" strokeWidth="0.6" />
+        {/* Metallic clip & grip ring */}
+        <rect x="-1.7" y="-9" width="3.4" height="3" rx="0.6" fill="#cbd5e1" />
+        <rect x="-1.6" y="7" width="3.2" height="2.2" fill="#94a3b8" />
+        {/* Pen tip pointing out toward clipboard */}
+        <polygon points="-1.6,12 1.6,12 0,18" fill="#e2e8f0" />
+        <polygon points="-0.7,15.5 0.7,15.5 0,18.2" fill="#0f172a" />
+      </g>
+    </g>
+  );
+}
+
+function renderPhoneCallHandProp(
+  wristX: number,
+  wristY: number,
+  wristAngle: number,
+  animTime: number
+): React.ReactNode {
+  const wavePulse = 0.65 + Math.sin(animTime * 8) * 0.25;
+  return (
+    <g transform={`translate(${wristX}, ${wristY + 7}) rotate(${wristAngle})`}>
+      {/* Smartphone held in hand next to ear */}
+      <rect x="-5.5" y="-12" width="11" height="23" rx="2.5" fill="#1e293b" stroke="#64748b" strokeWidth="1.1" />
+      <rect x="-4" y="-9.5" width="8" height="17" rx="1.2" fill="#0f172a" />
+      <circle cx="0" cy="9.2" r="0.9" fill="#64748b" />
+      {/* Signal waves */}
+      <path d="M-9 -5 Q-13 0 -9 5" fill="none" stroke="#38bdf8" strokeWidth="1.6" strokeLinecap="round" opacity={wavePulse} />
+      <path d="M-13 -9 Q-19 0 -13 9" fill="none" stroke="#38bdf8" strokeWidth="1.4" strokeLinecap="round" opacity={wavePulse * 0.75} />
+    </g>
+  );
+}
+
 function renderActionOverlayProps(
   pose: CharacterPoseType,
-  animTime: number
+  animTime: number,
+  yOffset = 0
 ): React.ReactNode {
   const pulse = 1 + Math.sin(animTime * 6) * 0.08;
   switch (pose) {
@@ -4370,35 +4446,40 @@ function renderActionOverlayProps(
           <rect x="-4" y="9" width="8" height="4" rx="1.5" fill="#94a3b8" />
         </g>
       );
-    case 'typing':
+    case 'typing': {
+      const screenGlow = 0.72 + Math.sin(animTime * 5) * 0.14;
       return (
-        <g transform="translate(110, 154)">
-          {/* Laptop base & screen */}
-          <rect x="-32" y="8" width="64" height="5" rx="2" fill="#64748b" />
-          <polygon
-            points="-26,8 26,8 30,-22 -22,-22"
-            fill="#334155"
-            stroke="#94a3b8"
-            strokeWidth="1.5"
-          />
-          <circle cx="2" cy="-7" r="3.5" fill="#38bdf8" opacity="0.85" />
+        <g transform={`translate(0, ${yOffset})`}>
+          {/* Desk (Masa) in front of seated character */}
+          {/* Desk legs */}
+          <rect x="148" y="196" width="6" height="96" rx="2" fill="#64748b" />
+          <rect x="216" y="196" width="6" height="96" rx="2" fill="#64748b" />
+          {/* Modesty / side frame */}
+          <rect x="150" y="196" width="70" height="6" fill="#475569" />
+          {/* Desk surface */}
+          <rect x="136" y="186" width="92" height="10" rx="3" fill="#cbd5e1" stroke="#94a3b8" strokeWidth="1.2" />
+          <rect x="136" y="186" width="92" height="3.5" rx="1.5" fill="#e2e8f0" />
+
+          {/* Keyboard & Mouse on desk */}
+          <rect x="146" y="182" width="24" height="4" rx="1.5" fill="#334155" />
+          <ellipse cx="176" cy="184" rx="4" ry="2.2" fill="#475569" />
+
+          {/* Desktop PC Monitor + Stand on desk */}
+          <rect x="193" y="176" width="12" height="10" rx="1.5" fill="#475569" />
+          <rect x="187" y="184" width="24" height="3" rx="1.5" fill="#334155" />
+          {/* Monitor bezel */}
+          <rect x="178" y="138" width="42" height="40" rx="3.5" fill="#0f172a" stroke="#475569" strokeWidth="1.6" />
+          {/* Screen */}
+          <rect x="181" y="141" width="36" height="32" rx="2" fill="#1e293b" />
+          {/* Screen UI / code lines */}
+          <rect x="184" y="145" width="18" height="3" rx="1" fill="#38bdf8" opacity={screenGlow} />
+          <rect x="184" y="151" width="26" height="2.5" rx="1" fill="#7dd3fc" opacity={0.75} />
+          <rect x="184" y="156" width="20" height="2.5" rx="1" fill="#a78bfa" opacity={0.75} />
+          <rect x="184" y="161" width="28" height="2.5" rx="1" fill="#34d399" opacity={0.7} />
+          <rect x="184" y="166" width="14" height="2.5" rx="1" fill="#38bdf8" opacity={0.6} />
         </g>
       );
-    case 'phone-call':
-      return (
-        <g transform="translate(148, 72) rotate(-18)">
-          <rect x="-5" y="-11" width="10" height="22" rx="2.5" fill="#1e293b" stroke="#64748b" strokeWidth="1" />
-          <path d="M8 -6 Q13 0 8 6" fill="none" stroke="#38bdf8" strokeWidth="1.6" strokeLinecap="round" />
-          <path d="M12 -10 Q19 0 12 10" fill="none" stroke="#38bdf8" strokeWidth="1.4" strokeLinecap="round" opacity="0.7" />
-        </g>
-      );
-    case 'presentation':
-      return (
-        <g transform="translate(158, 92) rotate(-32)">
-          <line x1="0" y1="24" x2="0" y2="-38" stroke="#475569" strokeWidth="2.8" strokeLinecap="round" />
-          <circle cx="0" cy="-38" r="3" fill="#ef4444" />
-        </g>
-      );
+    }
     case 'surgery':
       return (
         <g transform="translate(106, 154)">
@@ -4407,25 +4488,42 @@ function renderActionOverlayProps(
           <circle cx="14" cy="2" r="4" fill="#10b981" />
         </g>
       );
-    case 'workout':
-      return (
-        <g>
-          {/* Left & Right Dumbbells near raised hands */}
-          <g transform="translate(52, 88)">
-            <line x1="-10" y1="0" x2="10" y2="0" stroke="#64748b" strokeWidth="3" />
-            <rect x="-13" y="-6" width="5" height="12" rx="1.5" fill="#1e293b" />
-            <rect x="8" y="-6" width="5" height="12" rx="1.5" fill="#1e293b" />
-          </g>
-          <g transform="translate(158, 88)">
-            <line x1="-10" y1="0" x2="10" y2="0" stroke="#64748b" strokeWidth="3" />
-            <rect x="-13" y="-6" width="5" height="12" rx="1.5" fill="#1e293b" />
-            <rect x="8" y="-6" width="5" height="12" rx="1.5" fill="#1e293b" />
-          </g>
-        </g>
-      );
     default:
       return null;
   }
+}
+
+function renderSurgicalHeadGear(): React.ReactNode {
+  return (
+    <g pointerEvents="none">
+      {/* Cerrahi Bone (Surgical Cap) */}
+      <path
+        d="M73 53 C72 30, 88 20, 110 20 C132 20, 148 30, 147 53 C136 48, 124 46, 110 46 C96 46, 84 48, 73 53 Z"
+        fill="#14b8a6"
+        stroke="#0f766e"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M73 53 C84 48, 96 46, 110 46 C124 46, 136 48, 147 53 L145 58 C134 53, 122 51, 110 51 C98 51, 86 53, 75 58 Z"
+        fill="#0d9488"
+        stroke="#0f766e"
+        strokeWidth="1.2"
+      />
+      {/* Cerrahi Maske (Surgical Mask) */}
+      <path d="M75 78 L86 83 M75 84 L86 98" stroke="#bae6fd" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M145 78 L134 83 M145 84 L134 98" stroke="#bae6fd" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="M85 81 Q110 75 135 81 L133 102 Q110 111 87 102 Z"
+        fill="#e0f2fe"
+        stroke="#38bdf8"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path d="M90 87 Q110 84 130 87" stroke="#7dd3fc" strokeWidth="1.2" strokeLinecap="round" fill="none" />
+      <path d="M90 93 Q110 90 130 93" stroke="#7dd3fc" strokeWidth="1.2" strokeLinecap="round" fill="none" />
+      <path d="M91 99 Q110 96 129 99" stroke="#7dd3fc" strokeWidth="1.2" strokeLinecap="round" fill="none" />
+    </g>
+  );
 }
 
 function renderHeadEars(
@@ -4666,8 +4764,8 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
     const strokeColor = isActive
       ? '#f59e0b'
       : hasCustomOverride
-      ? '#ec4899'
-      : '#38bdf8';
+        ? '#ec4899'
+        : '#38bdf8';
 
     return (
       <g
@@ -4772,15 +4870,19 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
     config.outfitStyle === 'tshirt-sport' ||
     config.outfitStyle === 'graphic-tee';
 
+  const isSurgeryPose = config.pose === 'surgery';
+  const effectiveOutfitStyle = isSurgeryPose ? 'lab-coat' : config.outfitStyle;
+  const effectiveHandSkinTone = isSurgeryPose ? '#7dd3fc' : config.skinTone;
+
   const secondaryTopVal = config.secondaryTopColor || '#f8fafc';
   const topPat = config.topPattern || 'solid';
   const bottomPat = config.bottomPattern || 'solid';
   const baseTopColor =
-    config.outfitStyle === 'lab-coat'
+    effectiveOutfitStyle === 'lab-coat'
       ? '#f8fafc'
-      : config.outfitStyle === 'raglan-tee'
-      ? secondaryTopVal
-      : config.topColor;
+      : effectiveOutfitStyle === 'raglan-tee'
+        ? secondaryTopVal
+        : config.topColor;
   const hasTopPatternFill =
     topPat === 'striped' || topPat === 'plaid' || topPat === 'polka';
   const torsoFill = hasTopPatternFill
@@ -4788,17 +4890,17 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
     : baseTopColor;
 
   const upperSleeveColor =
-    config.outfitStyle === 'lab-coat'
+    effectiveOutfitStyle === 'lab-coat'
       ? '#f8fafc'
-      : config.outfitStyle === 'raglan-tee'
-      ? config.topColor
-      : config.outfitStyle === 'engineer-vest'
-      ? secondaryTopVal
-      : config.outfitStyle === 'school-uniform'
-      ? '#ffffff'
-      : hasTopPatternFill
-      ? `url(#${patternUid}-top-${topPat})`
-      : config.topColor;
+      : effectiveOutfitStyle === 'raglan-tee'
+        ? config.topColor
+        : effectiveOutfitStyle === 'engineer-vest'
+          ? secondaryTopVal
+          : effectiveOutfitStyle === 'school-uniform'
+            ? '#ffffff'
+            : hasTopPatternFill
+              ? `url(#${patternUid}-top-${topPat})`
+              : config.topColor;
 
   const forearmColor = isShortOrRolledSleeve ? config.skinTone : upperSleeveColor;
 
@@ -4952,8 +5054,8 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
     config.headDirection === 'left'
       ? -6
       : config.headDirection === 'right'
-      ? 6
-      : 0;
+        ? 6
+        : 0;
 
   const uid = useId().replace(/:/g, '');
   const useDicebear = config.useDicebearHead !== false;
@@ -5234,7 +5336,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
       activeHeadAngleForRealisticAvatar * 0.45 + Math.sin(animTime * 1.8) * 1.4 + headLookShiftX * 0.4;
     const talkEnergy = config.lipSyncEnabled
       ? Math.abs(Math.sin(animTime * 15)) * 0.65 +
-        Math.abs(Math.cos(animTime * 23)) * 0.35
+      Math.abs(Math.cos(animTime * 23)) * 0.35
       : 0;
     const jawScaleY = 1 + talkEnergy * 0.035;
 
@@ -5392,6 +5494,9 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
         <ellipse cx="104" cy="326" rx="44" ry="5.5" fill="rgba(0,0,0,0.12)" />
 
         <g transform={`${config.flipHorizontal ? 'translate(104, 0) scale(-1, 1) translate(-104, 0) ' : ''}translate(0, ${prop.translateY + bodyBobY})`}>
+          {/* Action Background Props (e.g., Office Chair behind seated character) */}
+          {renderActionBackgroundProps(config.pose, -24)}
+
           {/* Back hair behind torso & neck */}
           {useDicebear && (
             <g
@@ -5418,588 +5523,1459 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
               data-canonical-bone="pelvis"
               transform={pelvisAngle !== 0 ? `rotate(${pelvisAngle} 104 168)` : undefined}
             >
-            {/* 1. LEGS & SHOES (Supports trousers, jeans, shorts, skirt, joggers + all 5 shoe styles) */}
-            {/* LEFT LEG */}
-            <g transform={`rotate(${leftHipAngle} 89 168)`}>
-              <circle cx="89" cy="168" r="15" fill={bStyle === 'skirt' ? config.skinTone : config.bottomColor} />
-              {bStyle === 'shorts' ? (
-                <>
-                  <path d="M74 168 L104 168 L102 216 L75 216 Z" fill={config.bottomColor} />
-                  <rect x="74.5" y="213" width="28" height="4" rx="1" fill={pantsShade} />
-                  <path d="M76 216 L101 216 L101 246 L76 246 Z" fill={config.skinTone} />
-                </>
-              ) : (
-                <path
-                  d="M74 168 L104 168 L101 246 L76 246 Z"
-                  fill={bStyle === 'skirt' ? config.skinTone : config.bottomColor}
-                />
-              )}
-              {bStyle === 'joggers' && (
-                <line x1="75.5" y1="168" x2="77.5" y2="246" stroke={secondaryTop} strokeWidth="2.4" />
-              )}
-              {renderBoneOverlay('leftHip', 89, 168, 89, 240, 0, 'Sol Kalça (Üst Bacak)')}
-              <g transform={`rotate(${leftKneeAngle} 89 246)`}>
-                <circle cx="88.5" cy="246" r="12" fill={calfColor} />
-                <path
-                  d="M76 246 L101 246 L97 314 L78 314 Z"
-                  fill={calfColor}
-                />
-                {bStyle === 'jeans' && (
-                  <rect x="77" y="307" width="21" height="6" rx="1" fill={pantsShade} />
+              {/* 1. LEGS & SHOES (Supports trousers, jeans, shorts, skirt, joggers + all 5 shoe styles) */}
+              {/* LEFT LEG */}
+              <g transform={`rotate(${leftHipAngle} 89 168)`}>
+                <circle cx="89" cy="168" r="15" fill={bStyle === 'skirt' ? config.skinTone : config.bottomColor} />
+                {bStyle === 'shorts' ? (
+                  <>
+                    <path d="M74 168 L104 168 L102 216 L75 216 Z" fill={config.bottomColor} />
+                    <rect x="74.5" y="213" width="28" height="4" rx="1" fill={pantsShade} />
+                    <path d="M76 216 L101 216 L101 246 L76 246 Z" fill={config.skinTone} />
+                  </>
+                ) : (
+                  <path
+                    d="M74 168 L104 168 L101 246 L76 246 Z"
+                    fill={bStyle === 'skirt' ? config.skinTone : config.bottomColor}
+                  />
                 )}
                 {bStyle === 'joggers' && (
-                  <>
-                    <line x1="77.5" y1="246" x2="79" y2="310" stroke={secondaryTop} strokeWidth="2.4" />
-                    <rect x="77.5" y="308" width="20" height="5" rx="2" fill={pantsShade} />
-                  </>
+                  <line x1="75.5" y1="168" x2="77.5" y2="246" stroke={secondaryTop} strokeWidth="2.4" />
                 )}
-                <g
-                  data-canonical-bone="leftAnkle"
-                  transform={leftAnkleAngle !== 0 ? `rotate(${leftAnkleAngle} 89 312)` : undefined}
-                >
-                  <g transform="translate(76, 312)">
-                    {renderShoeShape('left')}
+                {renderBoneOverlay('leftHip', 89, 168, 89, 240, 0, 'Sol Kalça (Üst Bacak)')}
+                <g transform={`rotate(${leftKneeAngle} 89 246)`}>
+                  <circle cx="88.5" cy="246" r="12" fill={calfColor} />
+                  <path
+                    d="M76 246 L101 246 L97 314 L78 314 Z"
+                    fill={calfColor}
+                  />
+                  {bStyle === 'jeans' && (
+                    <rect x="77" y="307" width="21" height="6" rx="1" fill={pantsShade} />
+                  )}
+                  {bStyle === 'joggers' && (
+                    <>
+                      <line x1="77.5" y1="246" x2="79" y2="310" stroke={secondaryTop} strokeWidth="2.4" />
+                      <rect x="77.5" y="308" width="20" height="5" rx="2" fill={pantsShade} />
+                    </>
+                  )}
+                  <g
+                    data-canonical-bone="leftAnkle"
+                    transform={leftAnkleAngle !== 0 ? `rotate(${leftAnkleAngle} 89 312)` : undefined}
+                  >
+                    <g transform="translate(76, 312)">
+                      {renderShoeShape('left')}
+                    </g>
                   </g>
+                  {renderBoneOverlay(
+                    'leftKnee',
+                    89,
+                    246,
+                    89,
+                    312,
+                    leftHipAngle,
+                    'Sol Diz (Alt Bacak)'
+                  )}
                 </g>
-                {renderBoneOverlay(
-                  'leftKnee',
-                  89,
-                  246,
-                  89,
-                  312,
-                  leftHipAngle,
-                  'Sol Diz (Alt Bacak)'
-                )}
               </g>
-            </g>
 
-            {/* RIGHT LEG */}
-            <g transform={`rotate(${rightHipAngle} 119 168)`}>
-              <circle cx="119" cy="168" r="15" fill={bStyle === 'skirt' ? config.skinTone : config.bottomColor} />
-              {bStyle === 'shorts' ? (
-                <>
-                  <path d="M104 168 L134 168 L131 216 L105 216 Z" fill={config.bottomColor} />
-                  <rect x="104.5" y="213" width="27" height="4" rx="1" fill={pantsShade} />
-                  <path d="M106 216 L130 216 L130 246 L106 246 Z" fill={config.skinTone} />
-                </>
-              ) : (
-                <path
-                  d="M104 168 L134 168 L130 246 L106 246 Z"
-                  fill={bStyle === 'skirt' ? config.skinTone : config.bottomColor}
-                />
-              )}
-              {bStyle === 'joggers' && (
-                <line x1="132" y1="168" x2="128.5" y2="246" stroke={secondaryTop} strokeWidth="2.4" />
-              )}
-              {renderBoneOverlay('rightHip', 119, 168, 118, 240, 0, 'Sağ Kalça (Üst Bacak)')}
-              <g transform={`rotate(${rightKneeAngle} 118 246)`}>
-                <circle cx="118" cy="246" r="12" fill={calfColor} />
-                <path
-                  d="M106 246 L130 246 L124 314 L106 314 Z"
-                  fill={calfColor}
-                />
-                {bStyle === 'jeans' && (
-                  <rect x="105.5" y="307" width="19.5" height="6" rx="1" fill={pantsShade} />
+              {/* RIGHT LEG */}
+              <g transform={`rotate(${rightHipAngle} 119 168)`}>
+                <circle cx="119" cy="168" r="15" fill={bStyle === 'skirt' ? config.skinTone : config.bottomColor} />
+                {bStyle === 'shorts' ? (
+                  <>
+                    <path d="M104 168 L134 168 L131 216 L105 216 Z" fill={config.bottomColor} />
+                    <rect x="104.5" y="213" width="27" height="4" rx="1" fill={pantsShade} />
+                    <path d="M106 216 L130 216 L130 246 L106 246 Z" fill={config.skinTone} />
+                  </>
+                ) : (
+                  <path
+                    d="M104 168 L134 168 L130 246 L106 246 Z"
+                    fill={bStyle === 'skirt' ? config.skinTone : config.bottomColor}
+                  />
                 )}
                 {bStyle === 'joggers' && (
-                  <>
-                    <line x1="128.5" y1="246" x2="123" y2="310" stroke={secondaryTop} strokeWidth="2.4" />
-                    <rect x="105.5" y="308" width="19" height="5" rx="2" fill={pantsShade} />
-                  </>
+                  <line x1="132" y1="168" x2="128.5" y2="246" stroke={secondaryTop} strokeWidth="2.4" />
                 )}
-                <g
-                  data-canonical-bone="rightAnkle"
-                  transform={rightAnkleAngle !== 0 ? `rotate(${rightAnkleAngle} 118 312)` : undefined}
-                >
-                  <g transform="translate(105, 312)">
-                    {renderShoeShape('right')}
+                {renderBoneOverlay('rightHip', 119, 168, 118, 240, 0, 'Sağ Kalça (Üst Bacak)')}
+                <g transform={`rotate(${rightKneeAngle} 118 246)`}>
+                  <circle cx="118" cy="246" r="12" fill={calfColor} />
+                  <path
+                    d="M106 246 L130 246 L124 314 L106 314 Z"
+                    fill={calfColor}
+                  />
+                  {bStyle === 'jeans' && (
+                    <rect x="105.5" y="307" width="19.5" height="6" rx="1" fill={pantsShade} />
+                  )}
+                  {bStyle === 'joggers' && (
+                    <>
+                      <line x1="128.5" y1="246" x2="123" y2="310" stroke={secondaryTop} strokeWidth="2.4" />
+                      <rect x="105.5" y="308" width="19" height="5" rx="2" fill={pantsShade} />
+                    </>
+                  )}
+                  <g
+                    data-canonical-bone="rightAnkle"
+                    transform={rightAnkleAngle !== 0 ? `rotate(${rightAnkleAngle} 118 312)` : undefined}
+                  >
+                    <g transform="translate(105, 312)">
+                      {renderShoeShape('right')}
+                    </g>
                   </g>
+                  {renderBoneOverlay(
+                    'rightKnee',
+                    118,
+                    246,
+                    118,
+                    312,
+                    rightHipAngle,
+                    'Sağ Diz (Alt Bacak)'
+                  )}
                 </g>
-                {renderBoneOverlay(
-                  'rightKnee',
-                  118,
-                  246,
-                  118,
-                  312,
-                  rightHipAngle,
-                  'Sağ Diz (Alt Bacak)'
-                )}
               </g>
-            </g>
 
-            {/* Upper Pelvis / Hip block (or A-line Midi Skirt when bottomStyle === 'skirt') */}
-            {bStyle === 'skirt' ? (
-              <g>
+              {/* Upper Pelvis / Hip block (or A-line Midi Skirt when bottomStyle === 'skirt') */}
+              {bStyle === 'skirt' ? (
+                <g>
+                  <path
+                    d="M74 144 L134 144 L145 224 Q104 230 63 224 Z"
+                    fill={config.bottomColor}
+                  />
+                  <path
+                    d="M65 221 Q104 227 143 221"
+                    fill="none"
+                    stroke={pantsShade}
+                    strokeWidth="1.5"
+                  />
+                </g>
+              ) : (
                 <path
-                  d="M74 144 L134 144 L145 224 Q104 230 63 224 Z"
+                  d="M74 144 L134 144 L134 168 C134 175, 118 176, 104 176 C90 176, 74 175, 74 168 Z"
                   fill={config.bottomColor}
                 />
-                <path
-                  d="M65 221 Q104 227 143 221"
-                  fill="none"
-                  stroke={pantsShade}
-                  strokeWidth="1.5"
-                />
-              </g>
-            ) : (
+              )}
+              {/* Front pocket curved seams & fly line */}
               <path
-                d="M74 144 L134 144 L134 168 C134 175, 118 176, 104 176 C90 176, 74 175, 74 168 Z"
-                fill={config.bottomColor}
-              />
-            )}
-            {/* Front pocket curved seams & fly line */}
-            <path
-              d="M75 152 Q84 158 86 147"
-              fill="none"
-              stroke={pantsShade}
-              strokeWidth="1.6"
-            />
-            <path
-              d="M133 152 Q124 158 122 147"
-              fill="none"
-              stroke={pantsShade}
-              strokeWidth="1.6"
-            />
-            <line
-              x1="104"
-              y1="148"
-              x2="104"
-              y2="174"
-              stroke={pantsShade}
-              strokeWidth="1.5"
-            />
-
-            {/* 2. SLENDER PRO TORSO, COLLARED SHIRT, BELT & ARMS */}
-            <g
-              data-canonical-bone="spine"
-              transform={spineAngle !== 0 ? `rotate(${spineAngle} 104 144)` : undefined}
-            >
-              <g
-                data-canonical-bone="chest"
-                transform={chestAngle !== 0 ? `rotate(${chestAngle} 104 108)` : undefined}
-              >
-            {/* TORSO BODY (Supports all OutfitStyleType options on Slender Pro) */}
-            <path
-              d={
-                config.genderAge === 'female'
-                  ? 'M73 74 C84 68, 124 68, 135 74 L129 116 L132 144 L76 144 L79 116 Z'
-                  : 'M70 74 C82 67, 126 67, 138 74 L133 144 L75 144 Z'
-              }
-              fill={
-                config.outfitStyle === 'lab-coat'
-                  ? '#f8fafc'
-                  : config.topColor
-              }
-            />
-
-            {/* Under-arm & Waist Tonal Fold Lines */}
-            <line
-              x1="77"
-              y1="94"
-              x2="76"
-              y2="142"
-              stroke={config.outfitStyle === 'lab-coat' ? '#cbd5e1' : shirtShade}
-              strokeWidth="1.5"
-            />
-            <line
-              x1="130"
-              y1="96"
-              x2="132"
-              y2="142"
-              stroke={config.outfitStyle === 'lab-coat' ? '#cbd5e1' : shirtShade}
-              strokeWidth="1.5"
-            />
-
-            {/* 1. Open Overshirt */}
-            {config.outfitStyle === 'open-overshirt' && (
-              <g>
-                <rect x="92" y="71" width="24" height="72" fill={secondaryTop} />
-                <polygon points="94,68 114,68 104,82" fill={config.skinTone} />
-              </g>
-            )}
-
-            {/* 2. Collared / Pocket Shirt / Button Cardigan */}
-            {(config.outfitStyle === 'collared-belted-shirt' ||
-              config.outfitStyle === 'pocket-shirt' ||
-              config.outfitStyle === 'button-cardigan') && (
-              <g>
-                <path
-                  d="M124 134 Q129 138 132 136"
-                  fill="none"
-                  stroke={shirtShade}
-                  strokeWidth="1.4"
-                />
-                <line
-                  x1="104"
-                  y1="84"
-                  x2="104"
-                  y2="142"
-                  stroke={shirtShade}
-                  strokeWidth="1.4"
-                />
-                <polygon points="94,68 114,68 104,84" fill={config.skinTone} />
-                <polygon
-                  points="92,66 87,82 103,77"
-                  fill={config.topColor}
-                  stroke={shirtShade}
-                  strokeWidth="1.3"
-                  strokeLinejoin="round"
-                />
-                <polygon
-                  points="116,66 121,82 105,77"
-                  fill={config.topColor}
-                  stroke={shirtShade}
-                  strokeWidth="1.3"
-                  strokeLinejoin="round"
-                />
-                {config.outfitStyle === 'pocket-shirt' && (
-                  <g fill={shadeColor(config.topColor, -8)} stroke={shirtShade} strokeWidth="1.1">
-                    <rect x="81" y="92" width="14" height="14" rx="2" />
-                    <rect x="113" y="92" width="14" height="14" rx="2" />
-                  </g>
-                )}
-                {config.outfitStyle === 'button-cardigan' && (
-                  <g fill="#f8fafc">
-                    <circle cx="104" cy="94" r="2" />
-                    <circle cx="104" cy="110" r="2" />
-                    <circle cx="104" cy="126" r="2" />
-                  </g>
-                )}
-              </g>
-            )}
-
-            {/* 3. Raglan Tee */}
-            {config.outfitStyle === 'raglan-tee' && (
-              <g>
-                <path d="M72 74 L91 70 L84 96 L73 92 Z" fill={secondaryTop} />
-                <path d="M136 74 L117 70 L124 96 L135 92 Z" fill={secondaryTop} />
-                <path d="M93 69 Q104 82 115 69 Z" fill={config.skinTone} />
-                <path d="M93 69 Q104 82 115 69" fill="none" stroke={secondaryTop} strokeWidth="2.5" />
-              </g>
-            )}
-
-            {/* 4. Graphic / Flame Sweatshirt */}
-            {config.outfitStyle === 'graphic-tee' && (
-              <g>
-                <path d="M93 69 Q104 81 115 69 Z" fill={config.skinTone} />
-                <path d="M93 69 Q104 81 115 69" fill="none" stroke={shirtShade} strokeWidth="2.2" />
-                <polygon
-                  points="104,88 113,103 106,103 111,118 96,101 103,101"
-                  fill={secondaryTop}
-                />
-              </g>
-            )}
-
-            {/* 5. Lab Coat */}
-            {config.outfitStyle === 'lab-coat' && (
-              <g>
-                <polygon points="94,69 114,69 104,104" fill={secondaryTop} />
-                <polygon points="94,69 114,69 104,82" fill={config.skinTone} />
-                <polygon points="94,69 86,96 98,96" fill="#e2e8f0" />
-                <polygon points="114,69 122,96 110,96" fill="#e2e8f0" />
-                <line x1="104" y1="104" x2="104" y2="144" stroke="#cbd5e1" strokeWidth="1.5" />
-                <rect x="81" y="96" width="13" height="12" rx="1.5" fill="#e2e8f0" />
-                <rect x="114" y="116" width="14" height="15" rx="1.5" fill="#e2e8f0" />
-                <rect x="80" y="116" width="14" height="15" rx="1.5" fill="#e2e8f0" />
-              </g>
-            )}
-
-            {/* 6. Formal Suit & Tie */}
-            {config.outfitStyle === 'formal-suit' && (
-              <g>
-                <polygon points="94,69 114,69 104,105" fill="#ffffff" />
-                <polygon points="104,76 101,86 104,104 107,86" fill={secondaryTop} />
-                <polygon points="94,69 86,94 98,96" fill={shirtShade} />
-                <polygon points="114,69 122,94 110,96" fill={shirtShade} />
-                <line x1="104" y1="105" x2="104" y2="142" stroke={shirtShade} strokeWidth="1.6" />
-              </g>
-            )}
-
-            {/* 7. Casual Hoodie */}
-            {config.outfitStyle === 'casual-hoodie' && (
-              <g>
-                <path
-                  d="M84 71 Q104 88 124 71 Q120 80 104 82 Q88 80 84 71 Z"
-                  fill={shirtShade}
-                />
-                <path d="M93 68 Q104 78 115 68 Z" fill={config.skinTone} />
-                <line x1="97" y1="80" x2="97" y2="98" stroke="#f8fafc" strokeWidth="2" strokeLinecap="round" />
-                <line x1="111" y1="80" x2="111" y2="98" stroke="#f8fafc" strokeWidth="2" strokeLinecap="round" />
-                <path
-                  d="M84 120 L124 120 L128 140 L80 140 Z"
-                  fill={shirtShade}
-                  opacity="0.85"
-                />
-              </g>
-            )}
-
-            {/* 8. School Vest */}
-            {config.outfitStyle === 'school-vest' && (
-              <g>
-                <polygon points="93,69 115,69 104,96" fill="#ffffff" />
-                <polygon points="94,68 114,68 104,80" fill={config.skinTone} />
-                <polygon points="104,76 100,84 104,95 108,84" fill={secondaryTop} />
-              </g>
-            )}
-
-            {/* Leather Belt (for tucked shirt/suit/vest styles) */}
-            {config.outfitStyle !== 'casual-hoodie' &&
-              config.outfitStyle !== 'lab-coat' &&
-              config.outfitStyle !== 'raglan-tee' &&
-              config.outfitStyle !== 'graphic-tee' && (
-              <g>
-                <rect x="74.5" y="142" width="59" height="6.5" fill={beltColor} />
-              {/* Belt loops in trouser color */}
-              {[82, 92, 115, 125].map((lx) => (
-                <rect
-                  key={lx}
-                  x={lx}
-                  y="141.5"
-                  width="3"
-                  height="7.5"
-                  rx="0.8"
-                  fill={config.bottomColor}
-                />
-              ))}
-              {/* Silver Rectangular Buckle */}
-              <rect
-                x="99.5"
-                y="141.5"
-                width="9"
-                height="7.5"
-                rx="1"
+                d="M75 152 Q84 158 86 147"
                 fill="none"
-                stroke="#cbd5e1"
-                strokeWidth="2"
+                stroke={pantsShade}
+                strokeWidth="1.6"
+              />
+              <path
+                d="M133 152 Q124 158 122 147"
+                fill="none"
+                stroke={pantsShade}
+                strokeWidth="1.6"
               />
               <line
                 x1="104"
-                y1="145.2"
-                x2="108"
-                y2="145.2"
-                stroke="#cbd5e1"
-                strokeWidth="1.6"
+                y1="148"
+                x2="104"
+                y2="174"
+                stroke={pantsShade}
+                strokeWidth="1.5"
               />
-            </g>
-            )}
 
-            {/* RIGHT ARM / VIEWER'S RIGHT (Rendered AFTER torso & belt so arm/props stay in front!) */}
-            <g transform={`rotate(${rightShoulderAngle} 131 82)`}>
-              {/* Upper Sleeve */}
-              <path
-                d="M123 80 A8 8 0 0 1 139 80 L141 118 A7 7 0 0 1 126 118 Z"
-                fill={config.topColor}
-              />
-              {renderBoneOverlay('rightShoulder', 131, 82, 133.5, 114, 0, 'Sağ Omuz (Üst Kol)')}
-              {/* Elbow & Forearm */}
-              <g transform={`rotate(${rightElbowAngle} 133.5 118)`}>
-                <circle cx="133.5" cy="118" r="7" fill={config.topColor} />
-                <path
-                  d="M126.5 118 L140.5 118 L138.5 152 L128.5 152 Z"
-                  fill={config.topColor}
-                />
-                {/* Shirt cuff */}
-                <rect
-                  x="127.5"
-                  y="147"
-                  width="12"
-                  height="5"
-                  rx="1"
-                  fill={config.topColor}
-                  stroke={shirtShade}
-                  strokeWidth="1"
-                />
-                {renderBoneOverlay(
-                  'rightElbow',
-                  133.5,
-                  118,
-                  133.5,
-                  149,
-                  rightShoulderAngle,
-                  'Sağ Dirsek (Ön Kol)'
-                )}
-                {/* Articulated Right Hand with Clear Fingers & Gestures */}
-                {renderArticulatedHand(
-                  'right',
-                  config.skinTone,
-                  rightHandGesture,
-                  rightWristAngle,
-                  133.5,
-                  152,
-                  0.92
-                )}
-                {(config.handPropSide || 'right') === 'right' &&
-                  renderHandProp(
-                    config.handProp,
-                    'right',
-                    133.5,
-                    152,
-                    rightWristAngle,
-                    rightShoulderAngle + rightElbowAngle,
-                    { skinTone: config.skinTone, isSpeaking: Boolean(config.lipSyncEnabled), animTime, calibrationDebug }
-                  )}
-                <g transform={`rotate(${rightWristAngle} 133.5 152)`}>
-                  {renderBoneOverlay(
-                    'rightWrist',
-                    133.5,
-                    152,
-                    133.5,
-                    166,
-                    rightShoulderAngle + rightElbowAngle,
-                    'Sağ Bilek & El'
-                  )}
-                </g>
+              {/* 2. SLENDER PRO TORSO, COLLARED SHIRT, BELT & ARMS */}
+              <g
+                data-canonical-bone="spine"
+                transform={spineAngle !== 0 ? `rotate(${spineAngle} 104 144)` : undefined}
+              >
+                <g
+                  data-canonical-bone="chest"
+                  transform={chestAngle !== 0 ? `rotate(${chestAngle} 104 108)` : undefined}
+                >
+                  {/* TORSO BODY (Supports all OutfitStyleType options on Slender Pro) */}
+                  <path
+                    d={
+                      config.genderAge === 'female'
+                        ? 'M73 74 C84 68, 124 68, 135 74 L129 116 L132 144 L76 144 L79 116 Z'
+                        : 'M70 74 C82 67, 126 67, 138 74 L133 144 L75 144 Z'
+                    }
+                    fill={
+                      effectiveOutfitStyle === 'lab-coat'
+                        ? '#f8fafc'
+                        : config.topColor
+                    }
+                  />
 
-                {/* CHECKLIST CLIPBOARD PROP (Directly from Uploaded Image 3!) */}
-                {config.pose === 'clipboard' && (
-                  <g transform="translate(136, 155) rotate(112)">
-                    <rect
-                      x="-26"
-                      y="-38"
-                      width="52"
-                      height="70"
-                      rx="2"
-                      fill="#9c6434"
-                      stroke="#784922"
-                      strokeWidth="1.5"
-                    />
-                    <path
-                      d="M-21 -31 L21 -31 L21 26 L-13 26 L-21 18 Z"
-                      fill="#f8fafc"
-                    />
-                    <path
-                      d="M-21 18 Q-14 19 -13 26 Z"
-                      fill="#cbd5e1"
-                    />
-                    <rect
-                      x="-12"
-                      y="-35"
-                      width="24"
-                      height="6"
-                      rx="2"
-                      fill="#94a3b8"
-                    />
-                    <circle cx="0" cy="-35" r="5" fill="#94a3b8" />
-                    <circle cx="0" cy="-35" r="1.6" fill="#475569" />
-                    {[-16, -2, 12].map((rowY, rIdx) => (
-                      <g key={rIdx} transform={`translate(0, ${rowY})`}>
-                        <rect x="-15" y="-4" width="18" height="2.6" rx="1" fill="#cbd5e1" />
-                        <rect x="-15" y="0.5" width="13" height="2.4" rx="1" fill="#cbd5e1" />
-                        <rect
-                          x="8"
-                          y="-4"
-                          width="8"
-                          height="8"
-                          rx="1"
-                          fill="#f1f5f9"
-                          stroke="#94a3b8"
-                          strokeWidth="1"
-                        />
+                  {/* Under-arm & Waist Tonal Fold Lines */}
+                  <line
+                    x1="77"
+                    y1="94"
+                    x2="76"
+                    y2="142"
+                    stroke={effectiveOutfitStyle === 'lab-coat' ? '#cbd5e1' : shirtShade}
+                    strokeWidth="1.5"
+                  />
+                  <line
+                    x1="130"
+                    y1="96"
+                    x2="132"
+                    y2="142"
+                    stroke={effectiveOutfitStyle === 'lab-coat' ? '#cbd5e1' : shirtShade}
+                    strokeWidth="1.5"
+                  />
+
+                  {/* 1. Open Overshirt */}
+                  {effectiveOutfitStyle === 'open-overshirt' && (
+                    <g>
+                      <rect x="92" y="71" width="24" height="72" fill={secondaryTop} />
+                      <polygon points="94,68 114,68 104,82" fill={config.skinTone} />
+                    </g>
+                  )}
+
+                  {/* 2. Collared / Pocket Shirt / Button Cardigan */}
+                  {(config.outfitStyle === 'collared-belted-shirt' ||
+                    config.outfitStyle === 'pocket-shirt' ||
+                    config.outfitStyle === 'button-cardigan') && (
+                      <g>
                         <path
-                          d="M9.5 -0.2 L11.5 2 L15 -2.5"
+                          d="M124 134 Q129 138 132 136"
                           fill="none"
-                          stroke="#881337"
-                          strokeWidth="1.7"
-                          strokeLinecap="round"
+                          stroke={shirtShade}
+                          strokeWidth="1.4"
+                        />
+                        <line
+                          x1="104"
+                          y1="84"
+                          x2="104"
+                          y2="142"
+                          stroke={shirtShade}
+                          strokeWidth="1.4"
+                        />
+                        <polygon points="94,68 114,68 104,84" fill={config.skinTone} />
+                        <polygon
+                          points="92,66 87,82 103,77"
+                          fill={config.topColor}
+                          stroke={shirtShade}
+                          strokeWidth="1.3"
                           strokeLinejoin="round"
                         />
+                        <polygon
+                          points="116,66 121,82 105,77"
+                          fill={config.topColor}
+                          stroke={shirtShade}
+                          strokeWidth="1.3"
+                          strokeLinejoin="round"
+                        />
+                        {config.outfitStyle === 'pocket-shirt' && (
+                          <g fill={shadeColor(config.topColor, -8)} stroke={shirtShade} strokeWidth="1.1">
+                            <rect x="81" y="92" width="14" height="14" rx="2" />
+                            <rect x="113" y="92" width="14" height="14" rx="2" />
+                          </g>
+                        )}
+                        {config.outfitStyle === 'button-cardigan' && (
+                          <g fill="#f8fafc">
+                            <circle cx="104" cy="94" r="2" />
+                            <circle cx="104" cy="110" r="2" />
+                            <circle cx="104" cy="126" r="2" />
+                          </g>
+                        )}
                       </g>
-                    ))}
-                  </g>
-                )}
-              </g>
-            </g>
+                    )}
 
-            {/* LEFT ARM / VIEWER'S LEFT (Hangs naturally with buttoned cuff, Image 3) */}
-            <g transform={`rotate(${leftShoulderAngle} 75 80)`}>
-              {/* Upper Arm */}
-              <path
-                d="M67 80 A8 8 0 0 1 83 80 L81 118 A7 7 0 0 1 67 118 Z"
-                fill={config.topColor}
-              />
-              {renderBoneOverlay('leftShoulder', 75, 80, 74, 114, 0, 'Sol Omuz (Üst Kol)')}
-              {/* Elbow & Forearm */}
-              <g transform={`rotate(${leftElbowAngle} 74 118)`}>
-                <circle cx="74" cy="118" r="7" fill={config.topColor} />
-                <path
-                  d="M67 118 L81 118 L79 152 L67 152 Z"
-                  fill={config.topColor}
-                />
-                {/* Buttoned Cuff */}
-                <rect
-                  x="66"
-                  y="147"
-                  width="14"
-                  height="5.5"
-                  rx="1.2"
-                  fill={config.topColor}
-                  stroke={shirtShade}
-                  strokeWidth="1.2"
-                />
-                <line
-                  x1="67"
-                  y1="149.5"
-                  x2="79"
-                  y2="149.5"
-                  stroke={shirtShade}
-                  strokeWidth="1"
-                />
-                {renderBoneOverlay(
-                  'leftElbow',
-                  74,
-                  118,
-                  73,
-                  149,
-                  leftShoulderAngle,
-                  'Sol Dirsek (Ön Kol)'
-                )}
-                {/* Articulated Left Hand with Clear Fingers & Gestures */}
-                {renderArticulatedHand(
-                  'left',
-                  config.skinTone,
-                  leftHandGesture,
-                  leftWristAngle,
-                  73,
-                  152.5,
-                  0.92
-                )}
-                {config.handPropSide === 'left' &&
-                  renderHandProp(
-                    config.handProp,
-                    'left',
-                    73,
-                    152.5,
-                    leftWristAngle,
-                    leftShoulderAngle + leftElbowAngle,
-                    { skinTone: config.skinTone, isSpeaking: Boolean(config.lipSyncEnabled), animTime, calibrationDebug }
+                  {/* 3. Raglan Tee */}
+                  {config.outfitStyle === 'raglan-tee' && (
+                    <g>
+                      <path d="M72 74 L91 70 L84 96 L73 92 Z" fill={secondaryTop} />
+                      <path d="M136 74 L117 70 L124 96 L135 92 Z" fill={secondaryTop} />
+                      <path d="M93 69 Q104 82 115 69 Z" fill={config.skinTone} />
+                      <path d="M93 69 Q104 82 115 69" fill="none" stroke={secondaryTop} strokeWidth="2.5" />
+                    </g>
                   )}
-                <g transform={`rotate(${leftWristAngle} 73 152.5)`}>
-                  {renderBoneOverlay(
-                    'leftWrist',
-                    73,
-                    152.5,
-                    73,
-                    167,
-                    leftShoulderAngle + leftElbowAngle,
-                    'Sol Bilek & El'
+
+                  {/* 4. Graphic / Flame Sweatshirt */}
+                  {config.outfitStyle === 'graphic-tee' && (
+                    <g>
+                      <path d="M93 69 Q104 81 115 69 Z" fill={config.skinTone} />
+                      <path d="M93 69 Q104 81 115 69" fill="none" stroke={shirtShade} strokeWidth="2.2" />
+                      <polygon
+                        points="104,88 113,103 106,103 111,118 96,101 103,101"
+                        fill={secondaryTop}
+                      />
+                    </g>
                   )}
+
+                  {/* 5. Lab Coat */}
+                  {effectiveOutfitStyle === 'lab-coat' && (
+                    <g>
+                      <polygon points="94,69 114,69 104,104" fill={secondaryTop} />
+                      <polygon points="94,69 114,69 104,82" fill={config.skinTone} />
+                      <polygon points="94,69 86,96 98,96" fill="#e2e8f0" />
+                      <polygon points="114,69 122,96 110,96" fill="#e2e8f0" />
+                      <line x1="104" y1="104" x2="104" y2="144" stroke="#cbd5e1" strokeWidth="1.5" />
+                      <rect x="81" y="96" width="13" height="12" rx="1.5" fill="#e2e8f0" />
+                      <rect x="114" y="116" width="14" height="15" rx="1.5" fill="#e2e8f0" />
+                      <rect x="80" y="116" width="14" height="15" rx="1.5" fill="#e2e8f0" />
+                    </g>
+                  )}
+
+                  {/* 6. Formal Suit & Tie */}
+                  {effectiveOutfitStyle === 'formal-suit' && (
+                    <g>
+                      <polygon points="94,69 114,69 104,105" fill="#ffffff" />
+                      <polygon points="104,76 101,86 104,104 107,86" fill={secondaryTop} />
+                      <polygon points="94,69 86,94 98,96" fill={shirtShade} />
+                      <polygon points="114,69 122,94 110,96" fill={shirtShade} />
+                      <line x1="104" y1="105" x2="104" y2="142" stroke={shirtShade} strokeWidth="1.6" />
+                    </g>
+                  )}
+
+                  {/* 7. Casual Hoodie */}
+                  {effectiveOutfitStyle === 'casual-hoodie' && (
+                    <g>
+                      <path
+                        d="M84 71 Q104 88 124 71 Q120 80 104 82 Q88 80 84 71 Z"
+                        fill={shirtShade}
+                      />
+                      <path d="M93 68 Q104 78 115 68 Z" fill={config.skinTone} />
+                      <line x1="97" y1="80" x2="97" y2="98" stroke="#f8fafc" strokeWidth="2" strokeLinecap="round" />
+                      <line x1="111" y1="80" x2="111" y2="98" stroke="#f8fafc" strokeWidth="2" strokeLinecap="round" />
+                      <path
+                        d="M84 120 L124 120 L128 140 L80 140 Z"
+                        fill={shirtShade}
+                        opacity="0.85"
+                      />
+                    </g>
+                  )}
+
+                  {/* 8. School Vest */}
+                  {effectiveOutfitStyle === 'school-vest' && (
+                    <g>
+                      <polygon points="93,69 115,69 104,96" fill="#ffffff" />
+                      <polygon points="94,68 114,68 104,80" fill={config.skinTone} />
+                      <polygon points="104,76 100,84 104,95 108,84" fill={secondaryTop} />
+                    </g>
+                  )}
+
+                  {/* Leather Belt (for tucked shirt/suit/vest styles) */}
+                  {effectiveOutfitStyle !== 'casual-hoodie' &&
+                    effectiveOutfitStyle !== 'lab-coat' &&
+                    effectiveOutfitStyle !== 'raglan-tee' &&
+                    effectiveOutfitStyle !== 'graphic-tee' && (
+                      <g>
+                        <rect x="74.5" y="142" width="59" height="6.5" fill={beltColor} />
+                        {/* Belt loops in trouser color */}
+                        {[82, 92, 115, 125].map((lx) => (
+                          <rect
+                            key={lx}
+                            x={lx}
+                            y="141.5"
+                            width="3"
+                            height="7.5"
+                            rx="0.8"
+                            fill={config.bottomColor}
+                          />
+                        ))}
+                        {/* Silver Rectangular Buckle */}
+                        <rect
+                          x="99.5"
+                          y="141.5"
+                          width="9"
+                          height="7.5"
+                          rx="1"
+                          fill="none"
+                          stroke="#cbd5e1"
+                          strokeWidth="2"
+                        />
+                        <line
+                          x1="104"
+                          y1="145.2"
+                          x2="108"
+                          y2="145.2"
+                          stroke="#cbd5e1"
+                          strokeWidth="1.6"
+                        />
+                      </g>
+                    )}
+
+                  {/* RIGHT ARM / VIEWER'S RIGHT (Rendered AFTER torso & belt so arm/props stay in front!) */}
+                  <g transform={`rotate(${rightShoulderAngle} 131 82)`}>
+                    {/* Upper Sleeve */}
+                    <path
+                      d="M123 80 A8 8 0 0 1 139 80 L141 118 A7 7 0 0 1 126 118 Z"
+                      fill={config.topColor}
+                    />
+                    {renderBoneOverlay('rightShoulder', 131, 82, 133.5, 114, 0, 'Sağ Omuz (Üst Kol)')}
+                    {/* Elbow & Forearm */}
+                    <g transform={`rotate(${rightElbowAngle} 133.5 118)`}>
+                      <circle cx="133.5" cy="118" r="7" fill={config.topColor} />
+                      <path
+                        d="M126.5 118 L140.5 118 L138.5 152 L128.5 152 Z"
+                        fill={config.topColor}
+                      />
+                      {/* Shirt cuff */}
+                      <rect
+                        x="127.5"
+                        y="147"
+                        width="12"
+                        height="5"
+                        rx="1"
+                        fill={config.topColor}
+                        stroke={shirtShade}
+                        strokeWidth="1"
+                      />
+                      {renderBoneOverlay(
+                        'rightElbow',
+                        133.5,
+                        118,
+                        133.5,
+                        149,
+                        rightShoulderAngle,
+                        'Sağ Dirsek (Ön Kol)'
+                      )}
+                      {/* Articulated Right Hand with Clear Fingers & Gestures */}
+                      {config.pose === 'phone-call' &&
+                        renderPhoneCallHandProp(133.5, 152, rightWristAngle, animTime)}
+                      {renderArticulatedHand(
+                        'right',
+                        effectiveHandSkinTone,
+                        rightHandGesture,
+                        rightWristAngle,
+                        133.5,
+                        152,
+                        0.92
+                      )}
+                      {(config.handPropSide || 'right') === 'right' &&
+                        renderHandProp(
+                          config.handProp,
+                          'right',
+                          133.5,
+                          152,
+                          rightWristAngle,
+                          rightShoulderAngle + rightElbowAngle,
+                          { skinTone: config.skinTone, isSpeaking: Boolean(config.lipSyncEnabled), animTime, calibrationDebug }
+                        )}
+                      <g transform={`rotate(${rightWristAngle} 133.5 152)`}>
+                        {renderBoneOverlay(
+                          'rightWrist',
+                          133.5,
+                          152,
+                          133.5,
+                          166,
+                          rightShoulderAngle + rightElbowAngle,
+                          'Sağ Bilek & El'
+                        )}
+                      </g>
+
+                      {/* CHECKLIST CLIPBOARD PROP (Directly from Uploaded Image 3!) */}
+                      {config.pose === 'clipboard' && (
+                        <g transform="translate(136, 155) rotate(112)">
+                          <rect
+                            x="-26"
+                            y="-38"
+                            width="52"
+                            height="70"
+                            rx="2"
+                            fill="#9c6434"
+                            stroke="#784922"
+                            strokeWidth="1.5"
+                          />
+                          <path
+                            d="M-21 -31 L21 -31 L21 26 L-13 26 L-21 18 Z"
+                            fill="#f8fafc"
+                          />
+                          <path
+                            d="M-21 18 Q-14 19 -13 26 Z"
+                            fill="#cbd5e1"
+                          />
+                          <rect
+                            x="-12"
+                            y="-35"
+                            width="24"
+                            height="6"
+                            rx="2"
+                            fill="#94a3b8"
+                          />
+                          <circle cx="0" cy="-35" r="5" fill="#94a3b8" />
+                          <circle cx="0" cy="-35" r="1.6" fill="#475569" />
+                          {[-16, -2, 12].map((rowY, rIdx) => (
+                            <g key={rIdx} transform={`translate(0, ${rowY})`}>
+                              <rect x="-15" y="-4" width="18" height="2.6" rx="1" fill="#cbd5e1" />
+                              <rect x="-15" y="0.5" width="13" height="2.4" rx="1" fill="#cbd5e1" />
+                              <rect
+                                x="8"
+                                y="-4"
+                                width="8"
+                                height="8"
+                                rx="1"
+                                fill="#f1f5f9"
+                                stroke="#94a3b8"
+                                strokeWidth="1"
+                              />
+                              <path
+                                d="M9.5 -0.2 L11.5 2 L15 -2.5"
+                                fill="none"
+                                stroke="#881337"
+                                strokeWidth="1.7"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </g>
+                          ))}
+                        </g>
+                      )}
+                    </g>
+                  </g>
+
+                  {/* LEFT ARM / VIEWER'S LEFT (Hangs naturally with buttoned cuff, Image 3) */}
+                  <g transform={`rotate(${leftShoulderAngle} 75 80)`}>
+                    {/* Upper Arm */}
+                    <path
+                      d="M67 80 A8 8 0 0 1 83 80 L81 118 A7 7 0 0 1 67 118 Z"
+                      fill={config.topColor}
+                    />
+                    {renderBoneOverlay('leftShoulder', 75, 80, 74, 114, 0, 'Sol Omuz (Üst Kol)')}
+                    {/* Elbow & Forearm */}
+                    <g transform={`rotate(${leftElbowAngle} 74 118)`}>
+                      <circle cx="74" cy="118" r="7" fill={config.topColor} />
+                      <path
+                        d="M67 118 L81 118 L79 152 L67 152 Z"
+                        fill={config.topColor}
+                      />
+                      {/* Buttoned Cuff */}
+                      <rect
+                        x="66"
+                        y="147"
+                        width="14"
+                        height="5.5"
+                        rx="1.2"
+                        fill={config.topColor}
+                        stroke={shirtShade}
+                        strokeWidth="1.2"
+                      />
+                      <line
+                        x1="67"
+                        y1="149.5"
+                        x2="79"
+                        y2="149.5"
+                        stroke={shirtShade}
+                        strokeWidth="1"
+                      />
+                      {renderBoneOverlay(
+                        'leftElbow',
+                        74,
+                        118,
+                        73,
+                        149,
+                        leftShoulderAngle,
+                        'Sol Dirsek (Ön Kol)'
+                      )}
+                      {/* Articulated Left Hand with Clear Fingers & Gestures */}
+                      {config.pose === 'clipboard' &&
+                        renderClipboardPenProp(73, 152.5, leftWristAngle)}
+                      {renderArticulatedHand(
+                        'left',
+                        effectiveHandSkinTone,
+                        leftHandGesture,
+                        leftWristAngle,
+                        73,
+                        152.5,
+                        0.92
+                      )}
+                      {config.handPropSide === 'left' &&
+                        renderHandProp(
+                          config.handProp,
+                          'left',
+                          73,
+                          152.5,
+                          leftWristAngle,
+                          leftShoulderAngle + leftElbowAngle,
+                          { skinTone: config.skinTone, isSpeaking: Boolean(config.lipSyncEnabled), animTime, calibrationDebug }
+                        )}
+                      <g transform={`rotate(${leftWristAngle} 73 152.5)`}>
+                        {renderBoneOverlay(
+                          'leftWrist',
+                          73,
+                          152.5,
+                          73,
+                          167,
+                          leftShoulderAngle + leftElbowAngle,
+                          'Sol Bilek & El'
+                        )}
+                      </g>
+                    </g>
+                  </g>
+                </g>
+
+                {/* 3. REFINED SLENDER-PRO HEAD & NECK (Anchored to scaled collar so head never detaches!) */}
+                <g
+                  data-rig-group="head-collar-base"
+                  transform={`translate(${collarAnchorInRootSpace.x}, ${collarAnchorInRootSpace.y + speechHeadBobY}) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
+                >
+                  <g
+                    data-canonical-bone="neck"
+                    transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 122)` : undefined}
+                  >
+                    {!useDicebear && (
+                      <g
+                        data-rig-group="vector-back-hair-head-carrier"
+                        transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
+                      >
+                        {renderHairBack(config.hairStyle, config.hairColor)}
+                      </g>
+                    )}
+
+                    {/* Longer Slender Neck tapering cleanly into the Shirt Collar V-Opening */}
+                    <g transform={`translate(110, 122) scale(${neckScaleX}, ${neckScaleY}) translate(-110, -122)`}>
+                      <path
+                        d="M100 98 L120 98 L118 126 Q110 130 102 126 Z"
+                        fill={config.skinTone}
+                      />
+                      {!useDicebear && (
+                        <polygon
+                          points="100,104 120,104 119,117 101,112"
+                          fill={neckShadowTone}
+                        />
+                      )}
+                    </g>
+
+                    <g
+                      data-canonical-bone="head"
+                      transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
+                    >
+                      {config.photoAvatarMode === 'hybrid-head' && config.photoAvatarUrl ? (
+                        renderHybridPhotoHead()
+                      ) : useDicebear ? (
+                        <>
+                          {renderDicebearHead()}
+                          {config.accessory !== 'none' &&
+                            config.accessory !== 'tortoise-glasses' &&
+                            config.accessory !== 'wire-glasses' &&
+                            config.accessory !== 'round-glasses' &&
+                            config.accessory !== 'square-glasses' &&
+                            config.accessory !== 'sunglasses' &&
+                            renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
+                        </>
+                      ) : (
+                        <>
+                          {/* 3/4 Perspective Ears */}
+                          {renderHeadEars(config.skinTone, earInnerTone, headDirection)}
+
+                          {/* Sculpted Face Base (with 3/4 angled head contour when turned left/right) */}
+                          <g fill={config.skinTone}>
+                            {renderFaceShapePath(config.faceShape, headDirection)}
+                          </g>
+
+                          {/* Facial Features with Head Direction Look Shift & In-Place State Morphing */}
+                          <g transform={`translate(${headLookShiftX}, 0)`}>
+                            {/* Defined Facial Contours & Expression Micro-Features */}
+                            {renderFacialSculptAndExpressionDetails(
+                              config.skinTone,
+                              resolvedExpression
+                            )}
+
+                            {/* Eyebrows (Single pair that morphs in-place for expressions) */}
+                            {renderEyebrows(
+                              config.eyebrowStyle,
+                              config.hairColor,
+                              resolvedExpression,
+                              isSpeakingNow,
+                              animTime
+                            )}
+
+                            {/* Eyes (Single pair that shifts pupils & morphs eyelids in-place) */}
+                            {renderEyes(
+                              config.eyeStyle,
+                              config.eyeColor,
+                              config.skinTone,
+                              resolvedExpression,
+                              headDirection,
+                              animTime,
+                              proceduralBlink
+                            )}
+
+                            {/* Mouth / Full Beard (drawn before nose so rounded nose overlaps top of mustache like Image 3!) */}
+                            {renderMouth(
+                              config.mouthStyle,
+                              config.lipColor,
+                              config.hairColor,
+                              config.skinTone,
+                              resolvedExpression,
+                              Boolean(config.lipSyncEnabled),
+                              animTime,
+                              headDirection,
+                              config.ttsScript,
+                              isFemaleCharacter(config),
+                              config.lipSyncAudioUrl,
+                              config.lipSyncAudioStartTime
+                            )}
+
+                            {/* Nose (Angled 3/4 profile when headDirection is left/right) */}
+                            {renderNose(config.noseStyle, config.skinTone, headDirection)}
+
+                            {/* Classic Glasses (sit neatly behind front bangs) */}
+                            {(config.accessory === 'tortoise-glasses' ||
+                              config.accessory === 'wire-glasses' ||
+                              config.accessory === 'round-glasses' ||
+                              config.accessory === 'square-glasses' ||
+                              config.accessory === 'sunglasses') &&
+                              renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
+                          </g>
+
+                          {/* Front Hair */}
+                          {renderHairFront(config.hairStyle, config.hairColor, headDirection)}
+
+                          {/* Headwear, Jewelry, Neck & Wearable Tech (always visible on top of front hair) */}
+                          {config.accessory !== 'none' &&
+                            config.accessory !== 'tortoise-glasses' &&
+                            config.accessory !== 'wire-glasses' &&
+                            config.accessory !== 'round-glasses' &&
+                            config.accessory !== 'square-glasses' &&
+                            config.accessory !== 'sunglasses' &&
+                            renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
+                        </>
+                      )}
+
+                      {isSurgeryPose && renderSurgicalHeadGear()}
+
+                      {/* Head Tilt 2D Bone Handle */}
+                      {renderBoneOverlay('headTilt', 110, 114, 110, 42, 0, 'Baş Eğimi (Boyun Eklemi)', true)}
+                    </g>
+                  </g>
                 </g>
               </g>
             </g>
+
+            {/* Action Props Overlay (Laptop, Phone, Idea Bulb, Presentation Pointer, Medical Tool, Dumbbells) */}
+                {renderActionOverlayProps(config.pose, animTime, -24)}
               </g>
             </g>
-            </g>
+          </svg>
+            );
+  }
+
+            return (
+            <svg
+              ref={svgRef}
+              viewBox={portraitMode ? '45 8 130 135' : '20 5 180 330'}
+              className="w-full h-full overflow-visible select-none"
+            >
+              <defs>
+                {/* Top Patterns */}
+                <pattern id={`${patternUid}-top-striped`} width="10" height="10" patternUnits="userSpaceOnUse">
+                  <rect width="10" height="10" fill={baseTopColor} />
+                  <rect y="0" width="10" height="3.5" fill={secondaryTop} opacity="0.45" />
+                </pattern>
+                <pattern id={`${patternUid}-top-plaid`} width="14" height="14" patternUnits="userSpaceOnUse">
+                  <rect width="14" height="14" fill={baseTopColor} />
+                  <rect x="0" width="4" height="14" fill={secondaryTop} opacity="0.32" />
+                  <rect y="0" width="14" height="4" fill={secondaryTop} opacity="0.32" />
+                  <rect x="7" width="1.5" height="14" fill={shadeColor(baseTopColor, -28)} opacity="0.35" />
+                  <rect y="7" width="14" height="1.5" fill={shadeColor(baseTopColor, -28)} opacity="0.35" />
+                </pattern>
+                <pattern id={`${patternUid}-top-polka`} width="12" height="12" patternUnits="userSpaceOnUse">
+                  <rect width="12" height="12" fill={baseTopColor} />
+                  <circle cx="3" cy="3" r="1.7" fill={secondaryTop} opacity="0.65" />
+                  <circle cx="9" cy="9" r="1.7" fill={secondaryTop} opacity="0.65" />
+                </pattern>
+                {/* Bottom Patterns */}
+                <pattern id={`${patternUid}-bottom-striped`} width="10" height="10" patternUnits="userSpaceOnUse">
+                  <rect width="10" height="10" fill={config.bottomColor} />
+                  <rect y="0" width="10" height="3.5" fill={shadeColor(config.bottomColor, 32)} opacity="0.45" />
+                </pattern>
+                <pattern id={`${patternUid}-bottom-plaid`} width="14" height="14" patternUnits="userSpaceOnUse">
+                  <rect width="14" height="14" fill={config.bottomColor} />
+                  <rect x="0" width="4" height="14" fill={shadeColor(config.bottomColor, 34)} opacity="0.32" />
+                  <rect y="0" width="14" height="4" fill={shadeColor(config.bottomColor, 34)} opacity="0.32" />
+                  <rect x="7" width="1.5" height="14" fill={shadeColor(config.bottomColor, -28)} opacity="0.4" />
+                  <rect y="7" width="14" height="1.5" fill={shadeColor(config.bottomColor, -28)} opacity="0.4" />
+                </pattern>
+                <pattern id={`${patternUid}-bottom-polka`} width="12" height="12" patternUnits="userSpaceOnUse">
+                  <rect width="12" height="12" fill={config.bottomColor} />
+                  <circle cx="3" cy="3" r="1.6" fill={shadeColor(config.bottomColor, 40)} opacity="0.65" />
+                  <circle cx="9" cy="9" r="1.6" fill={shadeColor(config.bottomColor, 40)} opacity="0.65" />
+                </pattern>
+              </defs>
+
+              {/* Subtle soft ground shadow */}
+              {!portraitMode && (
+                <ellipse cx="110" cy="322" rx="40" ry="6" fill="rgba(0,0,0,0.10)" />
+              )}
+
+              <g transform={`${config.flipHorizontal ? 'translate(110, 0) scale(-1, 1) translate(-110, 0) ' : ''}translate(0, ${prop.translateY + bodyBobY})`}>
+                {/* Action Background Props (e.g., Office Chair behind seated character) */}
+                {!portraitMode && renderActionBackgroundProps(config.pose)}
+
+                {/* ============================================================
+            1. SEAMLESS LINELESS LOWER BODY: HIPS, THIGHS, KNEES, CALVES & FEET
+           ============================================================ */}
+                {!portraitMode && (
+                  <g
+                    transform={`translate(110, 200) scale(${prop.bodyScaleX}, ${prop.bodyScaleY}) translate(-110, -200)`}
+                  >
+                    <g
+                      data-rig-adapter="pelvis-lower"
+                      transform={pelvisAngle !== 0 ? `rotate(${pelvisAngle} 110 202)` : undefined}
+                    >
+                      {/* Pelvis / Hip Bridge (rounded seamlessly around hip pivots so no square corners show during walk/run) */}
+                      <path
+                        d="M84 192 L136 192 L136 202 C136 209, 122 211, 110 211 C98 211, 84 209, 84 202 Z"
+                        fill={bottomFill}
+                      />
+
+                      {/* LEFT LEG (Hip Pivot at 96, 202 inside Pelvis so running never opens a gap) */}
+                      <g transform={`rotate(${leftHipAngle} 96 202)`}>
+                        {/* Upper Leg (Thigh) - Tapered seamless capsule */}
+                        <path
+                          d="M84 202 A12 12 0 0 1 108 202 L106 256 A10 10 0 0 1 86 256 Z"
+                          fill={bStyle === 'skirt' ? config.skinTone : bottomFill}
+                        />
+                        {bStyle === 'shorts' && (
+                          <>
+                            <path
+                              d="M84 202 A12 12 0 0 1 108 202 L107 256 A10 10 0 0 1 85 256 Z"
+                              fill={config.skinTone}
+                            />
+                            <path
+                              d="M84 202 A12 12 0 0 1 108 202 L107 234 L85 234 Z"
+                              fill={config.bottomColor}
+                            />
+                          </>
+                        )}
+                        {bStyle === 'joggers' && (
+                          <line x1="86" y1="205" x2="87" y2="254" stroke={shadeColor(config.bottomColor, 34)} strokeWidth="2.2" strokeLinecap="round" />
+                        )}
+                        {bStyle === 'jeans' && (
+                          <path d="M87 202 Q92 208 98 202" fill="none" stroke={pantsShade} strokeWidth="1.4" />
+                        )}
+                        {renderBoneOverlay('leftHip', 96, 202, 96, 252, 0, 'Sol Kalça (Üst Bacak)')}
+                        {/* KNEE PIVOT (at 96, 256) - Overlaps exact 10px radius circle so joint seam is INVISIBLE */}
+                        <g transform={`rotate(${leftKneeAngle} 96 256)`}>
+                          <path
+                            d="M86 256 A10 10 0 0 1 106 256 L103 306 A7 7 0 0 1 89 306 Z"
+                            fill={lowerLegColor}
+                          />
+                          {bStyle === 'joggers' && (
+                            <>
+                              <line x1="87" y1="258" x2="89" y2="300" stroke={shadeColor(config.bottomColor, 34)} strokeWidth="2.2" strokeLinecap="round" />
+                              <rect x="88" y="300" width="16" height="5" rx="2" fill={pantsShade} />
+                            </>
+                          )}
+                          {bStyle === 'jeans' && (
+                            <rect x="88" y="300" width="16" height="4.5" rx="1.5" fill={shadeColor(config.bottomColor, 18)} />
+                          )}
+                          {/* Left Shoe / Foot (Style & Direction-aware) */}
+                          <g
+                            data-canonical-bone="leftAnkle"
+                            transform={leftAnkleAngle !== 0 ? `rotate(${leftAnkleAngle} 96 303)` : undefined}
+                          >
+                            <g transform="translate(86, 303)">
+                              {renderShoeShape('left')}
+                            </g>
+                          </g>
+                          {renderBoneOverlay(
+                            'leftKnee',
+                            96,
+                            256,
+                            96,
+                            308,
+                            leftHipAngle,
+                            'Sol Diz (Alt Bacak)'
+                          )}
+                        </g>
+                      </g>
+
+                      {/* RIGHT LEG (Hip Pivot at 124, 202 inside Pelvis) */}
+                      <g transform={`rotate(${rightHipAngle} 124 202)`}>
+                        {/* Upper Leg (Thigh) */}
+                        <path
+                          d="M112 202 A12 12 0 0 1 136 202 L134 256 A10 10 0 0 1 114 256 Z"
+                          fill={bStyle === 'skirt' ? config.skinTone : bottomFill}
+                        />
+                        {bStyle === 'shorts' && (
+                          <>
+                            <path
+                              d="M112 202 A12 12 0 0 1 136 202 L135 256 A10 10 0 0 1 113 256 Z"
+                              fill={config.skinTone}
+                            />
+                            <path
+                              d="M112 202 A12 12 0 0 1 136 202 L135 234 L113 234 Z"
+                              fill={bottomFill}
+                            />
+                          </>
+                        )}
+                        {bStyle === 'joggers' && (
+                          <line x1="134" y1="205" x2="133" y2="254" stroke={shadeColor(config.bottomColor, 34)} strokeWidth="2.2" strokeLinecap="round" />
+                        )}
+                        {bStyle === 'jeans' && (
+                          <path d="M122 202 Q128 208 133 202" fill="none" stroke={pantsShade} strokeWidth="1.4" />
+                        )}
+                        {renderBoneOverlay('rightHip', 124, 202, 124, 252, 0, 'Sağ Kalça (Üst Bacak)')}
+                        {/* KNEE PIVOT (at 124, 256) - Invisible seamless joint */}
+                        <g transform={`rotate(${rightKneeAngle} 124 256)`}>
+                          <path
+                            d="M114 256 A10 10 0 0 1 134 256 L131 306 A7 7 0 0 1 117 306 Z"
+                            fill={lowerLegColor}
+                          />
+                          {bStyle === 'joggers' && (
+                            <>
+                              <line x1="133" y1="258" x2="131" y2="300" stroke={shadeColor(config.bottomColor, 34)} strokeWidth="2.2" strokeLinecap="round" />
+                              <rect x="116" y="300" width="16" height="5" rx="2" fill={pantsShade} />
+                            </>
+                          )}
+                          {bStyle === 'jeans' && (
+                            <rect x="116" y="300" width="16" height="4.5" rx="1.5" fill={shadeColor(config.bottomColor, 18)} />
+                          )}
+                          {/* Right Shoe / Foot (Style & Direction-aware) */}
+                          <g
+                            data-canonical-bone="rightAnkle"
+                            transform={rightAnkleAngle !== 0 ? `rotate(${rightAnkleAngle} 124 303)` : undefined}
+                          >
+                            <g transform="translate(114, 303)">
+                              {renderShoeShape('right')}
+                            </g>
+                          </g>
+                          {renderBoneOverlay(
+                            'rightKnee',
+                            124,
+                            256,
+                            124,
+                            308,
+                            rightHipAngle,
+                            'Sağ Diz (Alt Bacak)'
+                          )}
+                        </g>
+                      </g>
+
+                      {/* A-Line Skirt overlay when bottomStyle === 'skirt' */}
+                      {bStyle === 'skirt' && (
+                        <g>
+                          <path
+                            d="M82 191 L138 191 L148 244 Q110 250 72 244 Z"
+                            fill={bottomFill}
+                          />
+                          <path
+                            d="M74 241 Q110 247 146 241"
+                            fill="none"
+                            stroke={pantsShade}
+                            strokeWidth="1.5"
+                          />
+                        </g>
+                      )}
+                    </g>
+                  </g>
+                )}
+
+                {/* Back hair behind torso & neck */}
+                {useDicebear && (
+                  <g
+                    data-rig-group="back-hair-collar-base"
+                    transform={`translate(${collarAnchorInRootSpace.x}, ${collarAnchorInRootSpace.y + speechHeadBobY
+                      }) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
+                  >
+                    <g
+                      data-rig-group="back-hair-neck-carrier"
+                      transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 122)` : undefined}
+                    >
+                      <g
+                        data-rig-group="back-hair-head-carrier"
+                        transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
+                      >
+                        {renderDicebearBackHair()}
+                      </g>
+                    </g>
+                  </g>
+                )}
+
+                {/* ============================================================
+            2. SEAMLESS LINELESS TORSO, OUTFITS & ARTICULATED ARMS/HANDS
+           ============================================================ */}
+                <g
+                  transform={`translate(110, 155) scale(${prop.bodyScaleX}, ${prop.bodyScaleY}) translate(-110, -155)`}
+                >
+                  <g
+                    data-canonical-bone="pelvis"
+                    transform={pelvisAngle !== 0 ? `rotate(${pelvisAngle} 110 ${classicUpperPelvisPivotY})` : undefined}
+                  >
+                    <g
+                      data-canonical-bone="spine"
+                      transform={spineAngle !== 0 ? `rotate(${spineAngle} 110 196)` : undefined}
+                    >
+                      <g
+                        data-canonical-bone="chest"
+                        transform={chestAngle !== 0 ? `rotate(${chestAngle} 110 155)` : undefined}
+                      >
+                        {/* TORSO BASE SILHOUETTE (Lineless) */}
+                        <path
+                          d={
+                            config.genderAge === 'female'
+                              ? 'M76 118 C84 114, 136 114, 144 118 L137 162 L139 198 L81 198 L83 162 Z'
+                              : 'M74 118 C84 114, 136 114, 146 118 L138 198 L82 198 Z'
+                          }
+                          fill={torsoFill}
+                        />
+                        {topPat === 'cuff-striped' && (
+                          <g>
+                            <path d="M88 117 Q110 127 132 117" fill="none" stroke={secondaryTop} strokeWidth="3.5" strokeLinecap="round" />
+                            <line x1="82" y1="194" x2="138" y2="194" stroke={secondaryTop} strokeWidth="3.5" />
+                          </g>
+                        )}
+
+                        {/* OUTFIT DETAILS MATCHING IMAGE 2 TEMPLATES */}
+                        {/* 1. Open Overshirt over Inner Tee (Image 2, Character 4) */}
+                        {config.outfitStyle === 'open-overshirt' && (
+                          <g>
+                            {/* Inner crew-neck T-shirt */}
+                            <rect x="96" y="117" width="28" height="78" fill={secondaryTop} />
+                            {/* Collar folds */}
+                            <polygon
+                              points="94,115 84,126 96,130"
+                              fill={shadeColor(config.topColor, -12)}
+                            />
+                            <polygon
+                              points="126,115 136,126 124,130"
+                              fill={shadeColor(config.topColor, -12)}
+                            />
+                            {/* Subtle vertical lapel edge lines */}
+                            <line
+                              x1="96"
+                              y1="118"
+                              x2="96"
+                              y2="198"
+                              stroke={shadeColor(config.topColor, -14)}
+                              strokeWidth="1.5"
+                            />
+                            <line
+                              x1="124"
+                              y1="118"
+                              x2="124"
+                              y2="198"
+                              stroke={shadeColor(config.topColor, -14)}
+                              strokeWidth="1.5"
+                            />
+                          </g>
+                        )}
+
+                        {/* 2. Collared Shirt with Belt (pocket-shirt or collared-belted-shirt) */}
+                        {(config.outfitStyle === 'pocket-shirt' ||
+                          config.outfitStyle === 'collared-belted-shirt') && (
+                            <g>
+                              {/* V-neck skin opening */}
+                              <polygon points="103,116 117,116 110,130" fill={config.skinTone} />
+                              {/* Shirt Collar */}
+                              <polygon
+                                points="101,115 92,126 108,129"
+                                fill={shadeColor(config.topColor, -14)}
+                              />
+                              <polygon
+                                points="119,115 128,126 112,129"
+                                fill={shadeColor(config.topColor, -14)}
+                              />
+                              {/* Center placket */}
+                              <line
+                                x1="110"
+                                y1="130"
+                                x2="110"
+                                y2="192"
+                                stroke={shadeColor(config.topColor, -16)}
+                                strokeWidth="1.6"
+                              />
+                              {/* Two Chest Pockets */}
+                              <rect
+                                x="88"
+                                y="142"
+                                width="14"
+                                height="15"
+                                rx="2"
+                                fill="none"
+                                stroke={shadeColor(config.topColor, -20)}
+                                strokeWidth="1.5"
+                              />
+                              <path
+                                d="M88 142 L95 147 L102 142"
+                                fill="none"
+                                stroke={shadeColor(config.topColor, -20)}
+                                strokeWidth="1.5"
+                              />
+                              <rect
+                                x="118"
+                                y="142"
+                                width="14"
+                                height="15"
+                                rx="2"
+                                fill="none"
+                                stroke={shadeColor(config.topColor, -20)}
+                                strokeWidth="1.5"
+                              />
+                              <path
+                                d="M118 142 L125 147 L132 142"
+                                fill="none"
+                                stroke={shadeColor(config.topColor, -20)}
+                                strokeWidth="1.5"
+                              />
+                              {/* Leather Belt & Gold Buckle */}
+                              <rect x="82" y="191" width="56" height="7" fill="#6b3410" />
+                              <ellipse cx="110" cy="194.5" rx="5.5" ry="4" fill="#eab308" />
+                            </g>
+                          )}
+
+                        {/* 3. Buttoned Senior Shirt / Cardigan (Image 2, Character 6) */}
+                        {config.outfitStyle === 'button-cardigan' && (
+                          <g>
+                            <polygon points="103,116 117,116 110,129" fill={config.skinTone} />
+                            <polygon
+                              points="101,115 93,125 108,128"
+                              fill={shadeColor(config.topColor, -15)}
+                            />
+                            <polygon
+                              points="119,115 127,125 112,128"
+                              fill={shadeColor(config.topColor, -15)}
+                            />
+                            {[138, 152, 166, 180].map((by) => (
+                              <circle
+                                key={by}
+                                cx="110"
+                                cy={by}
+                                r="2.2"
+                                fill={shadeColor(config.topColor, -25)}
+                              />
+                            ))}
+                          </g>
+                        )}
+
+                        {/* 4. Raglan Tee (Image 2, Character 2) */}
+                        {config.outfitStyle === 'raglan-tee' && (
+                          <g>
+                            {/* Colored Raglan Shoulder Stripes & Neckband */}
+                            <path
+                              d="M74 118 L95 116 L84 146 Z"
+                              fill={config.topColor}
+                            />
+                            <path
+                              d="M146 118 L125 116 L136 146 Z"
+                              fill={config.topColor}
+                            />
+                            <path
+                              d="M95 116 Q110 124 125 116"
+                              fill="none"
+                              stroke={config.topColor}
+                              strokeWidth="4"
+                            />
+                            {/* Chest Emblem Illustration */}
+                            <circle cx="110" cy="148" r="12" fill={config.topColor} opacity="0.2" />
+                            <polygon points="102,150 118,144 112,156" fill={config.topColor} />
+                          </g>
+                        )}
+
+                        {/* 5. Graphic Tee / Flame Sweater (Image 2, Character 1 & 3) */}
+                        {config.outfitStyle === 'graphic-tee' && (
+                          <g>
+                            {/* Stylized flame / wave graphic along bottom of shirt */}
+                            <path
+                              d="M82 198 L85 176 L92 188 L99 168 L106 185 L112 164 L119 184 L126 170 L132 188 L138 176 L138 198 Z"
+                              fill={secondaryTop}
+                            />
+                            <path
+                              d="M84 198 L88 184 L95 192 L102 178 L110 190 L117 176 L124 190 L131 182 L136 198 Z"
+                              fill="#facc15"
+                            />
+                            <path
+                              d="M82 196 L138 196"
+                              stroke="#ef4444"
+                              strokeWidth="3"
+                            />
+                          </g>
+                        )}
+
+                        {/* 6. Lab Coat */}
+                        {config.outfitStyle === 'lab-coat' && (
+                          <g>
+                            <polygon points="94,116 126,116 110,174" fill={config.topColor} />
+                            <polygon points="92,116 84,152 106,162" fill="#e2e8f0" />
+                            <polygon points="128,116 136,152 114,162" fill="#e2e8f0" />
+                            <line x1="110" y1="172" x2="110" y2="198" stroke="#cbd5e1" strokeWidth="2" />
+                          </g>
+                        )}
+
+                        {/* 7. Formal Suit */}
+                        {config.outfitStyle === 'formal-suit' && (
+                          <g>
+                            <polygon points="96,116 124,116 110,162" fill="#f8fafc" />
+                            <polygon points="107,120 113,120 114,156 110,164 106,156" fill="#dc2626" />
+                            <polygon
+                              points="94,116 86,150 107,160"
+                              fill={shadeColor(config.topColor, -16)}
+                            />
+                            <polygon
+                              points="126,116 134,150 113,160"
+                              fill={shadeColor(config.topColor, -16)}
+                            />
+                          </g>
+                        )}
+
+                        {/* 8. Casual Hoodie */}
+                        {config.outfitStyle === 'casual-hoodie' && (
+                          <g>
+                            <path
+                              d="M88 117 Q110 128 132 117"
+                              fill="none"
+                              stroke={shadeColor(config.topColor, -18)}
+                              strokeWidth="3"
+                            />
+                            <line x1="102" y1="122" x2="102" y2="144" stroke="#f8fafc" strokeWidth="2" strokeLinecap="round" />
+                            <line x1="118" y1="122" x2="118" y2="144" stroke="#f8fafc" strokeWidth="2" strokeLinecap="round" />
+                            <rect
+                              x="90"
+                              y="168"
+                              width="40"
+                              height="22"
+                              rx="6"
+                              fill={shadeColor(config.topColor, -12)}
+                            />
+                          </g>
+                        )}
+
+                        {/* 9. Space Suit */}
+                        {config.outfitStyle === 'space-suit' && (
+                          <g>
+                            <rect x="92" y="138" width="36" height="24" rx="5" fill={shadeColor(config.topColor, -30)} />
+                            <circle cx="101" cy="150" r="3" fill="#38bdf8" />
+                            <circle cx="110" cy="150" r="3" fill="#4ade80" />
+                            <circle cx="119" cy="150" r="3" fill="#fb7185" />
+                          </g>
+                        )}
+
+                        {/* 10. School Vest */}
+                        {config.outfitStyle === 'school-vest' && (
+                          <g>
+                            <polygon points="94,116 126,116 110,146" fill="#ffffff" />
+                            <circle cx="124" cy="144" r="5" fill="#eab308" />
+                          </g>
+                        )}
+
+                        {/* 11. Engineer / Architect Reflective Vest */}
+                        {config.outfitStyle === 'engineer-vest' && (
+                          <g>
+                            {/* Inner shirt V-neck */}
+                            <polygon points="95,116 125,116 110,144" fill={secondaryTop} />
+                            {/* Center zipper */}
+                            <line x1="110" y1="144" x2="110" y2="197" stroke={shadeColor(config.topColor, -24)} strokeWidth="2" />
+                            {/* Reflective horizontal & vertical strips */}
+                            <rect x="81" y="164" width="58" height="6" fill="#e2e8f0" opacity="0.95" />
+                            <rect x="81" y="175" width="58" height="4" fill="#cbd5e1" opacity="0.9" />
+                            <rect x="91" y="118" width="6" height="46" fill="#e2e8f0" opacity="0.92" />
+                            <rect x="123" y="118" width="6" height="46" fill="#e2e8f0" opacity="0.92" />
+                            {/* Utility chest pocket */}
+                            <rect x="86" y="138" width="14" height="14" rx="2" fill={shadeColor(config.topColor, -14)} />
+                          </g>
+                        )}
+
+                        {/* 12. School Uniform (Sweater Vest + Shirt + Tie/Bowtie) */}
+                        {config.outfitStyle === 'school-uniform' && (
+                          <g>
+                            {/* Crisp white collar & V-neck */}
+                            <polygon points="94,116 126,116 110,148" fill="#ffffff" />
+                            <polygon points="94,116 88,128 103,125" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1" />
+                            <polygon points="126,116 132,128 117,125" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1" />
+                            {/* Tie */}
+                            <polygon points="107,121 113,121 114,144 110,152 106,144" fill={secondaryTop} />
+                            {/* Gold crest */}
+                            <circle cx="125" cy="144" r="5" fill="#eab308" />
+                            {/* Ribbed hem */}
+                            <rect x="82" y="191" width="56" height="7" fill={shadeColor(config.topColor, -18)} />
+                          </g>
+                        )}
+
+                    {/* 13. Sport Zip Tracksuit */}
+                    {config.outfitStyle === 'tracksuit-zip' && (
+                      <g>
+                        {/* Sport stand collar */}
+                        <path d="M94 117 Q110 123 126 117 L123 127 Q110 132 97 127 Z" fill={secondaryTop} />
+                        {/* Full front zipper */}
+                        <line x1="110" y1="127" x2="110" y2="198" stroke="#f8fafc" strokeWidth="2.5" />
+                        <rect x="107.5" y="130" width="5" height="6" rx="1" fill="#e2e8f0" />
+                        {/* Chest sporty diagonal stripes */}
+                        <polygon points="82,148 138,140 138,146 82,154" fill={secondaryTop} opacity="0.9" />
+                      </g>
+                    )}
+
+                    {/* 14. Historical Narrator Cloak & Vest */}
+                    {config.outfitStyle === 'historical-cloak' && (
+                      <g>
+                        {/* Cloak shoulder drape */}
+                        <path d="M74 118 Q110 138 146 118 L149 148 Q110 162 71 148 Z" fill={shadeColor(config.topColor, -22)} />
+                        {/* Inner tunic shirt */}
+                        <polygon points="98,120 122,120 110,156" fill={secondaryTop} />
+                        {/* Cloak clasp & chain */}
+                        <circle cx="96" cy="128" r="4" fill="#eab308" />
+                        <circle cx="124" cy="128" r="4" fill="#eab308" />
+                        <path d="M96 128 Q110 136 124 128" fill="none" stroke="#eab308" strokeWidth="2" />
+                        {/* Waist sash */}
+                        <rect x="82" y="182" width="56" height="10" rx="2" fill={secondaryTop} />
+                      </g>
+                    )}
+
+                    {/* LEFT ARM (Rendered AFTER torso & belt so arm/props stay in front!) */}
+                    {!portraitMode && (
+                      <g transform={`rotate(${leftShoulderAngle} 77 129)`}>
+                        <path
+                          d="M69 129 A8.5 8.5 0 0 1 86 129 L85 166 A7.5 7.5 0 0 1 70 166 Z"
+                          fill={upperSleeveColor}
+                        />
+                        {config.outfitStyle === 'pocket-shirt' && (
+                          <rect
+                            x="69"
+                            y="156"
+                            width="16.5"
+                            height="6"
+                            rx="2"
+                            fill={shadeColor(upperSleeveColor, 14)}
+                          />
+                        )}
+                        {config.outfitStyle === 'tracksuit-zip' && (
+                          <line x1="71" y1="131" x2="72" y2="165" stroke={secondaryTop} strokeWidth="2.8" strokeLinecap="round" />
+                        )}
+                        {renderBoneOverlay('leftShoulder', 77, 129, 77.5, 162, 0, 'Sol Omuz (Üst Kol)')}
+                        <g transform={`rotate(${leftElbowAngle} 77.5 166)`}>
+                          <path
+                            d="M70 166 A7.5 7.5 0 0 1 85 166 L83.5 202 A6 6 0 0 1 71.5 202 Z"
+                            fill={forearmColor}
+                          />
+                          {config.outfitStyle === 'tracksuit-zip' && (
+                            <line x1="72" y1="167" x2="73" y2="198" stroke={secondaryTop} strokeWidth="2.6" strokeLinecap="round" />
+                          )}
+                          {!isShortOrRolledSleeve && topPat === 'cuff-striped' && (
+                            <rect x="71" y="195" width="13" height="4.5" rx="1.5" fill={secondaryTop} />
+                          )}
+                          {renderBoneOverlay(
+                            'leftElbow',
+                            77.5,
+                            166,
+                            77.5,
+                            199,
+                            leftShoulderAngle,
+                            'Sol Dirsek (Ön Kol)'
+                          )}
+                          {config.pose === 'clipboard' &&
+                            renderClipboardPenProp(77.5, 202, leftWristAngle)}
+                          {renderArticulatedHand(
+                            'left',
+                            effectiveHandSkinTone,
+                            leftHandGesture,
+                            leftWristAngle,
+                            77.5,
+                            202,
+                            1.0
+                          )}
+                          {config.handPropSide === 'left' &&
+                            renderHandProp(
+                              config.handProp,
+                              'left',
+                              77.5,
+                              202,
+                              leftWristAngle,
+                              leftShoulderAngle + leftElbowAngle,
+                              { skinTone: config.skinTone, isSpeaking: Boolean(config.lipSyncEnabled), animTime, calibrationDebug }
+                            )}
+                          <g transform={`rotate(${leftWristAngle} 77.5 202)`}>
+                            {renderBoneOverlay(
+                              'leftWrist',
+                              77.5,
+                              202,
+                              77.5,
+                              216,
+                              leftShoulderAngle + leftElbowAngle,
+                              'Sol Bilek & El'
+                            )}
+                          </g>
+                        </g>
+                      </g>
+                    )}
+
+                    {/* RIGHT ARM (Rendered AFTER torso & belt so arm/props stay in front!) */}
+                    {!portraitMode && (
+                      <g transform={`rotate(${rightShoulderAngle} 143 129)`}>
+                        <path
+                          d="M134 129 A8.5 8.5 0 0 1 151 129 L150 166 A7.5 7.5 0 0 1 135 166 Z"
+                          fill={upperSleeveColor}
+                        />
+                        {config.outfitStyle === 'pocket-shirt' && (
+                          <rect
+                            x="134.5"
+                            y="156"
+                            width="16.5"
+                            height="6"
+                            rx="2"
+                            fill={shadeColor(upperSleeveColor, 14)}
+                          />
+                        )}
+                        {config.outfitStyle === 'tracksuit-zip' && (
+                          <line x1="149" y1="131" x2="148" y2="165" stroke={secondaryTop} strokeWidth="2.8" strokeLinecap="round" />
+                        )}
+                        {renderBoneOverlay('rightShoulder', 143, 129, 142.5, 162, 0, 'Sağ Omuz (Üst Kol)')}
+                        <g transform={`rotate(${rightElbowAngle} 142.5 166)`}>
+                          <path
+                            d="M135 166 A7.5 7.5 0 0 1 150 166 L148.5 202 A6 6 0 0 1 136.5 202 Z"
+                            fill={forearmColor}
+                          />
+                          {config.outfitStyle === 'tracksuit-zip' && (
+                            <line x1="148" y1="167" x2="147" y2="198" stroke={secondaryTop} strokeWidth="2.6" strokeLinecap="round" />
+                          )}
+                          {!isShortOrRolledSleeve && topPat === 'cuff-striped' && (
+                            <rect x="136" y="195" width="13" height="4.5" rx="1.5" fill={secondaryTop} />
+                          )}
+                          {renderBoneOverlay(
+                            'rightElbow',
+                            142.5,
+                            166,
+                            142.5,
+                            199,
+                            rightShoulderAngle,
+                            'Sağ Dirsek (Ön Kol)'
+                          )}
+                          {config.pose === 'phone-call' &&
+                            renderPhoneCallHandProp(142.5, 202, rightWristAngle, animTime)}
+                          {renderArticulatedHand(
+                            'right',
+                            effectiveHandSkinTone,
+                            rightHandGesture,
+                            rightWristAngle,
+                            142.5,
+                            202,
+                            1.0
+                          )}
+                          {(config.handPropSide || 'right') === 'right' &&
+                            renderHandProp(
+                              config.handProp,
+                              'right',
+                              142.5,
+                              202,
+                              rightWristAngle,
+                              rightShoulderAngle + rightElbowAngle,
+                              { skinTone: config.skinTone, isSpeaking: Boolean(config.lipSyncEnabled), animTime, calibrationDebug }
+                            )}
+                          <g transform={`rotate(${rightWristAngle} 142.5 202)`}>
+                            {renderBoneOverlay(
+                              'rightWrist',
+                              142.5,
+                              202,
+                              142.5,
+                              216,
+                              rightShoulderAngle + rightElbowAngle,
+                              'Sağ Bilek & El'
+                            )}
+                          </g>
+                        </g>
+                      </g>
+                    )}
+                  </g>
+                </g>
+              </g>
           </g>
 
-          {/* 3. REFINED SLENDER-PRO HEAD & NECK (Anchored to scaled collar so head never detaches!) */}
+          {/* ============================================================
+            3. LINELESS NECK & HEAD WITH FACIAL FEATURES (BAŞ & UZUVLAR)
+           ============================================================ */}
           <g
             data-rig-group="head-collar-base"
-            transform={`translate(${collarAnchorInRootSpace.x}, ${collarAnchorInRootSpace.y + speechHeadBobY}) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
+            transform={`translate(${collarAnchorInRootSpace.x}, ${collarAnchorInRootSpace.y + speechHeadBobY
+              }) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
           >
             <g
               data-canonical-bone="neck"
               transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 122)` : undefined}
             >
+              {/* Back Hair Layer */}
               {!useDicebear && (
                 <g
                   data-rig-group="vector-back-hair-head-carrier"
@@ -6009,15 +6985,12 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                 </g>
               )}
 
-              {/* Longer Slender Neck tapering cleanly into the Shirt Collar V-Opening */}
+              {/* Neck (Lineless with soft chin shadow) */}
               <g transform={`translate(110, 122) scale(${neckScaleX}, ${neckScaleY}) translate(-110, -122)`}>
-                <path
-                  d="M100 98 L120 98 L118 126 Q110 130 102 126 Z"
-                  fill={config.skinTone}
-                />
+                <rect x="100" y="98" width="20" height="28" rx="6" fill={config.skinTone} />
                 {!useDicebear && (
-                  <polygon
-                    points="100,104 120,104 119,117 101,112"
+                  <path
+                    d="M100 104 Q110 113 120 104 L120 114 Q110 120 100 114 Z"
                     fill={neckShadowTone}
                   />
                 )}
@@ -6042,13 +7015,28 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   </>
                 ) : (
                   <>
-                    {/* 3/4 Perspective Ears */}
+                    {/* Expressive Ears with 3/4 Perspective */}
                     {renderHeadEars(config.skinTone, earInnerTone, headDirection)}
 
-                    {/* Sculpted Face Base (with 3/4 angled head contour when turned left/right) */}
+                    {/* Sculpted Lineless Face Base with 3/4 Angled Head Turn */}
                     <g fill={config.skinTone}>
                       {renderFaceShapePath(config.faceShape, headDirection)}
                     </g>
+
+                    {/* Senior / Adult subtle wisdom & smile lines (from Image 2 Characters 5, 6, 7) */}
+                    {(config.genderAge === 'senior' || config.hairStyle === 'executive-side') && (
+                      <g stroke={wisdomLineTone} strokeWidth="1.4" strokeLinecap="round" fill="none">
+                        <path d="M92 88 Q89 93 92 98" />
+                        <path d="M128 88 Q131 93 128 98" />
+                        {config.genderAge === 'senior' && (
+                          <>
+                            <path d="M96 48 Q110 50 124 48" />
+                            <path d="M88 80 Q94 82 99 80" />
+                            <path d="M121 80 Q126 82 132 80" />
+                          </>
+                        )}
+                      </g>
+                    )}
 
                     {/* Facial Features with Head Direction Look Shift & In-Place State Morphing */}
                     <g transform={`translate(${headLookShiftX}, 0)`}>
@@ -6061,13 +7049,15 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                       {/* Eyebrows (Single pair that morphs in-place for expressions) */}
                       {renderEyebrows(
                         config.eyebrowStyle,
-                        config.hairColor,
+                        config.hairStyle === 'bald' || config.hairStyle === 'senior-silver'
+                          ? '#71717a'
+                          : config.hairColor,
                         resolvedExpression,
                         isSpeakingNow,
                         animTime
                       )}
 
-                      {/* Eyes (Single pair that shifts pupils & morphs eyelids in-place) */}
+                      {/* Lineless Eyes (Single pair that shifts pupils & morphs eyelids in-place) */}
                       {renderEyes(
                         config.eyeStyle,
                         config.eyeColor,
@@ -6078,7 +7068,10 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                         proceduralBlink
                       )}
 
-                      {/* Mouth / Full Beard (drawn before nose so rounded nose overlaps top of mustache like Image 3!) */}
+                      {/* Lineless Nose (Angled 3/4 profile when headDirection is left/right) */}
+                      {renderNose(config.noseStyle, config.skinTone, headDirection)}
+
+                      {/* Lineless Mouth / Lips / Beard (Single mouth that morphs in-place) */}
                       {renderMouth(
                         config.mouthStyle,
                         config.lipColor,
@@ -6094,9 +7087,6 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                         config.lipSyncAudioStartTime
                       )}
 
-                      {/* Nose (Angled 3/4 profile when headDirection is left/right) */}
-                      {renderNose(config.noseStyle, config.skinTone, headDirection)}
-
                       {/* Classic Glasses (sit neatly behind front bangs) */}
                       {(config.accessory === 'tortoise-glasses' ||
                         config.accessory === 'wire-glasses' ||
@@ -6106,7 +7096,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                         renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
                     </g>
 
-                    {/* Front Hair */}
+                    {/* Front Hair Layer */}
                     {renderHairFront(config.hairStyle, config.hairColor, headDirection)}
 
                     {/* Headwear, Jewelry, Neck & Wearable Tech (always visible on top of front hair) */}
@@ -6120,890 +7110,18 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   </>
                 )}
 
+                {isSurgeryPose && renderSurgicalHeadGear()}
+
                 {/* Head Tilt 2D Bone Handle */}
-                {renderBoneOverlay('headTilt', 110, 114, 110, 42, 0, 'Baş Eğimi (Boyun Eklemi)', true)}
+                {!portraitMode &&
+                  renderBoneOverlay('headTilt', 110, 114, 110, 42, 0, 'Baş Eğimi (Boyun Eklemi)', true)}
               </g>
             </g>
           </g>
 
           {/* Action Props Overlay (Laptop, Phone, Idea Bulb, Presentation Pointer, Medical Tool, Dumbbells) */}
-          {renderActionOverlayProps(config.pose, animTime)}
+          {!portraitMode && renderActionOverlayProps(config.pose, animTime)}
         </g>
       </svg>
     );
-  }
-
-  return (
-    <svg
-      ref={svgRef}
-      viewBox={portraitMode ? '45 8 130 135' : '20 5 180 330'}
-      className="w-full h-full overflow-visible select-none"
-    >
-      <defs>
-        {/* Top Patterns */}
-        <pattern id={`${patternUid}-top-striped`} width="10" height="10" patternUnits="userSpaceOnUse">
-          <rect width="10" height="10" fill={baseTopColor} />
-          <rect y="0" width="10" height="3.5" fill={secondaryTop} opacity="0.45" />
-        </pattern>
-        <pattern id={`${patternUid}-top-plaid`} width="14" height="14" patternUnits="userSpaceOnUse">
-          <rect width="14" height="14" fill={baseTopColor} />
-          <rect x="0" width="4" height="14" fill={secondaryTop} opacity="0.32" />
-          <rect y="0" width="14" height="4" fill={secondaryTop} opacity="0.32" />
-          <rect x="7" width="1.5" height="14" fill={shadeColor(baseTopColor, -28)} opacity="0.35" />
-          <rect y="7" width="14" height="1.5" fill={shadeColor(baseTopColor, -28)} opacity="0.35" />
-        </pattern>
-        <pattern id={`${patternUid}-top-polka`} width="12" height="12" patternUnits="userSpaceOnUse">
-          <rect width="12" height="12" fill={baseTopColor} />
-          <circle cx="3" cy="3" r="1.7" fill={secondaryTop} opacity="0.65" />
-          <circle cx="9" cy="9" r="1.7" fill={secondaryTop} opacity="0.65" />
-        </pattern>
-        {/* Bottom Patterns */}
-        <pattern id={`${patternUid}-bottom-striped`} width="10" height="10" patternUnits="userSpaceOnUse">
-          <rect width="10" height="10" fill={config.bottomColor} />
-          <rect y="0" width="10" height="3.5" fill={shadeColor(config.bottomColor, 32)} opacity="0.45" />
-        </pattern>
-        <pattern id={`${patternUid}-bottom-plaid`} width="14" height="14" patternUnits="userSpaceOnUse">
-          <rect width="14" height="14" fill={config.bottomColor} />
-          <rect x="0" width="4" height="14" fill={shadeColor(config.bottomColor, 34)} opacity="0.32" />
-          <rect y="0" width="14" height="4" fill={shadeColor(config.bottomColor, 34)} opacity="0.32" />
-          <rect x="7" width="1.5" height="14" fill={shadeColor(config.bottomColor, -28)} opacity="0.4" />
-          <rect y="7" width="14" height="1.5" fill={shadeColor(config.bottomColor, -28)} opacity="0.4" />
-        </pattern>
-        <pattern id={`${patternUid}-bottom-polka`} width="12" height="12" patternUnits="userSpaceOnUse">
-          <rect width="12" height="12" fill={config.bottomColor} />
-          <circle cx="3" cy="3" r="1.6" fill={shadeColor(config.bottomColor, 40)} opacity="0.65" />
-          <circle cx="9" cy="9" r="1.6" fill={shadeColor(config.bottomColor, 40)} opacity="0.65" />
-        </pattern>
-      </defs>
-
-      {/* Subtle soft ground shadow */}
-      {!portraitMode && (
-        <ellipse cx="110" cy="322" rx="40" ry="6" fill="rgba(0,0,0,0.10)" />
-      )}
-
-      <g transform={`${config.flipHorizontal ? 'translate(110, 0) scale(-1, 1) translate(-110, 0) ' : ''}translate(0, ${prop.translateY + bodyBobY})`}>
-        {/* ============================================================
-            1. SEAMLESS LINELESS LOWER BODY: HIPS, THIGHS, KNEES, CALVES & FEET
-           ============================================================ */}
-        {!portraitMode && (
-          <g
-            transform={`translate(110, 200) scale(${prop.bodyScaleX}, ${prop.bodyScaleY}) translate(-110, -200)`}
-          >
-            <g
-              data-rig-adapter="pelvis-lower"
-              transform={pelvisAngle !== 0 ? `rotate(${pelvisAngle} 110 202)` : undefined}
-            >
-            {/* Pelvis / Hip Bridge (rounded seamlessly around hip pivots so no square corners show during walk/run) */}
-            <path
-              d="M84 192 L136 192 L136 202 C136 209, 122 211, 110 211 C98 211, 84 209, 84 202 Z"
-              fill={bottomFill}
-            />
-
-            {/* LEFT LEG (Hip Pivot at 96, 202 inside Pelvis so running never opens a gap) */}
-            <g transform={`rotate(${leftHipAngle} 96 202)`}>
-              {/* Upper Leg (Thigh) - Tapered seamless capsule */}
-              <path
-                d="M84 202 A12 12 0 0 1 108 202 L106 256 A10 10 0 0 1 86 256 Z"
-                fill={bStyle === 'skirt' ? config.skinTone : bottomFill}
-              />
-              {bStyle === 'shorts' && (
-                <>
-                  <path
-                    d="M84 202 A12 12 0 0 1 108 202 L107 256 A10 10 0 0 1 85 256 Z"
-                    fill={config.skinTone}
-                  />
-                  <path
-                    d="M84 202 A12 12 0 0 1 108 202 L107 234 L85 234 Z"
-                    fill={config.bottomColor}
-                  />
-                </>
-              )}
-              {bStyle === 'joggers' && (
-                <line x1="86" y1="205" x2="87" y2="254" stroke={shadeColor(config.bottomColor, 34)} strokeWidth="2.2" strokeLinecap="round" />
-              )}
-              {bStyle === 'jeans' && (
-                <path d="M87 202 Q92 208 98 202" fill="none" stroke={pantsShade} strokeWidth="1.4" />
-              )}
-              {renderBoneOverlay('leftHip', 96, 202, 96, 252, 0, 'Sol Kalça (Üst Bacak)')}
-              {/* KNEE PIVOT (at 96, 256) - Overlaps exact 10px radius circle so joint seam is INVISIBLE */}
-              <g transform={`rotate(${leftKneeAngle} 96 256)`}>
-                <path
-                  d="M86 256 A10 10 0 0 1 106 256 L103 306 A7 7 0 0 1 89 306 Z"
-                  fill={lowerLegColor}
-                />
-                {bStyle === 'joggers' && (
-                  <>
-                    <line x1="87" y1="258" x2="89" y2="300" stroke={shadeColor(config.bottomColor, 34)} strokeWidth="2.2" strokeLinecap="round" />
-                    <rect x="88" y="300" width="16" height="5" rx="2" fill={pantsShade} />
-                  </>
-                )}
-                {bStyle === 'jeans' && (
-                  <rect x="88" y="300" width="16" height="4.5" rx="1.5" fill={shadeColor(config.bottomColor, 18)} />
-                )}
-                {/* Left Shoe / Foot (Style & Direction-aware) */}
-                <g
-                  data-canonical-bone="leftAnkle"
-                  transform={leftAnkleAngle !== 0 ? `rotate(${leftAnkleAngle} 96 303)` : undefined}
-                >
-                  <g transform="translate(86, 303)">
-                    {renderShoeShape('left')}
-                  </g>
-                </g>
-                {renderBoneOverlay(
-                  'leftKnee',
-                  96,
-                  256,
-                  96,
-                  308,
-                  leftHipAngle,
-                  'Sol Diz (Alt Bacak)'
-                )}
-              </g>
-            </g>
-
-            {/* RIGHT LEG (Hip Pivot at 124, 202 inside Pelvis) */}
-            <g transform={`rotate(${rightHipAngle} 124 202)`}>
-              {/* Upper Leg (Thigh) */}
-              <path
-                d="M112 202 A12 12 0 0 1 136 202 L134 256 A10 10 0 0 1 114 256 Z"
-                fill={bStyle === 'skirt' ? config.skinTone : bottomFill}
-              />
-              {bStyle === 'shorts' && (
-                <>
-                  <path
-                    d="M112 202 A12 12 0 0 1 136 202 L135 256 A10 10 0 0 1 113 256 Z"
-                    fill={config.skinTone}
-                  />
-                  <path
-                    d="M112 202 A12 12 0 0 1 136 202 L135 234 L113 234 Z"
-                    fill={bottomFill}
-                  />
-                </>
-              )}
-              {bStyle === 'joggers' && (
-                <line x1="134" y1="205" x2="133" y2="254" stroke={shadeColor(config.bottomColor, 34)} strokeWidth="2.2" strokeLinecap="round" />
-              )}
-              {bStyle === 'jeans' && (
-                <path d="M122 202 Q128 208 133 202" fill="none" stroke={pantsShade} strokeWidth="1.4" />
-              )}
-              {renderBoneOverlay('rightHip', 124, 202, 124, 252, 0, 'Sağ Kalça (Üst Bacak)')}
-              {/* KNEE PIVOT (at 124, 256) - Invisible seamless joint */}
-              <g transform={`rotate(${rightKneeAngle} 124 256)`}>
-                <path
-                  d="M114 256 A10 10 0 0 1 134 256 L131 306 A7 7 0 0 1 117 306 Z"
-                  fill={lowerLegColor}
-                />
-                {bStyle === 'joggers' && (
-                  <>
-                    <line x1="133" y1="258" x2="131" y2="300" stroke={shadeColor(config.bottomColor, 34)} strokeWidth="2.2" strokeLinecap="round" />
-                    <rect x="116" y="300" width="16" height="5" rx="2" fill={pantsShade} />
-                  </>
-                )}
-                {bStyle === 'jeans' && (
-                  <rect x="116" y="300" width="16" height="4.5" rx="1.5" fill={shadeColor(config.bottomColor, 18)} />
-                )}
-                {/* Right Shoe / Foot (Style & Direction-aware) */}
-                <g
-                  data-canonical-bone="rightAnkle"
-                  transform={rightAnkleAngle !== 0 ? `rotate(${rightAnkleAngle} 124 303)` : undefined}
-                >
-                  <g transform="translate(114, 303)">
-                    {renderShoeShape('right')}
-                  </g>
-                </g>
-                {renderBoneOverlay(
-                  'rightKnee',
-                  124,
-                  256,
-                  124,
-                  308,
-                  rightHipAngle,
-                  'Sağ Diz (Alt Bacak)'
-                )}
-              </g>
-            </g>
-
-            {/* A-Line Skirt overlay when bottomStyle === 'skirt' */}
-            {bStyle === 'skirt' && (
-              <g>
-                <path
-                  d="M82 191 L138 191 L148 244 Q110 250 72 244 Z"
-                  fill={bottomFill}
-                />
-                <path
-                  d="M74 241 Q110 247 146 241"
-                  fill="none"
-                  stroke={pantsShade}
-                  strokeWidth="1.5"
-                />
-              </g>
-            )}
-            </g>
-          </g>
-        )}
-
-        {/* Back hair behind torso & neck */}
-        {useDicebear && (
-          <g
-            data-rig-group="back-hair-collar-base"
-            transform={`translate(${collarAnchorInRootSpace.x}, ${
-              collarAnchorInRootSpace.y + speechHeadBobY
-            }) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
-          >
-            <g
-              data-rig-group="back-hair-neck-carrier"
-              transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 122)` : undefined}
-            >
-              <g
-                data-rig-group="back-hair-head-carrier"
-                transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
-              >
-                {renderDicebearBackHair()}
-              </g>
-            </g>
-          </g>
-        )}
-
-        {/* ============================================================
-            2. SEAMLESS LINELESS TORSO, OUTFITS & ARTICULATED ARMS/HANDS
-           ============================================================ */}
-        <g
-          transform={`translate(110, 155) scale(${prop.bodyScaleX}, ${prop.bodyScaleY}) translate(-110, -155)`}
-        >
-          <g
-            data-canonical-bone="pelvis"
-            transform={pelvisAngle !== 0 ? `rotate(${pelvisAngle} 110 ${classicUpperPelvisPivotY})` : undefined}
-          >
-            <g
-              data-canonical-bone="spine"
-              transform={spineAngle !== 0 ? `rotate(${spineAngle} 110 196)` : undefined}
-            >
-              <g
-                data-canonical-bone="chest"
-                transform={chestAngle !== 0 ? `rotate(${chestAngle} 110 155)` : undefined}
-              >
-          {/* TORSO BASE SILHOUETTE (Lineless) */}
-          <path
-            d={
-              config.genderAge === 'female'
-                ? 'M76 118 C84 114, 136 114, 144 118 L137 162 L139 198 L81 198 L83 162 Z'
-                : 'M74 118 C84 114, 136 114, 146 118 L138 198 L82 198 Z'
-            }
-            fill={torsoFill}
-          />
-          {topPat === 'cuff-striped' && (
-            <g>
-              <path d="M88 117 Q110 127 132 117" fill="none" stroke={secondaryTop} strokeWidth="3.5" strokeLinecap="round" />
-              <line x1="82" y1="194" x2="138" y2="194" stroke={secondaryTop} strokeWidth="3.5" />
-            </g>
-          )}
-
-          {/* OUTFIT DETAILS MATCHING IMAGE 2 TEMPLATES */}
-          {/* 1. Open Overshirt over Inner Tee (Image 2, Character 4) */}
-          {config.outfitStyle === 'open-overshirt' && (
-            <g>
-              {/* Inner crew-neck T-shirt */}
-              <rect x="96" y="117" width="28" height="78" fill={secondaryTop} />
-              {/* Collar folds */}
-              <polygon
-                points="94,115 84,126 96,130"
-                fill={shadeColor(config.topColor, -12)}
-              />
-              <polygon
-                points="126,115 136,126 124,130"
-                fill={shadeColor(config.topColor, -12)}
-              />
-              {/* Subtle vertical lapel edge lines */}
-              <line
-                x1="96"
-                y1="118"
-                x2="96"
-                y2="198"
-                stroke={shadeColor(config.topColor, -14)}
-                strokeWidth="1.5"
-              />
-              <line
-                x1="124"
-                y1="118"
-                x2="124"
-                y2="198"
-                stroke={shadeColor(config.topColor, -14)}
-                strokeWidth="1.5"
-              />
-            </g>
-          )}
-
-          {/* 2. Collared Shirt with Belt (pocket-shirt or collared-belted-shirt) */}
-          {(config.outfitStyle === 'pocket-shirt' ||
-            config.outfitStyle === 'collared-belted-shirt') && (
-            <g>
-              {/* V-neck skin opening */}
-              <polygon points="103,116 117,116 110,130" fill={config.skinTone} />
-              {/* Shirt Collar */}
-              <polygon
-                points="101,115 92,126 108,129"
-                fill={shadeColor(config.topColor, -14)}
-              />
-              <polygon
-                points="119,115 128,126 112,129"
-                fill={shadeColor(config.topColor, -14)}
-              />
-              {/* Center placket */}
-              <line
-                x1="110"
-                y1="130"
-                x2="110"
-                y2="192"
-                stroke={shadeColor(config.topColor, -16)}
-                strokeWidth="1.6"
-              />
-              {/* Two Chest Pockets */}
-              <rect
-                x="88"
-                y="142"
-                width="14"
-                height="15"
-                rx="2"
-                fill="none"
-                stroke={shadeColor(config.topColor, -20)}
-                strokeWidth="1.5"
-              />
-              <path
-                d="M88 142 L95 147 L102 142"
-                fill="none"
-                stroke={shadeColor(config.topColor, -20)}
-                strokeWidth="1.5"
-              />
-              <rect
-                x="118"
-                y="142"
-                width="14"
-                height="15"
-                rx="2"
-                fill="none"
-                stroke={shadeColor(config.topColor, -20)}
-                strokeWidth="1.5"
-              />
-              <path
-                d="M118 142 L125 147 L132 142"
-                fill="none"
-                stroke={shadeColor(config.topColor, -20)}
-                strokeWidth="1.5"
-              />
-              {/* Leather Belt & Gold Buckle */}
-              <rect x="82" y="191" width="56" height="7" fill="#6b3410" />
-              <ellipse cx="110" cy="194.5" rx="5.5" ry="4" fill="#eab308" />
-            </g>
-          )}
-
-          {/* 3. Buttoned Senior Shirt / Cardigan (Image 2, Character 6) */}
-          {config.outfitStyle === 'button-cardigan' && (
-            <g>
-              <polygon points="103,116 117,116 110,129" fill={config.skinTone} />
-              <polygon
-                points="101,115 93,125 108,128"
-                fill={shadeColor(config.topColor, -15)}
-              />
-              <polygon
-                points="119,115 127,125 112,128"
-                fill={shadeColor(config.topColor, -15)}
-              />
-              {[138, 152, 166, 180].map((by) => (
-                <circle
-                  key={by}
-                  cx="110"
-                  cy={by}
-                  r="2.2"
-                  fill={shadeColor(config.topColor, -25)}
-                />
-              ))}
-            </g>
-          )}
-
-          {/* 4. Raglan Tee (Image 2, Character 2) */}
-          {config.outfitStyle === 'raglan-tee' && (
-            <g>
-              {/* Colored Raglan Shoulder Stripes & Neckband */}
-              <path
-                d="M74 118 L95 116 L84 146 Z"
-                fill={config.topColor}
-              />
-              <path
-                d="M146 118 L125 116 L136 146 Z"
-                fill={config.topColor}
-              />
-              <path
-                d="M95 116 Q110 124 125 116"
-                fill="none"
-                stroke={config.topColor}
-                strokeWidth="4"
-              />
-              {/* Chest Emblem Illustration */}
-              <circle cx="110" cy="148" r="12" fill={config.topColor} opacity="0.2" />
-              <polygon points="102,150 118,144 112,156" fill={config.topColor} />
-            </g>
-          )}
-
-          {/* 5. Graphic Tee / Flame Sweater (Image 2, Character 1 & 3) */}
-          {config.outfitStyle === 'graphic-tee' && (
-            <g>
-              {/* Stylized flame / wave graphic along bottom of shirt */}
-              <path
-                d="M82 198 L85 176 L92 188 L99 168 L106 185 L112 164 L119 184 L126 170 L132 188 L138 176 L138 198 Z"
-                fill={secondaryTop}
-              />
-              <path
-                d="M84 198 L88 184 L95 192 L102 178 L110 190 L117 176 L124 190 L131 182 L136 198 Z"
-                fill="#facc15"
-              />
-              <path
-                d="M82 196 L138 196"
-                stroke="#ef4444"
-                strokeWidth="3"
-              />
-            </g>
-          )}
-
-          {/* 6. Lab Coat */}
-          {config.outfitStyle === 'lab-coat' && (
-            <g>
-              <polygon points="94,116 126,116 110,174" fill={config.topColor} />
-              <polygon points="92,116 84,152 106,162" fill="#e2e8f0" />
-              <polygon points="128,116 136,152 114,162" fill="#e2e8f0" />
-              <line x1="110" y1="172" x2="110" y2="198" stroke="#cbd5e1" strokeWidth="2" />
-            </g>
-          )}
-
-          {/* 7. Formal Suit */}
-          {config.outfitStyle === 'formal-suit' && (
-            <g>
-              <polygon points="96,116 124,116 110,162" fill="#f8fafc" />
-              <polygon points="107,120 113,120 114,156 110,164 106,156" fill="#dc2626" />
-              <polygon
-                points="94,116 86,150 107,160"
-                fill={shadeColor(config.topColor, -16)}
-              />
-              <polygon
-                points="126,116 134,150 113,160"
-                fill={shadeColor(config.topColor, -16)}
-              />
-            </g>
-          )}
-
-          {/* 8. Casual Hoodie */}
-          {config.outfitStyle === 'casual-hoodie' && (
-            <g>
-              <path
-                d="M88 117 Q110 128 132 117"
-                fill="none"
-                stroke={shadeColor(config.topColor, -18)}
-                strokeWidth="3"
-              />
-              <line x1="102" y1="122" x2="102" y2="144" stroke="#f8fafc" strokeWidth="2" strokeLinecap="round" />
-              <line x1="118" y1="122" x2="118" y2="144" stroke="#f8fafc" strokeWidth="2" strokeLinecap="round" />
-              <rect
-                x="90"
-                y="168"
-                width="40"
-                height="22"
-                rx="6"
-                fill={shadeColor(config.topColor, -12)}
-              />
-            </g>
-          )}
-
-          {/* 9. Space Suit */}
-          {config.outfitStyle === 'space-suit' && (
-            <g>
-              <rect x="92" y="138" width="36" height="24" rx="5" fill={shadeColor(config.topColor, -30)} />
-              <circle cx="101" cy="150" r="3" fill="#38bdf8" />
-              <circle cx="110" cy="150" r="3" fill="#4ade80" />
-              <circle cx="119" cy="150" r="3" fill="#fb7185" />
-            </g>
-          )}
-
-          {/* 10. School Vest */}
-          {config.outfitStyle === 'school-vest' && (
-            <g>
-              <polygon points="94,116 126,116 110,146" fill="#ffffff" />
-              <circle cx="124" cy="144" r="5" fill="#eab308" />
-            </g>
-          )}
-
-          {/* 11. Engineer / Architect Reflective Vest */}
-          {config.outfitStyle === 'engineer-vest' && (
-            <g>
-              {/* Inner shirt V-neck */}
-              <polygon points="95,116 125,116 110,144" fill={secondaryTop} />
-              {/* Center zipper */}
-              <line x1="110" y1="144" x2="110" y2="197" stroke={shadeColor(config.topColor, -24)} strokeWidth="2" />
-              {/* Reflective horizontal & vertical strips */}
-              <rect x="81" y="164" width="58" height="6" fill="#e2e8f0" opacity="0.95" />
-              <rect x="81" y="175" width="58" height="4" fill="#cbd5e1" opacity="0.9" />
-              <rect x="91" y="118" width="6" height="46" fill="#e2e8f0" opacity="0.92" />
-              <rect x="123" y="118" width="6" height="46" fill="#e2e8f0" opacity="0.92" />
-              {/* Utility chest pocket */}
-              <rect x="86" y="138" width="14" height="14" rx="2" fill={shadeColor(config.topColor, -14)} />
-            </g>
-          )}
-
-          {/* 12. School Uniform (Sweater Vest + Shirt + Tie/Bowtie) */}
-          {config.outfitStyle === 'school-uniform' && (
-            <g>
-              {/* Crisp white collar & V-neck */}
-              <polygon points="94,116 126,116 110,148" fill="#ffffff" />
-              <polygon points="94,116 88,128 103,125" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1" />
-              <polygon points="126,116 132,128 117,125" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1" />
-              {/* Tie */}
-              <polygon points="107,121 113,121 114,144 110,152 106,144" fill={secondaryTop} />
-              {/* Gold crest */}
-              <circle cx="125" cy="144" r="5" fill="#eab308" />
-              {/* Ribbed hem */}
-              <rect x="82" y="191" width="56" height="7" fill={shadeColor(config.topColor, -18)} />
-            </g>
-          )}
-
-          {/* 13. Sport Zip Tracksuit */}
-          {config.outfitStyle === 'tracksuit-zip' && (
-            <g>
-              {/* Sport stand collar */}
-              <path d="M94 117 Q110 123 126 117 L123 127 Q110 132 97 127 Z" fill={secondaryTop} />
-              {/* Full front zipper */}
-              <line x1="110" y1="127" x2="110" y2="198" stroke="#f8fafc" strokeWidth="2.5" />
-              <rect x="107.5" y="130" width="5" height="6" rx="1" fill="#e2e8f0" />
-              {/* Chest sporty diagonal stripes */}
-              <polygon points="82,148 138,140 138,146 82,154" fill={secondaryTop} opacity="0.9" />
-            </g>
-          )}
-
-          {/* 14. Historical Narrator Cloak & Vest */}
-          {config.outfitStyle === 'historical-cloak' && (
-            <g>
-              {/* Cloak shoulder drape */}
-              <path d="M74 118 Q110 138 146 118 L149 148 Q110 162 71 148 Z" fill={shadeColor(config.topColor, -22)} />
-              {/* Inner tunic shirt */}
-              <polygon points="98,120 122,120 110,156" fill={secondaryTop} />
-              {/* Cloak clasp & chain */}
-              <circle cx="96" cy="128" r="4" fill="#eab308" />
-              <circle cx="124" cy="128" r="4" fill="#eab308" />
-              <path d="M96 128 Q110 136 124 128" fill="none" stroke="#eab308" strokeWidth="2" />
-              {/* Waist sash */}
-              <rect x="82" y="182" width="56" height="10" rx="2" fill={secondaryTop} />
-            </g>
-          )}
-
-          {/* LEFT ARM (Rendered AFTER torso & belt so arm/props stay in front!) */}
-          {!portraitMode && (
-            <g transform={`rotate(${leftShoulderAngle} 77 129)`}>
-              <path
-                d="M69 129 A8.5 8.5 0 0 1 86 129 L85 166 A7.5 7.5 0 0 1 70 166 Z"
-                fill={upperSleeveColor}
-              />
-              {config.outfitStyle === 'pocket-shirt' && (
-                <rect
-                  x="69"
-                  y="156"
-                  width="16.5"
-                  height="6"
-                  rx="2"
-                  fill={shadeColor(upperSleeveColor, 14)}
-                />
-              )}
-              {config.outfitStyle === 'tracksuit-zip' && (
-                <line x1="71" y1="131" x2="72" y2="165" stroke={secondaryTop} strokeWidth="2.8" strokeLinecap="round" />
-              )}
-              {renderBoneOverlay('leftShoulder', 77, 129, 77.5, 162, 0, 'Sol Omuz (Üst Kol)')}
-              <g transform={`rotate(${leftElbowAngle} 77.5 166)`}>
-                <path
-                  d="M70 166 A7.5 7.5 0 0 1 85 166 L83.5 202 A6 6 0 0 1 71.5 202 Z"
-                  fill={forearmColor}
-                />
-                {config.outfitStyle === 'tracksuit-zip' && (
-                  <line x1="72" y1="167" x2="73" y2="198" stroke={secondaryTop} strokeWidth="2.6" strokeLinecap="round" />
-                )}
-                {!isShortOrRolledSleeve && topPat === 'cuff-striped' && (
-                  <rect x="71" y="195" width="13" height="4.5" rx="1.5" fill={secondaryTop} />
-                )}
-                {renderBoneOverlay(
-                  'leftElbow',
-                  77.5,
-                  166,
-                  77.5,
-                  199,
-                  leftShoulderAngle,
-                  'Sol Dirsek (Ön Kol)'
-                )}
-                {renderArticulatedHand(
-                  'left',
-                  config.skinTone,
-                  leftHandGesture,
-                  leftWristAngle,
-                  77.5,
-                  202,
-                  1.0
-                )}
-                {config.handPropSide === 'left' &&
-                  renderHandProp(
-                    config.handProp,
-                    'left',
-                    77.5,
-                    202,
-                    leftWristAngle,
-                    leftShoulderAngle + leftElbowAngle,
-                    { skinTone: config.skinTone, isSpeaking: Boolean(config.lipSyncEnabled), animTime, calibrationDebug }
-                  )}
-                <g transform={`rotate(${leftWristAngle} 77.5 202)`}>
-                  {renderBoneOverlay(
-                    'leftWrist',
-                    77.5,
-                    202,
-                    77.5,
-                    216,
-                    leftShoulderAngle + leftElbowAngle,
-                    'Sol Bilek & El'
-                  )}
-                </g>
-              </g>
-            </g>
-          )}
-
-          {/* RIGHT ARM (Rendered AFTER torso & belt so arm/props stay in front!) */}
-          {!portraitMode && (
-            <g transform={`rotate(${rightShoulderAngle} 143 129)`}>
-              <path
-                d="M134 129 A8.5 8.5 0 0 1 151 129 L150 166 A7.5 7.5 0 0 1 135 166 Z"
-                fill={upperSleeveColor}
-              />
-              {config.outfitStyle === 'pocket-shirt' && (
-                <rect
-                  x="134.5"
-                  y="156"
-                  width="16.5"
-                  height="6"
-                  rx="2"
-                  fill={shadeColor(upperSleeveColor, 14)}
-                />
-              )}
-              {config.outfitStyle === 'tracksuit-zip' && (
-                <line x1="149" y1="131" x2="148" y2="165" stroke={secondaryTop} strokeWidth="2.8" strokeLinecap="round" />
-              )}
-              {renderBoneOverlay('rightShoulder', 143, 129, 142.5, 162, 0, 'Sağ Omuz (Üst Kol)')}
-              <g transform={`rotate(${rightElbowAngle} 142.5 166)`}>
-                <path
-                  d="M135 166 A7.5 7.5 0 0 1 150 166 L148.5 202 A6 6 0 0 1 136.5 202 Z"
-                  fill={forearmColor}
-                />
-                {config.outfitStyle === 'tracksuit-zip' && (
-                  <line x1="148" y1="167" x2="147" y2="198" stroke={secondaryTop} strokeWidth="2.6" strokeLinecap="round" />
-                )}
-                {!isShortOrRolledSleeve && topPat === 'cuff-striped' && (
-                  <rect x="136" y="195" width="13" height="4.5" rx="1.5" fill={secondaryTop} />
-                )}
-                {renderBoneOverlay(
-                  'rightElbow',
-                  142.5,
-                  166,
-                  142.5,
-                  199,
-                  rightShoulderAngle,
-                  'Sağ Dirsek (Ön Kol)'
-                )}
-                {renderArticulatedHand(
-                  'right',
-                  config.skinTone,
-                  rightHandGesture,
-                  rightWristAngle,
-                  142.5,
-                  202,
-                  1.0
-                )}
-                {(config.handPropSide || 'right') === 'right' &&
-                  renderHandProp(
-                    config.handProp,
-                    'right',
-                    142.5,
-                    202,
-                    rightWristAngle,
-                    rightShoulderAngle + rightElbowAngle,
-                    { skinTone: config.skinTone, isSpeaking: Boolean(config.lipSyncEnabled), animTime, calibrationDebug }
-                  )}
-                <g transform={`rotate(${rightWristAngle} 142.5 202)`}>
-                  {renderBoneOverlay(
-                    'rightWrist',
-                    142.5,
-                    202,
-                    142.5,
-                    216,
-                    rightShoulderAngle + rightElbowAngle,
-                    'Sağ Bilek & El'
-                  )}
-                </g>
-              </g>
-            </g>
-          )}
-              </g>
-            </g>
-          </g>
-        </g>
-
-        {/* ============================================================
-            3. LINELESS NECK & HEAD WITH FACIAL FEATURES (BAŞ & UZUVLAR)
-           ============================================================ */}
-        <g
-          data-rig-group="head-collar-base"
-          transform={`translate(${collarAnchorInRootSpace.x}, ${
-            collarAnchorInRootSpace.y + speechHeadBobY
-          }) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
-        >
-          <g
-            data-canonical-bone="neck"
-            transform={neckAngle !== 0 ? `rotate(${neckAngle} 110 122)` : undefined}
-          >
-            {/* Back Hair Layer */}
-            {!useDicebear && (
-              <g
-                data-rig-group="vector-back-hair-head-carrier"
-                transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
-              >
-                {renderHairBack(config.hairStyle, config.hairColor)}
-              </g>
-            )}
-
-            {/* Neck (Lineless with soft chin shadow) */}
-            <g transform={`translate(110, 122) scale(${neckScaleX}, ${neckScaleY}) translate(-110, -122)`}>
-              <rect x="100" y="98" width="20" height="28" rx="6" fill={config.skinTone} />
-              {!useDicebear && (
-                <path
-                  d="M100 104 Q110 113 120 104 L120 114 Q110 120 100 114 Z"
-                  fill={neckShadowTone}
-                />
-              )}
-            </g>
-
-            <g
-              data-canonical-bone="head"
-              transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 114)` : undefined}
-            >
-              {config.photoAvatarMode === 'hybrid-head' && config.photoAvatarUrl ? (
-                renderHybridPhotoHead()
-              ) : useDicebear ? (
-                <>
-                  {renderDicebearHead()}
-                  {config.accessory !== 'none' &&
-                    config.accessory !== 'tortoise-glasses' &&
-                    config.accessory !== 'wire-glasses' &&
-                    config.accessory !== 'round-glasses' &&
-                    config.accessory !== 'square-glasses' &&
-                    config.accessory !== 'sunglasses' &&
-                    renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
-                </>
-              ) : (
-                <>
-                  {/* Expressive Ears with 3/4 Perspective */}
-                  {renderHeadEars(config.skinTone, earInnerTone, headDirection)}
-
-                  {/* Sculpted Lineless Face Base with 3/4 Angled Head Turn */}
-                  <g fill={config.skinTone}>
-                    {renderFaceShapePath(config.faceShape, headDirection)}
-                  </g>
-
-                  {/* Senior / Adult subtle wisdom & smile lines (from Image 2 Characters 5, 6, 7) */}
-                  {(config.genderAge === 'senior' || config.hairStyle === 'executive-side') && (
-                    <g stroke={wisdomLineTone} strokeWidth="1.4" strokeLinecap="round" fill="none">
-                      <path d="M92 88 Q89 93 92 98" />
-                      <path d="M128 88 Q131 93 128 98" />
-                      {config.genderAge === 'senior' && (
-                        <>
-                          <path d="M96 48 Q110 50 124 48" />
-                          <path d="M88 80 Q94 82 99 80" />
-                          <path d="M121 80 Q126 82 132 80" />
-                        </>
-                      )}
-                    </g>
-                  )}
-
-                  {/* Facial Features with Head Direction Look Shift & In-Place State Morphing */}
-                  <g transform={`translate(${headLookShiftX}, 0)`}>
-                    {/* Defined Facial Contours & Expression Micro-Features */}
-                    {renderFacialSculptAndExpressionDetails(
-                      config.skinTone,
-                      resolvedExpression
-                    )}
-
-                    {/* Eyebrows (Single pair that morphs in-place for expressions) */}
-                    {renderEyebrows(
-                      config.eyebrowStyle,
-                      config.hairStyle === 'bald' || config.hairStyle === 'senior-silver'
-                        ? '#71717a'
-                        : config.hairColor,
-                      resolvedExpression,
-                      isSpeakingNow,
-                      animTime
-                    )}
-
-                    {/* Lineless Eyes (Single pair that shifts pupils & morphs eyelids in-place) */}
-                    {renderEyes(
-                      config.eyeStyle,
-                      config.eyeColor,
-                      config.skinTone,
-                      resolvedExpression,
-                      headDirection,
-                      animTime,
-                      proceduralBlink
-                    )}
-
-                    {/* Lineless Nose (Angled 3/4 profile when headDirection is left/right) */}
-                    {renderNose(config.noseStyle, config.skinTone, headDirection)}
-
-                    {/* Lineless Mouth / Lips / Beard (Single mouth that morphs in-place) */}
-                    {renderMouth(
-                      config.mouthStyle,
-                      config.lipColor,
-                      config.hairColor,
-                      config.skinTone,
-                      resolvedExpression,
-                      Boolean(config.lipSyncEnabled),
-                      animTime,
-                      headDirection,
-                      config.ttsScript,
-                      isFemaleCharacter(config),
-                      config.lipSyncAudioUrl,
-                      config.lipSyncAudioStartTime
-                    )}
-
-                    {/* Classic Glasses (sit neatly behind front bangs) */}
-                    {(config.accessory === 'tortoise-glasses' ||
-                      config.accessory === 'wire-glasses' ||
-                      config.accessory === 'round-glasses' ||
-                      config.accessory === 'square-glasses' ||
-                      config.accessory === 'sunglasses') &&
-                      renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
-                  </g>
-
-                  {/* Front Hair Layer */}
-                  {renderHairFront(config.hairStyle, config.hairColor, headDirection)}
-
-                  {/* Headwear, Jewelry, Neck & Wearable Tech (always visible on top of front hair) */}
-                  {config.accessory !== 'none' &&
-                    config.accessory !== 'tortoise-glasses' &&
-                    config.accessory !== 'wire-glasses' &&
-                    config.accessory !== 'round-glasses' &&
-                    config.accessory !== 'square-glasses' &&
-                    config.accessory !== 'sunglasses' &&
-                    renderAccessory(config.accessory, config.accessoryScale ?? 1, config.accessoryOffsetY ?? 0)}
-                </>
-              )}
-
-              {/* Head Tilt 2D Bone Handle */}
-              {!portraitMode &&
-                renderBoneOverlay('headTilt', 110, 114, 110, 42, 0, 'Baş Eğimi (Boyun Eklemi)', true)}
-            </g>
-          </g>
-        </g>
-
-        {/* Action Props Overlay (Laptop, Phone, Idea Bulb, Presentation Pointer, Medical Tool, Dumbbells) */}
-        {!portraitMode && renderActionOverlayProps(config.pose, animTime)}
-      </g>
-    </svg>
-  );
-};
+  };

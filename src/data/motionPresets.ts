@@ -58,6 +58,7 @@ interface LocomotionSpec {
 }
 
 function makeLocomotion(spec: LocomotionSpec): MotionPresetDefinition {
+  const isRunArms = spec.id.startsWith('run') || spec.id.startsWith('jog');
   return {
     id: spec.id,
     name: spec.name,
@@ -66,7 +67,7 @@ function makeLocomotion(spec: LocomotionSpec): MotionPresetDefinition {
     tags: spec.tags ?? ['hareket', 'bacak', 'yürüme'],
     defaultChannelId: 'leftLeg',
     stage: 'L1_LOCOMOTION',
-    mask: 'lower-body',
+    mask: isRunArms ? 'full' : 'lower-body',
     lockProcedural: false,
     defaultDuration: spec.defaultDuration ?? 3.0,
     cyclesPerSec: spec.cyclesPerSec,
@@ -80,6 +81,16 @@ function makeLocomotion(spec: LocomotionSpec): MotionPresetDefinition {
       const s = osc(phase01) * dir * env;
       const c = oscCos(phase01) * dir * env;
       const kScale = spec.sideStep ? 0.55 : 1;
+      const upLeft = Math.max(0, -s);
+      const upRight = Math.max(0, s);
+      const armAngles = isRunArms
+        ? {
+            leftShoulder: (30 + s * 10) * intensity,
+            leftElbow: -(40 + upLeft * 72) * intensity,
+            rightShoulder: (-30 + s * 10) * intensity,
+            rightElbow: (40 + upRight * 72) * intensity,
+          }
+        : {};
       return {
         boneAngles: {
           pelvis: spec.pelvisAmp * s * intensity + (spec.spineLean ?? 0) * intensity * env,
@@ -89,7 +100,14 @@ function makeLocomotion(spec: LocomotionSpec): MotionPresetDefinition {
           rightHip: -spec.hipAmp * s * intensity,
           rightKnee: Math.max(0, c) * spec.kneeAmp * kScale * intensity,
           rightAnkle: spec.ankleAmp * s * intensity,
+          ...armAngles,
         },
+        ...(isRunArms
+          ? {
+              leftHandGesture: 'fist' as const,
+              rightHandGesture: 'fist' as const,
+            }
+          : {}),
         bodyBobY: Math.abs(c) * -spec.bobAmp * intensity,
       };
     },

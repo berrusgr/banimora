@@ -359,6 +359,7 @@ export function resolveDicebearOptions(
     eyebrowsVal = 'angryNatural';
     mouthVal = 'grimace';
   } else if (resolvedExpression === 'worried') {
+    if (!isBlinking && requestedEyeStyle.startsWith('iris-')) eyesVal = 'iris-worried';
     eyebrowsVal = 'sadConcernedNatural';
     mouthVal = 'concerned';
   } else if (resolvedExpression === 'thinking') {
@@ -370,14 +371,15 @@ export function resolveDicebearOptions(
     eyebrowsVal = 'upDownNatural';
     mouthVal = 'disbelief';
   } else if (resolvedExpression === 'serious') {
+    if (!isBlinking) eyesVal = requestedEyeStyle.startsWith('iris-') ? 'iris-serious' : 'squint';
     eyebrowsVal = 'flatNatural';
     mouthVal = 'serious';
   } else if (resolvedExpression === 'wink') {
-    if (!isBlinking) eyesVal = 'wink';
+    if (!isBlinking) eyesVal = requestedEyeStyle.startsWith('iris-') ? 'iris-wink' : 'wink';
     eyebrowsVal = 'raisedExcitedNatural';
     mouthVal = 'twinkle';
   } else if (resolvedExpression === 'sleepy') {
-    eyesVal = 'closed';
+    eyesVal = requestedEyeStyle.startsWith('iris-') ? 'iris-sleepy' : 'closed';
     eyebrowsVal = 'flatNatural';
     mouthVal = 'default';
   }
@@ -460,17 +462,23 @@ export function resolveDicebearOptions(
 function renderCustomIrisEyesInner(
   irisStyle: string,
   eyeColorHex: string,
-  headDirection: string | undefined
+  headDirection: string | undefined,
+  skinToneHex?: string
 ): string {
   const irisColor = `#${stripHash(eyeColorHex, '2b6cb0')}`;
+  const skinColor = `#${stripHash(skinToneHex, 'f1c27d')}`;
   const isBright = irisStyle === 'iris-bright';
   const isLashes = irisStyle === 'iris-lashes';
   const isFocused = irisStyle === 'iris-focused';
   const isSide = irisStyle === 'iris-side';
+  const isWink = irisStyle === 'iris-wink';
+  const isSleepy = irisStyle === 'iris-sleepy';
+  const isWorried = irisStyle === 'iris-worried';
+  const isSerious = irisStyle === 'iris-serious';
 
   const rx = isBright ? 10.5 : 10;
-  const ry = isBright ? 9.2 : isFocused ? 6.2 : 7.4;
-  const irisR = isBright ? 6.2 : isFocused ? 4.8 : 5.3;
+  const ry = isBright ? 9.2 : isFocused || isSerious ? 6.2 : 7.4;
+  const irisR = isBright ? 6.2 : isFocused || isSerious ? 4.8 : 5.3;
   const pupilR = isBright ? 3.0 : 2.5;
   const gazeShiftX = isSide
     ? headDirection === 'left'
@@ -484,22 +492,46 @@ function renderCustomIrisEyesInner(
 
   const drawSingleEye = (cx: number, isRightEye: boolean) => {
     const cy = 22;
+    if (isWink && isRightEye) {
+      return `<path d="M${cx - 9.5} ${cy + 1.5} Q${cx} ${cy - 6} ${cx + 9.5} ${cy + 1.5}" stroke="#1e293b" stroke-width="3.0" stroke-linecap="round" fill="none"/>`;
+    }
+
     const lashesSvg = isLashes
       ? isRightEye
         ? `<path d="M${cx + 7.5} ${cy - 4.5} L${cx + 12} ${cy - 7} M${cx + 9} ${cy - 2} L${cx + 13} ${cy - 3.2}" stroke="#1e293b" stroke-width="1.6" stroke-linecap="round"/>`
         : `<path d="M${cx - 7.5} ${cy - 4.5} L${cx - 12} ${cy - 7} M${cx - 9} ${cy - 2} L${cx - 13} ${cy - 3.2}" stroke="#1e293b" stroke-width="1.6" stroke-linecap="round"/>`
       : '';
-    const lidPath = isFocused
-      ? `<path d="M${cx - rx} ${cy - 2.5} Q${cx} ${cy - ry * 0.7} ${cx + rx} ${cy - 2.5}" stroke="#1e293b" stroke-width="2.1" stroke-linecap="round" fill="none"/>`
-      : `<path d="M${cx - rx} ${cy - 1} Q${cx} ${cy - ry * 1.15} ${cx + rx} ${cy - 1}" stroke="#1e293b" stroke-width="1.8" stroke-linecap="round" fill="none"/>`;
+
+    let lidOverlay = '';
+    if (isSleepy) {
+      lidOverlay =
+        `<path d="M${cx - rx - 0.5} ${cy + 1} Q${cx} ${cy - 1.5} ${cx + rx + 0.5} ${cy + 1} L${cx + rx + 0.5} ${cy - ry - 2} L${cx - rx - 0.5} ${cy - ry - 2} Z" fill="${skinColor}"/>` +
+        `<path d="M${cx - rx} ${cy + 1} Q${cx} ${cy - 1.5} ${cx + rx} ${cy + 1}" stroke="#1e293b" stroke-width="2.4" stroke-linecap="round" fill="none"/>`;
+    } else if (isWorried) {
+      const innerY = cy - 4.5;
+      const outerY = cy + 0.5;
+      const y1 = isRightEye ? innerY : outerY;
+      const y2 = isRightEye ? outerY : innerY;
+      lidOverlay =
+        `<polygon points="${cx - rx - 0.5},${y1} ${cx + rx + 0.5},${y2} ${cx + rx + 0.5},${cy - ry - 2} ${cx - rx - 0.5},${cy - ry - 2}" fill="${skinColor}"/>` +
+        `<line x1="${cx - rx}" y1="${y1}" x2="${cx + rx}" y2="${y2}" stroke="#1e293b" stroke-width="2.2" stroke-linecap="round"/>`;
+    } else if (isSerious) {
+      lidOverlay =
+        `<rect x="${cx - rx - 0.5}" y="${cy - ry - 2}" width="${(rx + 0.5) * 2}" height="${ry - 1.5}" fill="${skinColor}"/>` +
+        `<line x1="${cx - rx}" y1="${cy - 3.5}" x2="${cx + rx}" y2="${cy - 3.5}" stroke="#1e293b" stroke-width="2.3" stroke-linecap="round"/>`;
+    } else {
+      lidOverlay = isFocused
+        ? `<path d="M${cx - rx} ${cy - 2.5} Q${cx} ${cy - ry * 0.7} ${cx + rx} ${cy - 2.5}" stroke="#1e293b" stroke-width="2.1" stroke-linecap="round" fill="none"/>`
+        : `<path d="M${cx - rx} ${cy - 1} Q${cx} ${cy - ry * 1.15} ${cx + rx} ${cy - 1}" stroke="#1e293b" stroke-width="1.8" stroke-linecap="round" fill="none"/>`;
+    }
 
     return [
       `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.9"/>`,
-      `<circle cx="${cx + gazeShiftX}" cy="${cy}" r="${irisR}" fill="${irisColor}"/>`,
-      `<circle cx="${cx + gazeShiftX}" cy="${cy}" r="${pupilR}" fill="#0f172a"/>`,
+      `<circle cx="${cx + gazeShiftX}" cy="${isSleepy ? cy + 2 : cy}" r="${irisR}" fill="${irisColor}"/>`,
+      `<circle cx="${cx + gazeShiftX}" cy="${isSleepy ? cy + 2 : cy}" r="${pupilR}" fill="#0f172a"/>`,
       `<circle cx="${cx + gazeShiftX - 1.7}" cy="${cy - 1.8}" r="${isBright ? 1.7 : 1.35}" fill="#ffffff"/>`,
       isBright ? `<circle cx="${cx + gazeShiftX + 1.8}" cy="${cy + 1.6}" r="0.85" fill="#ffffff" opacity="0.85"/>` : '',
-      lidPath,
+      lidOverlay,
       lashesSvg,
     ].join('');
   };
@@ -644,10 +676,16 @@ function applyCustomIrisEyesToSvg(
   svg: string,
   irisStyle: string | undefined,
   eyeColorHex: string | undefined,
-  headDirection: string | undefined
+  headDirection: string | undefined,
+  skinToneHex?: string
 ): string {
   if (!irisStyle) return svg;
-  const inner = renderCustomIrisEyesInner(irisStyle, eyeColorHex || '#2b6cb0', headDirection);
+  const inner = renderCustomIrisEyesInner(
+    irisStyle,
+    eyeColorHex || '#2b6cb0',
+    headDirection,
+    skinToneHex
+  );
   return svg.replace(
     /<g transform="translate\(76 90\)">[\s\S]*?<\/g>/,
     `<g transform="translate(76 90)">${inner}</g>`
@@ -738,7 +776,13 @@ export function buildDicebearHeadInnerSvg(
   );
   const avatar = createAvatar(avataaars, opts);
   let svg = avatar.toString();
-  svg = applyCustomIrisEyesToSvg(svg, _customIrisStyle, config.eyeColor, config.headDirection);
+  svg = applyCustomIrisEyesToSvg(
+    svg,
+    _customIrisStyle,
+    config.eyeColor,
+    config.headDirection,
+    config.skinTone
+  );
   svg = applyAnatomicalMouthToSvg(svg, config, animTime);
   svg = applyCustomNoseToSvg(svg, config.noseStyle, config.headDirection);
   const dir = config.headDirection || 'center';

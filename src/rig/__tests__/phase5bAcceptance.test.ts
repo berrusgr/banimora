@@ -7,7 +7,10 @@ import type { BanimoraProjectFileV2 } from '../../types/publishing.ts';
 import { AuthController, type SupabaseAuthLike } from '../../utils/authService.ts';
 import { CloudRepositoryError } from '../../utils/cloudRepositoryError.ts';
 import { IndexedDbClient } from '../../utils/indexedDbStorage.ts';
-import { LocalProjectRepository } from '../../utils/localProjectRepository.ts';
+import {
+  buildV2ProjectFromStudioState,
+  LocalProjectRepository,
+} from '../../utils/localProjectRepository.ts';
 import {
   evaluateProjectSwitchConfirmation,
   formatCloudRepositoryErrorMessage,
@@ -792,4 +795,81 @@ test('Faz 5B.5 Acceptance Scenarios 10-14: independent deletes, offline/error re
   assert.equal(localAfterSignOut[0].projectId, rekeyedSave.project.projectId);
 
   auth.dispose();
+});
+
+test('First cloud save regression: buildV2ProjectFromStudioState + multiple local autosaves keep cloudMeta.revision=0 and succeed on initial cloud save', async () => {
+  const { backend, localRepo, coordinator } = createStack();
+  backend.currentUser = { id: 'user-1', email: 'teacher@example.com' };
+
+  const projectId = '77777777-7777-4777-8777-777777777777';
+  const studioState = {
+    projectName: 'Yeni Studio Projesi',
+    activeSceneId: 'scene-1',
+    scenes: [
+      {
+        id: 'scene-1',
+        name: 'Sahne 1',
+        duration: 8,
+        background: { id: 'bg-1', name: 'Beyaz', type: 'color', style: '#ffffff' },
+        transition: { type: 'none', durationSec: 0 },
+        objects: [],
+        audioClips: [],
+      } as unknown as BanimoraProjectFileV2['scenes'][number],
+    ],
+    customCharacters: [],
+    uploadedObjects: [],
+    customBackgrounds: [],
+    customAudioClips: [],
+  };
+
+  // Simulate 3 local autosaves before ever saving to cloud
+  let localRev = 0;
+  for (let i = 1; i <= 3; i += 1) {
+    const snapshot = buildV2ProjectFromStudioState(
+      { ...studioState, projectName: `Yeni Studio Projesi v${i}` },
+      { projectId }
+    );
+    const saved = await localRepo.saveProject(snapshot, localRev);
+    localRev = saved.localRevision;
+    assert.equal(saved.localRevision, i);
+    assert.equal(saved.project.cloudMeta?.syncState, 'local-only');
+    assert.equal(
+      saved.project.cloudMeta?.revision,
+      0,
+      'Local autosaves must never set cloudMeta.revision > 0 for a local-only project'
+    );
+  }
+
+  // First cloud save must succeed via INSERT and return cloudRevision=1
+  const firstCloudSave = await coordinator.saveToCloud(projectId);
+  assert.equal(firstCloudSave.status, 'saved');
+  assert.equal(firstCloudSave.cloudRevision, 1);
+  assert.equal(firstCloudSave.project.cloudMeta?.syncState, 'synced');
+  assert.equal(firstCloudSave.project.cloudMeta?.revision, 1);
+
+  // Subsequent local autosave via buildV2ProjectFromStudioState must preserve cloudMeta.revision=1 and become dirty
+  const editSnapshot = buildV2ProjectFromStudioState(
+    { ...studioState, projectName: 'Yeni Studio Projesi v4' },
+    { projectId }
+  );
+  const afterEdit = await localRepo.saveProject(editSnapshot, localRev);
+  assert.equal(afterEdit.project.cloudMeta?.syncState, 'dirty');
+  assert.equal(afterEdit.project.cloudMeta?.revision, 1);
+
+  // Second cloud save must succeed via UPDATE and return cloudRevision=2
+  const secondCloudSave = await coordinator.saveToCloud(projectId);
+  assert.equal(secondCloudSave.status, 'saved');
+  assert.equal(secondCloudSave.cloudRevision, 2);
+  assert.equal(secondCloudSave.project.cloudMeta?.syncState, 'synced');
+
+  // Legacy local-only project with stale positive cloudMeta.revision must still insert cleanly at revision 1
+  const legacyId = '88888888-8888-4888-8888-888888888888';
+  const legacySnapshot = buildV2ProjectFromStudioState(studioState, {
+    projectId: legacyId,
+    revision: 3,
+  });
+  await localRepo.saveProject(legacySnapshot, 0);
+  const legacyCloudSave = await coordinator.saveToCloud(legacyId);
+  assert.equal(legacyCloudSave.status, 'saved');
+  assert.equal(legacyCloudSave.cloudRevision, 1);
 });

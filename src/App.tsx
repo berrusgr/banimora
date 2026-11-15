@@ -1852,7 +1852,6 @@ export function App() {
       const expectedRev = currentProjectRevisionRef.current ?? 0;
       const v2Snapshot = buildV2ProjectFromStudioState(studioState, {
         projectId: targetId,
-        revision: currentProjectRevisionRef.current,
         createdAt: currentProjectCreatedAtRef.current,
         existingManifest: currentAssetManifestRef.current,
       });
@@ -2012,7 +2011,6 @@ export function App() {
       const expectedRev = currentProjectRevisionRef.current ?? 0;
       const v2Snapshot = buildV2ProjectFromStudioState(studioState, {
         projectId: targetId,
-        revision: currentProjectRevisionRef.current,
         createdAt: currentProjectCreatedAtRef.current,
         existingManifest: currentAssetManifestRef.current,
       });

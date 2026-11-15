@@ -628,11 +628,15 @@ export class LocalProjectRepository implements ProjectRepository, IndexedDbAsset
         // Local IndexedDB revision for multi-tab optimistic concurrency; completely separate from cloud revision.
         const nextLocalRevision = existingRecord ? existingRecord.revision + 1 : 1;
 
-        const preservedCloudRevision =
-          externalized.cloudMeta?.revision ?? existingRecord?.project.cloudMeta?.revision ?? 0;
         const nextSyncState = resolveNextSyncStateOnLocalSave(
           externalized.cloudMeta?.syncState ?? existingRecord?.project.cloudMeta?.syncState
         );
+        const preservedCloudRevision =
+          nextSyncState === 'local-only'
+            ? 0
+            : (externalized.cloudMeta?.revision ??
+                existingRecord?.project.cloudMeta?.revision ??
+                0);
 
         const nextProject: BanimoraProjectFileV2 = {
           ...externalized,
@@ -1096,12 +1100,16 @@ export function buildV2ProjectFromStudioState(
           },
         }
       : project.assetManifest,
-    cloudMeta: {
-      projectId,
-      ownerId: project.cloudMeta?.ownerId,
-      revision: options.revision ?? project.cloudMeta?.revision ?? 1,
-      lastSyncedAt: project.cloudMeta?.lastSyncedAt,
-      syncState: project.cloudMeta?.syncState ?? 'local-only',
-    },
+    ...(options.revision !== undefined || project.cloudMeta
+      ? {
+          cloudMeta: {
+            projectId,
+            ownerId: project.cloudMeta?.ownerId,
+            revision: options.revision ?? project.cloudMeta?.revision ?? 0,
+            lastSyncedAt: project.cloudMeta?.lastSyncedAt,
+            syncState: project.cloudMeta?.syncState ?? 'local-only',
+          },
+        }
+      : {}),
   };
 }

@@ -100,7 +100,10 @@ export class ProjectSyncCoordinator {
       );
     }
 
-    const expectedCloudRevision = localProject.cloudMeta?.revision ?? 0;
+    const expectedCloudRevision =
+      localProject.cloudMeta?.syncState === 'local-only'
+        ? 0
+        : (localProject.cloudMeta?.revision ?? 0);
     const hydratedForCloud = await this.localRepo.hydrateProjectMedia(localProject);
 
     try {

@@ -9,18 +9,31 @@ import {
   User,
   Video,
 } from 'lucide-react';
-import type { Scene } from '../../types/studio';
+import type { CanvasObject, CharacterMotionClip, Scene } from '../../types/studio';
+import { buildMotionPathWalkClip } from '../../utils/timelineRigBridge';
 import type {
+  MotionClipDragMode,
+  MotionClipDragPreview,
   SimpleTrackGroupId,
   TimelineClipKind,
   TimelineDragPreview,
   TimelineViewMode,
 } from './timelineTypes';
+import { timeToPixelX } from './timelineUtils';
 import { TimelineTrack, type TrackClipDescriptor } from './TimelineTrack';
 
 interface SimpleTrackListProps {
   scene: Scene;
   viewMode: TimelineViewMode;
+  selectedObjectId?: string | null;
+  selectedMotionClipId?: string | null;
+  motionDragPreview?: MotionClipDragPreview | null;
+  onStartMotionClipDrag?: (
+    e: React.PointerEvent,
+    charObj: CanvasObject,
+    clip: CharacterMotionClip,
+    mode: MotionClipDragMode
+  ) => void;
   scrollTime: number;
   zoomPxPerSec: number;
   viewportWidthPx: number;
@@ -62,6 +75,10 @@ const GROUP_DEFS: Array<{
 export const SimpleTrackList: React.FC<SimpleTrackListProps> = ({
   scene,
   viewMode,
+  selectedObjectId,
+  selectedMotionClipId,
+  motionDragPreview,
+  onStartMotionClipDrag,
   scrollTime,
   zoomPxPerSec,
   viewportWidthPx,
@@ -131,53 +148,178 @@ export const SimpleTrackList: React.FC<SimpleTrackListProps> = ({
                     Sahnede henüz karakter yok.
                   </div>
                 ) : (
-                  characterObjs.map((obj) => (
-                    <TimelineTrack
-                      key={obj.id}
-                      rowId={obj.id}
-                      title={obj.name}
-                      icon={
-                        <div
-                          className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-                          style={{ backgroundColor: obj.characterConfig?.topColor || '#4f46e5' }}
-                        >
-                          <User className="w-3 h-3" />
-                        </div>
-                      }
-                      clips={[
-                        {
-                          id: obj.id,
-                          kind: 'character',
-                          label: obj.name,
-                          subtitle: obj.characterConfig?.pose || 'idle',
-                          startTime: obj.startTime,
-                          duration: obj.duration,
-                          locked: obj.locked,
-                        },
-                      ]}
-                      scrollTime={scrollTime}
-                      zoomPxPerSec={zoomPxPerSec}
-                      viewportWidthPx={viewportWidthPx}
-                      selectedClipIds={selectedClipIds}
-                      isHidden={obj.hidden}
-                      isLocked={obj.locked}
-                      onToggleHide={() => onToggleObjectHide(obj.id)}
-                      onToggleLock={() => onToggleObjectLock(obj.id)}
-                      headerExtra={
-                        viewMode === 'advanced' ? (
-                          <span
-                            className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 text-[9px] font-bold border border-indigo-200 shrink-0"
-                            title="Gelişmiş karakter animasyon kanalları Faz T3'te burada açılacaktır"
-                          >
-                            Kanallar (T3)
-                          </span>
-                        ) : undefined
-                      }
-                      dragPreview={dragPreview}
-                      onSelectClip={onSelectClip}
-                      onStartClipDrag={onStartClipDrag}
-                    />
-                  ))
+                  characterObjs.map((obj) => {
+                    const isSelectedChar = viewMode === 'simple' && selectedObjectId === obj.id;
+                    const motionClips = isSelectedChar ? obj.timelineData?.motionClips ?? [] : [];
+                    const pathWalkClip = isSelectedChar ? buildMotionPathWalkClip(obj) : null;
+
+                    return (
+                      <React.Fragment key={obj.id}>
+                        <TimelineTrack
+                          rowId={obj.id}
+                          title={obj.name}
+                          icon={
+                            <div
+                              className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                              style={{ backgroundColor: obj.characterConfig?.topColor || '#4f46e5' }}
+                            >
+                              <User className="w-3 h-3" />
+                            </div>
+                          }
+                          clips={[
+                            {
+                              id: obj.id,
+                              kind: 'character',
+                              label: obj.name,
+                              subtitle: obj.characterConfig?.pose || 'idle',
+                              startTime: obj.startTime,
+                              duration: obj.duration,
+                              locked: obj.locked,
+                            },
+                          ]}
+                          scrollTime={scrollTime}
+                          zoomPxPerSec={zoomPxPerSec}
+                          viewportWidthPx={viewportWidthPx}
+                          selectedClipIds={selectedClipIds}
+                          isHidden={obj.hidden}
+                          isLocked={obj.locked}
+                          onToggleHide={() => onToggleObjectHide(obj.id)}
+                          onToggleLock={() => onToggleObjectLock(obj.id)}
+                          headerExtra={
+                            viewMode === 'advanced' ? (
+                              <span
+                                className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 text-[9px] font-bold border border-indigo-200 shrink-0"
+                                title="Gelişmiş karakter animasyon kanalları Faz T3'te burada açılacaktır"
+                              >
+                                Kanallar (T3)
+                              </span>
+                            ) : undefined
+                          }
+                          dragPreview={dragPreview}
+                          onSelectClip={onSelectClip}
+                          onStartClipDrag={onStartClipDrag}
+                        />
+
+                        {isSelectedChar && (pathWalkClip || motionClips.length > 0) && (
+                          <div data-simple-motion-subrows={obj.id} className="bg-indigo-50/15">
+                            {pathWalkClip && (() => {
+                              const leftPx = timeToPixelX(
+                                pathWalkClip.startTime,
+                                scrollTime,
+                                zoomPxPerSec
+                              );
+                              const widthPx = Math.max(24, pathWalkClip.duration * zoomPxPerSec);
+                              const isVisible = leftPx + widthPx >= 0 && leftPx <= viewportWidthPx;
+                              return (
+                                <div className="flex items-stretch border-b border-slate-100 h-7">
+                                  <div className="w-56 shrink-0 border-r border-slate-200 pl-7 pr-2 flex items-center justify-between gap-1 bg-slate-50/80">
+                                    <span className="text-[10px] font-medium text-sky-800 truncate">
+                                      Yol Yürüyüşü
+                                    </span>
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-sky-100 text-sky-700 font-semibold shrink-0">
+                                      Otomatik
+                                    </span>
+                                  </div>
+                                  <div className="flex-1 relative overflow-hidden bg-slate-50/40">
+                                    {isVisible && (
+                                      <div
+                                        data-simple-motion-path-ref={obj.id}
+                                        style={{
+                                          transform: `translate3d(${leftPx}px, 0, 0)`,
+                                          width: `${widthPx}px`,
+                                        }}
+                                        className="absolute top-1 bottom-1 rounded border border-dashed border-sky-400 bg-sky-100/85 px-1.5 flex items-center text-[9px] font-semibold text-sky-800 pointer-events-none select-none"
+                                        title={`Yol Yürüyüşü (${pathWalkClip.startTime.toFixed(1)}s – ${(
+                                          pathWalkClip.startTime + pathWalkClip.duration
+                                        ).toFixed(1)}s) • Motion Path ile otomatik hesaplanır`}
+                                      >
+                                        <span className="truncate">
+                                          Yürüyüş ({pathWalkClip.startTime.toFixed(1)}s–
+                                          {(pathWalkClip.startTime + pathWalkClip.duration).toFixed(1)}
+                                          s)
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {motionClips.map((clip) => {
+                              const isDraggingThis =
+                                motionDragPreview &&
+                                motionDragPreview.characterId === obj.id &&
+                                motionDragPreview.clipId === clip.id;
+                              const displayStart = isDraggingThis
+                                ? motionDragPreview.startTime
+                                : clip.startTime;
+                              const displayDur = isDraggingThis
+                                ? motionDragPreview.duration
+                                : clip.duration;
+                              const leftPx = timeToPixelX(displayStart, scrollTime, zoomPxPerSec);
+                              const widthPx = Math.max(24, displayDur * zoomPxPerSec);
+                              const isVisible = leftPx + widthPx >= 0 && leftPx <= viewportWidthPx;
+                              const isSelected = selectedMotionClipId === clip.id;
+                              const clipLabel = clip.name || clip.presetId;
+
+                              return (
+                                <div
+                                  key={clip.id}
+                                  className="flex items-stretch border-b border-slate-100 last:border-b-0 h-7 hover:bg-indigo-50/25"
+                                >
+                                  <div className="w-56 shrink-0 border-r border-slate-200 pl-7 pr-2 flex items-center justify-between gap-1 bg-white">
+                                    <span className="text-[10px] font-medium text-slate-700 truncate">
+                                      {clipLabel}
+                                    </span>
+                                    <span className="text-[9px] font-mono text-slate-400 shrink-0">
+                                      {displayStart.toFixed(1)}–{(displayStart + displayDur).toFixed(1)}s
+                                    </span>
+                                  </div>
+                                  <div className="flex-1 relative overflow-hidden bg-white">
+                                    {isVisible && (
+                                      <div
+                                        data-simple-motion-clip-id={clip.id}
+                                        data-selected={isSelected ? 'true' : 'false'}
+                                        onPointerDown={(e) =>
+                                          onStartMotionClipDrag?.(e, obj, clip, 'move')
+                                        }
+                                        style={{
+                                          transform: `translate3d(${leftPx}px, 0, 0)`,
+                                          width: `${widthPx}px`,
+                                        }}
+                                        className={`absolute top-1 bottom-1 rounded bg-indigo-500 px-2 flex items-center justify-between text-[9.5px] font-semibold text-white cursor-grab select-none shadow-xs ${
+                                          clip.enabled === false ? 'opacity-45' : 'opacity-95'
+                                        } ${isSelected ? 'ring-2 ring-slate-900' : ''}`}
+                                        title={`${clipLabel} (${displayStart.toFixed(1)}s – ${(
+                                          displayStart + displayDur
+                                        ).toFixed(1)}s)`}
+                                      >
+                                        <div
+                                          data-trim-handle="left"
+                                          onPointerDown={(e) =>
+                                            onStartMotionClipDrag?.(e, obj, clip, 'trim-left')
+                                          }
+                                          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-white/40 rounded-l"
+                                        />
+                                        <span className="truncate">{clipLabel}</span>
+                                        <div
+                                          data-trim-handle="right"
+                                          onPointerDown={(e) =>
+                                            onStartMotionClipDrag?.(e, obj, clip, 'trim-right')
+                                          }
+                                          className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-white/40 rounded-r"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
                 )}
               </>
             )}

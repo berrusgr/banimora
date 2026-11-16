@@ -1023,6 +1023,10 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
         <SimpleTrackList
           scene={scene}
           viewMode={viewMode}
+          selectedObjectId={selectedObjectId}
+          selectedMotionClipId={selectedMotionClipId}
+          motionDragPreview={motionDragPreview}
+          onStartMotionClipDrag={handleStartMotionClipDrag}
           scrollTime={scrollTime}
           zoomPxPerSec={zoomPxPerSec}
           viewportWidthPx={viewportWidthPx}

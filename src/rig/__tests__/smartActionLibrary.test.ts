@@ -102,7 +102,7 @@ function createSampleScene(charObj: CanvasObject): Scene {
 }
 
 test('11 smart action categories exist and all 176 legacy presets remain accessible', () => {
-  assert.equal(SMART_ACTION_CATEGORIES.length, 11);
+  assert.equal(SMART_ACTION_CATEGORIES.length, 15);
   assert.equal(MOTION_PRESETS.length, 176);
 
   const counts = getSmartActionCountsByCategory();

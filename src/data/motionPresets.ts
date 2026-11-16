@@ -2842,6 +2842,594 @@ export const EXTRA_SMART_ACTION_MOTION_PRESETS: MotionPresetDefinition[] = [
       };
     },
   },
+  {
+    id: 'fishing-cast-pull',
+    name: 'Olta Tutma ve Çekme',
+    category: 'object-use',
+    description: 'Oltayı ileri uzatıp bekleme ve balık çekme hareketi.',
+    tags: ['balık', 'olta', 'çekme'],
+    defaultChannelId: 'rightArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'right-arm',
+    lockProcedural: true,
+    defaultDuration: 3.6,
+    cyclesPerSec: 0.45,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const pull = Math.sin(clamp01(phase01) * Math.PI);
+      const sway = osc(phase01) * 4;
+      return {
+        boneAngles: {
+          rightShoulder: (-42 - pull * 26 + sway) * intensity,
+          rightElbow: (-28 - pull * 34) * intensity,
+          rightWrist: (-12 + pull * 10) * intensity,
+        },
+        rightHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'hold-umbrella-right',
+    name: 'Şemsiye Tutma',
+    category: 'object-use',
+    description: 'Şemsiyeyi baş üzerinde sabit ve dengeli biçimde tutma.',
+    tags: ['şemsiye', 'yağmur', 'yürüme'],
+    defaultChannelId: 'rightArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'right-arm',
+    lockProcedural: true,
+    defaultDuration: 4.0,
+    cyclesPerSec: 0.4,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const bob = osc(phase01) * 2.5;
+      return {
+        boneAngles: {
+          rightShoulder: (-74 + bob) * intensity,
+          rightElbow: (-58 + bob * 0.5) * intensity,
+          rightWrist: 12 * intensity,
+        },
+        rightHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'hold-coffee-walk',
+    name: 'Kahve Bardağıyla Yürüme',
+    category: 'object-use',
+    description: 'Yürürken hazır kahve bardağını elde dengeli taşıma.',
+    tags: ['kahve', 'bardak', 'yürüme'],
+    defaultChannelId: 'rightArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'right-arm',
+    lockProcedural: true,
+    defaultDuration: 4.0,
+    cyclesPerSec: 0.8,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const bob = osc(phase01) * 4;
+      return {
+        boneAngles: {
+          rightShoulder: (-26 + bob) * intensity,
+          rightElbow: (-68 - bob * 0.5) * intensity,
+          rightWrist: 4 * intensity,
+        },
+        rightHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'carry-bag-left',
+    name: 'Sol Elde Poşet Taşıma',
+    category: 'object-use',
+    description: 'Sol elde alışveriş poşetini dengeli taşıma.',
+    tags: ['poşet', 'alışveriş', 'taşıma'],
+    defaultChannelId: 'leftArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'left-arm',
+    lockProcedural: true,
+    defaultDuration: 4.0,
+    cyclesPerSec: 0.7,
+    supportsMirroring: false,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'leftPropSocket',
+    sample: (phase01, intensity) => {
+      const sway = osc(phase01) * 4;
+      return {
+        boneAngles: {
+          leftShoulder: (14 + sway) * intensity,
+          leftElbow: (18 - sway * 0.4) * intensity,
+          leftWrist: 4 * intensity,
+        },
+        leftHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'camera-shoot',
+    name: 'Fotoğraf Çekme',
+    category: 'object-use',
+    description: 'Fotoğraf makinesini iki elle göz hizasına kaldırıp çekim yapma.',
+    tags: ['fotoğraf', 'kamera', 'çekim'],
+    defaultChannelId: 'torso',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'both-arms',
+    lockProcedural: true,
+    defaultDuration: 3.0,
+    cyclesPerSec: 0.5,
+    supportsMirroring: false,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const raise = Math.sin(clamp01(phase01) * Math.PI);
+      return {
+        boneAngles: {
+          rightShoulder: (-48 - raise * 24) * intensity,
+          rightElbow: (-76 - raise * 22) * intensity,
+          rightWrist: (-8) * intensity,
+          leftShoulder: (44 + raise * 20) * intensity,
+          leftElbow: (72 + raise * 20) * intensity,
+          leftWrist: 8 * intensity,
+        },
+        rightHandGesture: 'hold',
+        leftHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'walk-dog-leash',
+    name: 'Tasma Tutma',
+    category: 'object-use',
+    description: 'Köpek gezdirirken tasmayı elde ileri uzatarak taşıma.',
+    tags: ['köpek', 'tasma', 'gezdirme'],
+    defaultChannelId: 'rightArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'right-arm',
+    lockProcedural: true,
+    defaultDuration: 4.0,
+    cyclesPerSec: 0.7,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const tug = osc(phase01) * 6;
+      return {
+        boneAngles: {
+          rightShoulder: (-34 + tug) * intensity,
+          rightElbow: (-32 + tug * 0.5) * intensity,
+          rightWrist: 6 * intensity,
+        },
+        rightHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'sweep-broom',
+    name: 'Yer Süpürme',
+    category: 'object-use',
+    description: 'İki elle süpürgeyi tutup sağa sola süpürme hareketi.',
+    tags: ['süpürge', 'temizlik', 'yer'],
+    defaultChannelId: 'torso',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'upper-body',
+    lockProcedural: true,
+    defaultDuration: 3.2,
+    cyclesPerSec: 0.85,
+    supportsMirroring: false,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const sweep = osc(phase01);
+      return {
+        boneAngles: {
+          rightShoulder: (-30 + sweep * 14) * intensity,
+          rightElbow: (-48 + sweep * 12) * intensity,
+          rightWrist: (6 - sweep * 8) * intensity,
+          leftShoulder: (28 + sweep * 12) * intensity,
+          leftElbow: (44 + sweep * 10) * intensity,
+          torso: (8 + sweep * 4) * intensity,
+        },
+        rightHandGesture: 'hold',
+        leftHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'mop-floor',
+    name: 'Paspas ile Yer Silme',
+    category: 'object-use',
+    description: 'Paspası ileri geri kaydırarak yer silme hareketi.',
+    tags: ['paspas', 'silme', 'temizlik'],
+    defaultChannelId: 'torso',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'upper-body',
+    lockProcedural: true,
+    defaultDuration: 3.2,
+    cyclesPerSec: 0.75,
+    supportsMirroring: false,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const push = osc(phase01);
+      return {
+        boneAngles: {
+          rightShoulder: (-36 + push * 18) * intensity,
+          rightElbow: (-42 + push * 14) * intensity,
+          leftShoulder: (32 + push * 14) * intensity,
+          leftElbow: (46 + push * 12) * intensity,
+          torso: (10 + push * 5) * intensity,
+        },
+        rightHandGesture: 'hold',
+        leftHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'water-plant',
+    name: 'Bitki Sulama',
+    category: 'object-use',
+    description: 'Sulama kabını bitkiye doğru uzatıp eğerek sulama hareketi.',
+    tags: ['bitki', 'sulama', 'saksı'],
+    defaultChannelId: 'rightArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'right-arm',
+    lockProcedural: true,
+    defaultDuration: 3.4,
+    cyclesPerSec: 0.5,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const pour = Math.sin(clamp01(phase01) * Math.PI);
+      return {
+        boneAngles: {
+          rightShoulder: (-44 - pour * 14) * intensity,
+          rightElbow: (-32 - pour * 16) * intensity,
+          rightWrist: (-10 - pour * 24) * intensity,
+        },
+        rightHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'cook-stir',
+    name: 'Yemek Karıştırma',
+    category: 'object-use',
+    description: 'Spatula ile tencereyi karıştırma hareketi.',
+    tags: ['yemek', 'ocak', 'tencere', 'spatula'],
+    defaultChannelId: 'rightArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'right-arm',
+    lockProcedural: true,
+    defaultDuration: 3.2,
+    cyclesPerSec: 1.0,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const stir = osc(phase01);
+      const c = oscCos(phase01);
+      return {
+        boneAngles: {
+          rightShoulder: (-36 + stir * 8) * intensity,
+          rightElbow: (-58 + c * 12) * intensity,
+          rightWrist: (-12 + stir * 14) * intensity,
+        },
+        rightHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'eat-bite',
+    name: 'Elden Ağza Götürüp Yeme',
+    category: 'object-use',
+    description: 'Sandviçi elden ağza götürüp ısırma hareketi.',
+    tags: ['sandviç', 'yemek', 'yeme'],
+    defaultChannelId: 'rightArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'right-arm',
+    lockProcedural: true,
+    defaultDuration: 3.0,
+    cyclesPerSec: 0.55,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const bite = Math.pow(Math.sin(clamp01(phase01) * Math.PI), 0.75);
+      return {
+        boneAngles: {
+          rightShoulder: (-24 - bite * 38) * intensity,
+          rightElbow: (-46 - bite * 72) * intensity,
+          rightWrist: (-8 - bite * 12) * intensity,
+          head: (-5 * bite) * intensity,
+        },
+        rightHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'wear-backpack',
+    name: 'Sırt Çantası Takma ve Taşıma',
+    category: 'object-use',
+    description: 'Sırt çantasının askılarını omuza yerleştirme ve taşıma.',
+    tags: ['sırt çantası', 'çanta', 'okul'],
+    defaultChannelId: 'torso',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'both-arms',
+    lockProcedural: true,
+    defaultDuration: 3.2,
+    cyclesPerSec: 0.55,
+    supportsMirroring: false,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'backPropSocket',
+    sample: (phase01, intensity) => {
+      const adjust = Math.sin(clamp01(phase01) * Math.PI);
+      return {
+        boneAngles: {
+          rightShoulder: (-32 - adjust * 24) * intensity,
+          rightElbow: (-68 - adjust * 28) * intensity,
+          leftShoulder: (32 + adjust * 24) * intensity,
+          leftElbow: (68 + adjust * 28) * intensity,
+        },
+        rightHandGesture: 'hold',
+        leftHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'dust-wipe',
+    name: 'Toz Alma / Silme',
+    category: 'object-use',
+    description: 'Toz bezi ile yüzeyi dairesel silme hareketi.',
+    tags: ['toz', 'bez', 'silme', 'temizlik'],
+    defaultChannelId: 'rightArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'right-arm',
+    lockProcedural: true,
+    defaultDuration: 3.0,
+    cyclesPerSec: 1.0,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const s = osc(phase01);
+      const c = oscCos(phase01);
+      return {
+        boneAngles: {
+          rightShoulder: (-46 + s * 16) * intensity,
+          rightElbow: (-44 + c * 18) * intensity,
+          rightWrist: (s * 12) * intensity,
+        },
+        rightHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'basketball-play',
+    name: 'Basketbol Topu Sürme ve Şut',
+    category: 'object-use',
+    description: 'Basketbol topunu sektirip şut atma hareketi.',
+    tags: ['basketbol', 'top', 'spor', 'şut'],
+    defaultChannelId: 'rightArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'upper-body',
+    lockProcedural: true,
+    defaultDuration: 3.4,
+    cyclesPerSec: 0.75,
+    supportsMirroring: false,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const dribble = Math.abs(osc(phase01));
+      const shoot = phase01 > 0.65 ? Math.sin(((phase01 - 0.65) / 0.35) * Math.PI) : 0;
+      return {
+        boneAngles: {
+          rightShoulder: (-28 + dribble * 18 - shoot * 68) * intensity,
+          rightElbow: (-46 + dribble * 22 - shoot * 32) * intensity,
+          leftShoulder: (20 + shoot * 44) * intensity,
+          leftElbow: (38 + shoot * 40) * intensity,
+        },
+        rightHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'chop-cook',
+    name: 'Doğrama ve Yemek Hazırlama',
+    category: 'object-use',
+    description: 'Kesme tahtası üzerinde doğrama ve hazırlama hareketi.',
+    tags: ['mutfak', 'bıçak', 'sebze', 'yemek'],
+    defaultChannelId: 'rightArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'right-arm',
+    lockProcedural: true,
+    defaultDuration: 3.0,
+    cyclesPerSec: 1.4,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const chop = osc(phase01);
+      return {
+        boneAngles: {
+          rightShoulder: (-34 + chop * 10) * intensity,
+          rightElbow: (-58 + chop * 22) * intensity,
+          rightWrist: (-8 + chop * 16) * intensity,
+        },
+        rightHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'hold-child-arms',
+    name: 'Çocuğu Kucağında Tutma',
+    category: 'social',
+    description: 'Eğilip çocuğu kucağa alma ve iki kolla güvenle tutma.',
+    tags: ['çocuk', 'anne', 'kucak', 'sevgi'],
+    defaultChannelId: 'torso',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'both-arms',
+    lockProcedural: true,
+    defaultDuration: 3.6,
+    cyclesPerSec: 0.45,
+    supportsMirroring: false,
+    defaultBlendInSec: 0.25,
+    defaultBlendOutSec: 0.25,
+    sample: (phase01, intensity) => {
+      const sway = osc(phase01) * 4;
+      return {
+        boneAngles: {
+          rightShoulder: (-42 + sway) * intensity,
+          rightElbow: (-74 + sway * 0.5) * intensity,
+          leftShoulder: (42 + sway) * intensity,
+          leftElbow: (74 - sway * 0.5) * intensity,
+        },
+        rightHandGesture: 'open',
+        leftHandGesture: 'open',
+      };
+    },
+  },
+  {
+    id: 'fold-laundry',
+    name: 'Çamaşır Katlama',
+    category: 'object-use',
+    description: 'Kıyafeti iki elle tutup katlama ve sepete yerleştirme.',
+    tags: ['çamaşır', 'katlama', 'sepet', 'ev'],
+    defaultChannelId: 'torso',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'both-arms',
+    lockProcedural: true,
+    defaultDuration: 3.4,
+    cyclesPerSec: 0.65,
+    supportsMirroring: false,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const fold = osc(phase01);
+      return {
+        boneAngles: {
+          rightShoulder: (-36 + fold * 14) * intensity,
+          rightElbow: (-58 + fold * 18) * intensity,
+          leftShoulder: (36 - fold * 14) * intensity,
+          leftElbow: (58 - fold * 18) * intensity,
+        },
+        rightHandGesture: 'hold',
+        leftHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'pedal-bicycle',
+    name: 'Bisiklet Sürme ve Pedal Çevirme',
+    category: 'locomotion',
+    description: 'Gidonu tutup bacaklarla pedal çevirme hareketi.',
+    tags: ['bisiklet', 'pedal', 'sürme', 'spor'],
+    defaultChannelId: 'torso',
+    stage: 'L1_LOCOMOTION',
+    mask: 'full',
+    lockProcedural: true,
+    defaultDuration: 4.0,
+    cyclesPerSec: 1.1,
+    supportsMirroring: false,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    sample: (phase01, intensity) => {
+      const p = osc(phase01);
+      const pc = oscCos(phase01);
+      return {
+        boneAngles: {
+          rightShoulder: (-42 + p * 3) * intensity,
+          rightElbow: (-28) * intensity,
+          leftShoulder: (42 - p * 3) * intensity,
+          leftElbow: (28) * intensity,
+          leftHip: (-26 + p * 28) * intensity,
+          leftKnee: (36 + pc * 24) * intensity,
+          rightHip: (-26 - p * 28) * intensity,
+          rightKnee: (36 - pc * 24) * intensity,
+          torso: 10 * intensity,
+        },
+        rightHandGesture: 'fist',
+        leftHandGesture: 'fist',
+      };
+    },
+  },
+  {
+    id: 'repair-wrench',
+    name: 'Tamirat Yapma',
+    category: 'object-use',
+    description: 'Eğilip anahtar/tornavida ile sıkma ve tamir hareketi.',
+    tags: ['tamir', 'anahtar', 'tornavida', 'baba'],
+    defaultChannelId: 'rightArm',
+    stage: 'L2_GESTURE_AND_IK',
+    mask: 'upper-body',
+    lockProcedural: true,
+    defaultDuration: 3.2,
+    cyclesPerSec: 0.9,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    requiredSocket: 'rightPropSocket',
+    sample: (phase01, intensity) => {
+      const turn = osc(phase01);
+      return {
+        boneAngles: {
+          rightShoulder: (-40 + turn * 16) * intensity,
+          rightElbow: (-52 + turn * 20) * intensity,
+          rightWrist: (turn * 24) * intensity,
+          torso: 14 * intensity,
+        },
+        rightHandGesture: 'hold',
+      };
+    },
+  },
+  {
+    id: 'kick-soccer-ball',
+    name: 'Topa Vurma ve Pas Verme',
+    category: 'locomotion',
+    description: 'Futbol topuna pas verme ve dengeli koşu hareketi.',
+    tags: ['futbol', 'top', 'pas', 'oyun'],
+    defaultChannelId: 'rightLeg',
+    stage: 'L1_LOCOMOTION',
+    mask: 'lower-body',
+    lockProcedural: true,
+    defaultDuration: 3.0,
+    cyclesPerSec: 0.7,
+    supportsMirroring: false,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    sample: (phase01, intensity) => {
+      const kick = Math.sin(clamp01(phase01) * Math.PI);
+      return {
+        boneAngles: {
+          rightHip: (-18 + kick * 52) * intensity,
+          rightKnee: (24 - kick * 20) * intensity,
+          leftHip: (8) * intensity,
+        },
+      };
+    },
+  },
 ];
 
 const PRESET_MAP = new Map<string, MotionPresetDefinition>([

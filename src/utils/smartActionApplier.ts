@@ -14,6 +14,7 @@ import type {
 } from '../data/smartActionPackages.ts';
 import { buildCharacterRigProfile } from '../rig/rigProfiles.ts';
 import { validateObjectAttachment } from '../rig/rigKinematics.ts';
+import { DEFAULT_CAPTURE_CHARACTER_CONFIG } from './timelineRigBridge.ts';
 
 export type SmartActionApplyMode = 'prepare-scene' | 'motion-only';
 
@@ -62,6 +63,41 @@ const ASSET_DEFAULT_COLORS: Record<string, { color: string; secondaryColor: stri
   'el-sport-barbell': { color: '#1e293b', secondaryColor: '#ef4444' },
   'el-med-stethoscope': { color: '#0ea5e9', secondaryColor: '#94a3b8' },
   'el-cel-trophy': { color: '#eab308', secondaryColor: '#78350f' },
+  'el-tech-camera': { color: '#1e293b', secondaryColor: '#38bdf8' },
+  'el-life-plant': { color: '#16a34a', secondaryColor: '#b45309' },
+  'el-life-cookware': { color: '#64748b', secondaryColor: '#f59e0b' },
+  'el-life-bottle': { color: '#0ea5e9', secondaryColor: '#bae6fd' },
+  'el-fish-rod': { color: '#92400e', secondaryColor: '#38bdf8' },
+  'el-fish-catch': { color: '#0ea5e9', secondaryColor: '#bae6fd' },
+  'el-life-umbrella': { color: '#4f46e5', secondaryColor: '#92400e' },
+  'el-life-coffee-cup': { color: '#d97706', secondaryColor: '#f8fafc' },
+  'el-shop-bag': { color: '#ec4899', secondaryColor: '#fbcfe8' },
+  'el-pet-dog': { color: '#d97706', secondaryColor: '#fef3c7' },
+  'el-pet-leash': { color: '#ef4444', secondaryColor: '#94a3b8' },
+  'el-clean-broom': { color: '#b45309', secondaryColor: '#f59e0b' },
+  'el-clean-mop': { color: '#0284c7', secondaryColor: '#e2e8f0' },
+  'el-clean-bucket': { color: '#0ea5e9', secondaryColor: '#bae6fd' },
+  'el-garden-watering-can': { color: '#10b981', secondaryColor: '#6ee7b7' },
+  'el-kitchen-stove': { color: '#e2e8f0', secondaryColor: '#334155' },
+  'el-kitchen-spatula': { color: '#475569', secondaryColor: '#f59e0b' },
+  'el-food-sandwich': { color: '#f59e0b', secondaryColor: '#22c55e' },
+  'el-life-backpack': { color: '#2563eb', secondaryColor: '#93c5fd' },
+  'el-clean-cloth': { color: '#eab308', secondaryColor: '#fef08a' },
+  'el-edu-bookshelf': { color: '#92400e', secondaryColor: '#f59e0b' },
+  'el-sport-basketball': { color: '#ea580c', secondaryColor: '#1e293b' },
+  'el-sport-hoop': { color: '#f8fafc', secondaryColor: '#ef4444' },
+  'el-edu-papers': { color: '#f8fafc', secondaryColor: '#3b82f6' },
+  'el-office-folder': { color: '#2563eb', secondaryColor: '#93c5fd' },
+  'el-kitchen-cutting-board': { color: '#d97706', secondaryColor: '#22c55e' },
+  'el-kitchen-knife': { color: '#94a3b8', secondaryColor: '#1e293b' },
+  'el-home-laundry-basket': { color: '#6366f1', secondaryColor: '#c7d2fe' },
+  'el-home-folded-clothes': { color: '#ec4899', secondaryColor: '#38bdf8' },
+  'el-safety-helmet': { color: '#ef4444', secondaryColor: '#f8fafc' },
+  'el-tool-toolbox': { color: '#dc2626', secondaryColor: '#334155' },
+  'el-tool-wrench': { color: '#64748b', secondaryColor: '#cbd5e1' },
+  'el-sport-soccer-ball': { color: '#f8fafc', secondaryColor: '#0f172a' },
+  'el-home-bed': { color: '#6366f1', secondaryColor: '#e0e7ff' },
+  'el-shop-groceries': { color: '#22c55e', secondaryColor: '#f59e0b' },
 };
 
 function clampToStage(x: number, y: number, width: number, height: number): { x: number; y: number } {
@@ -91,6 +127,36 @@ function findReusableObject(
   alreadyClaimedIds: Set<string>
 ): CanvasObject | undefined {
   if (req.reuseExisting === false) return undefined;
+  if (req.objectCategory === 'characters') {
+    const sameAsset = objects.find(
+      (o) =>
+        o.id !== characterId &&
+        !alreadyClaimedIds.has(o.id) &&
+        o.category === 'characters' &&
+        o.assetId === req.assetId
+    );
+    if (sameAsset) return sameAsset;
+    if (req.characterPreset?.genderAge) {
+      return objects.find(
+        (o) =>
+          o.id !== characterId &&
+          !alreadyClaimedIds.has(o.id) &&
+          o.category === 'characters' &&
+          o.characterConfig?.genderAge === req.characterPreset?.genderAge
+      );
+    }
+    return undefined;
+  }
+  if (req.attachToSocket) {
+    const sameSocket = objects.find(
+      (o) =>
+        !alreadyClaimedIds.has(o.id) &&
+        o.assetId === req.assetId &&
+        o.attachment?.parentObjectId === characterId &&
+        o.attachment.socketId === req.attachToSocket
+    );
+    if (sameSocket) return sameSocket;
+  }
   const attachedToSelf = objects.find(
     (o) =>
       !alreadyClaimedIds.has(o.id) &&
@@ -105,6 +171,72 @@ function findReusableObject(
       o.assetId === req.assetId &&
       (!o.attachment || o.attachment.parentObjectId === characterId)
   );
+}
+
+function buildCompanionCharacterPatch(
+  baseObj: CanvasObject,
+  req: SmartActionSceneRequirement,
+  startTime: number,
+  sceneDuration: number
+): Partial<CanvasObject> {
+  const presetSpec = req.characterPreset;
+  const baseCfg: CharacterConfig = baseObj.characterConfig ?? {
+    ...DEFAULT_CAPTURE_CHARACTER_CONFIG,
+    genderAge: presetSpec?.genderAge ?? 'child',
+    topColor: presetSpec?.topColor ?? '#0ea5e9',
+    bottomColor: presetSpec?.bottomColor ?? '#1e293b',
+  };
+  const nextCfg: CharacterConfig = {
+    ...baseCfg,
+    genderAge: presetSpec?.genderAge ?? baseCfg.genderAge,
+    pose: presetSpec?.pose ?? baseCfg.pose,
+    headDirection: presetSpec?.headDirection ?? baseCfg.headDirection,
+    flipHorizontal:
+      typeof presetSpec?.flipHorizontal === 'boolean'
+        ? presetSpec.flipHorizontal
+        : baseCfg.flipHorizontal,
+    rigMode: presetSpec?.clipPresetId ? 'hybrid' : baseCfg.rigMode ?? 'preset',
+  };
+
+  let nextTimeline: CharacterTimelineData = baseObj.timelineData ?? { motionClips: [] };
+  if (presetSpec?.clipPresetId) {
+    const motionPreset = getMotionPresetById(presetSpec.clipPresetId);
+    if (motionPreset) {
+      const existing = nextTimeline.motionClips ?? [];
+      const channelId = presetSpec.clipChannelId ?? motionPreset.defaultChannelId;
+      const filtered = existing.filter(
+        (c) => c.channelId !== channelId && c.presetId !== motionPreset.id
+      );
+      const maxAvail = Math.max(0.5, sceneDuration - startTime);
+      const clip: CharacterMotionClip = {
+        id: `companion-${motionPreset.id}-${Date.now().toString(36)}`,
+        presetId: motionPreset.id,
+        name: motionPreset.name,
+        channelId,
+        mask: motionPreset.mask,
+        stage: motionPreset.stage,
+        startTime,
+        duration: Number(Math.min(maxAvail, motionPreset.defaultDuration).toFixed(2)),
+        speed: 1,
+        intensity: 1,
+        weight: 1,
+        priority: 1,
+        blendInSec: motionPreset.defaultBlendInSec ?? 0.2,
+        blendOutSec: motionPreset.defaultBlendOutSec ?? 0.2,
+        repeatMode: motionPreset.oneShot ? 'once' : 'loop',
+        enabled: true,
+      };
+      nextTimeline = {
+        ...nextTimeline,
+        motionClips: [...filtered, clip],
+      };
+    }
+  }
+
+  return {
+    characterConfig: nextCfg,
+    timelineData: nextTimeline,
+  };
 }
 
 export function applySmartActionToScene(
@@ -282,8 +414,14 @@ export function applySmartActionToScene(
           }
         }
 
+        const companionPatch: Partial<CanvasObject> =
+          req.objectCategory === 'characters' && req.characterPreset
+            ? buildCompanionCharacterPatch(reusable, req, startTime, scene.duration)
+            : {};
+
         const updatedObj: CanvasObject = {
           ...reusable,
+          ...companionPatch,
           x: candidateAttachment ? reusable.x : pos.x,
           y: candidateAttachment ? reusable.y : pos.y,
           attachment: validAttachment,
@@ -299,11 +437,12 @@ export function applySmartActionToScene(
           secondaryColor: '#94a3b8',
         };
 
-        const newObj: CanvasObject = {
+        const isCompanionChar = req.objectCategory === 'characters';
+        const baseNewObj: CanvasObject = {
           id: newId,
           assetId: req.assetId,
           name: req.label,
-          category: 'objects',
+          category: isCompanionChar ? 'characters' : 'objects',
           x: pos.x,
           y: pos.y,
           width: req.defaultWidth,
@@ -317,6 +456,12 @@ export function applySmartActionToScene(
           duration: targetChar.duration,
           animations: { ...DEFAULT_STATIC_ANIMATIONS },
         };
+        const newObj: CanvasObject = isCompanionChar
+          ? {
+              ...baseNewObj,
+              ...buildCompanionCharacterPatch(baseNewObj, req, startTime, scene.duration),
+            }
+          : baseNewObj;
 
         const withNew = [...nextObjects, newObj];
         if (candidateAttachment) {

@@ -1,4 +1,10 @@
-import type { AudioClip, CanvasObject, Scene } from '../../types/studio.ts';
+import type {
+  AudioClip,
+  CanvasObject,
+  CharacterChannelId,
+  CharacterMotionClip,
+  Scene,
+} from '../../types/studio.ts';
 import type {
   MotionClipDragMode,
   MotionClipDragPreview,
@@ -398,6 +404,91 @@ export function applyMotionClipDragToScene(
       };
     }),
   };
+}
+
+/**
+ * Klibin gerçek `mask` ve `stage` değerlerine göre Gelişmiş timeline'da gösterileceği
+ * tutarlı karakter kanalını çözer (eski projelerdeki `channelId` değerini güvenli fallback olarak korur).
+ */
+export function resolveEffectiveMotionChannelId(
+  clip: Pick<CharacterMotionClip, 'channelId' | 'mask' | 'stage'>
+): CharacterChannelId {
+  switch (clip.mask) {
+    case 'left-arm':
+      return 'leftArm';
+    case 'right-arm':
+      return 'rightArm';
+    case 'head-only':
+      return clip.channelId === 'expression' || clip.channelId === 'lipSync'
+        ? clip.channelId
+        : 'headNeck';
+    case 'lower-body':
+      return clip.channelId === 'leftLeg' || clip.channelId === 'rightLeg'
+        ? clip.channelId
+        : 'leftLeg';
+    case 'torso-only':
+      return 'torso';
+    case 'both-arms':
+      return clip.channelId === 'leftArm' || clip.channelId === 'rightArm'
+        ? clip.channelId
+        : 'torso';
+    case 'upper-body':
+      if (
+        clip.channelId === 'torso' ||
+        clip.channelId === 'headNeck' ||
+        clip.channelId === 'leftArm' ||
+        clip.channelId === 'rightArm' ||
+        clip.channelId === 'expression' ||
+        clip.channelId === 'lipSync' ||
+        clip.channelId === 'ikTargets'
+      ) {
+        return clip.channelId;
+      }
+      return 'torso';
+    case 'full':
+      if (
+        clip.channelId === 'root' ||
+        clip.channelId === 'torso' ||
+        clip.channelId === 'leftLeg' ||
+        clip.channelId === 'rightLeg'
+      ) {
+        return clip.channelId;
+      }
+      return clip.stage === 'L3_PROCEDURAL' ? 'headNeck' : 'torso';
+    default:
+      return clip.channelId || 'torso';
+  }
+}
+
+/**
+ * `blendInSec` ve `blendOutSec` sürelerini klip genişliği ve zaman ölçeğine orantılı piksel genişliğine çevirir.
+ * Sıfır veya tanımsız değerler için 0 döner.
+ */
+export function computeMotionClipBlendWidthsPx(
+  durationSec: number,
+  blendInSec: number | undefined,
+  blendOutSec: number | undefined,
+  zoomPxPerSec: number,
+  totalWidthPx: number
+): { blendInPx: number; blendOutPx: number } {
+  const safeDur = Math.max(0.01, durationSec);
+  const safeZoom = Math.max(1, zoomPxPerSec);
+  const safeWidth = Math.max(0, totalWidthPx);
+  const rawIn = blendInSec && blendInSec > 0 ? Math.min(safeDur, blendInSec) : 0;
+  const rawOut = blendOutSec && blendOutSec > 0 ? Math.min(safeDur, blendOutSec) : 0;
+
+  if (rawIn === 0 && rawOut === 0) {
+    return { blendInPx: 0, blendOutPx: 0 };
+  }
+
+  const totalBlend = rawIn + rawOut;
+  const scale = totalBlend > safeDur ? safeDur / totalBlend : 1;
+  const blendInPx =
+    rawIn > 0 ? Math.min(safeWidth, Math.round(rawIn * scale * safeZoom)) : 0;
+  const blendOutPx =
+    rawOut > 0 ? Math.min(safeWidth, Math.round(rawOut * scale * safeZoom)) : 0;
+
+  return { blendInPx, blendOutPx };
 }
 
 

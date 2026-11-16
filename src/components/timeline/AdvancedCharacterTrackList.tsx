@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  AlertTriangle,
   ChevronDown,
   ChevronRight,
   Copy,
@@ -21,12 +22,15 @@ import { buildCharacterRigProfile } from '../../rig/rigProfiles';
 import {
   captureEvaluatedChannelKeyframeValue,
   DEFAULT_CAPTURE_CHARACTER_CONFIG,
+  detectObjectMotionConflicts,
 } from '../../utils/timelineRigBridge';
 import type { MotionClipDragMode, MotionClipDragPreview } from './timelineTypes';
 import {
+  computeMotionClipBlendWidthsPx,
   computeMotionClipDragTiming,
   DEFAULT_TIMELINE_FPS,
   pixelXToTime,
+  resolveEffectiveMotionChannelId,
   snapTimeToFrame,
   timeToPixelX,
 } from './timelineUtils';
@@ -449,6 +453,44 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
         const attachedObjects = scene.objects.filter(
           (o) => o.attachment?.parentObjectId === charObj.id
         );
+        const rigProfile = buildCharacterRigProfile(
+          charObj.characterConfig ?? DEFAULT_CAPTURE_CHARACTER_CONFIG,
+          charObj.assetId
+        );
+        const effectiveClipsForConflict =
+          motionDragPreview && motionDragPreview.characterId === charObj.id
+            ? motionClips.map((c) =>
+                c.id === motionDragPreview.clipId
+                  ? {
+                      ...c,
+                      startTime: motionDragPreview.startTime,
+                      duration: motionDragPreview.duration,
+                    }
+                  : c
+              )
+            : motionClips;
+        const conflicts = detectObjectMotionConflicts(
+          {
+            ...charObj,
+            timelineData: {
+              ...charObj.timelineData,
+              motionClips: effectiveClipsForConflict,
+            },
+          },
+          rigProfile
+        );
+        const conflictReasonsByClipId = new Map<string, string[]>();
+        for (const cf of conflicts) {
+          const msg = `${cf.clipAName} ↔ ${cf.clipBName}: ${cf.reason}`;
+          conflictReasonsByClipId.set(cf.clipAId, [
+            ...(conflictReasonsByClipId.get(cf.clipAId) ?? []),
+            msg,
+          ]);
+          conflictReasonsByClipId.set(cf.clipBId, [
+            ...(conflictReasonsByClipId.get(cf.clipBId) ?? []),
+            msg,
+          ]);
+        }
 
         return (
           <div key={charObj.id} className="border-b border-slate-200">
@@ -472,9 +514,21 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
                     {charObj.name}
                   </span>
                 </button>
-                <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 font-semibold">
-                  {motionClips.length} klip
-                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  {conflicts.length > 0 && (
+                    <span
+                      data-character-conflict-count={conflicts.length}
+                      className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-amber-100 text-amber-800 text-[9px] font-semibold"
+                      title={conflicts.map((cf) => `${cf.clipAName} ↔ ${cf.clipBName}: ${cf.reason}`).join('\n')}
+                    >
+                      <AlertTriangle className="w-2.5 h-2.5" />
+                      {conflicts.length}
+                    </span>
+                  )}
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 font-semibold">
+                    {motionClips.length} klip
+                  </span>
+                </div>
               </div>
               <div
                 className="flex-1 h-7 relative bg-slate-50/60"
@@ -486,7 +540,9 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
             {/* Genişletilmiş Karakter Kanalları */}
             {isExpanded &&
               CHARACTER_CHANNELS.map((ch) => {
-                const channelClips = motionClips.filter((c) => c.channelId === ch.id);
+                const channelClips = motionClips.filter(
+                  (c) => resolveEffectiveMotionChannelId(c) === ch.id
+                );
                 const channelKeyframes = charObj.timelineData?.channelKeyframes?.[ch.id] ?? [];
 
                 return (
@@ -549,6 +605,29 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
                         const widthPx = Math.max(24, displayDur * zoomPxPerSec);
                         if (leftPx + widthPx < 0 || leftPx > viewportWidthPx) return null;
                         const isSelected = activeSelectedMotionClipId === clip.id;
+                        const { blendInPx, blendOutPx } = computeMotionClipBlendWidthsPx(
+                          displayDur,
+                          clip.blendInSec,
+                          clip.blendOutSec,
+                          zoomPxPerSec,
+                          widthPx
+                        );
+                        const conflictReasons = conflictReasonsByClipId.get(clip.id) ?? [];
+                        const hasConflict = conflictReasons.length > 0;
+                        const tooltipText = [
+                          `${clip.name} (${displayStart.toFixed(1)}s - ${(
+                            displayStart + displayDur
+                          ).toFixed(1)}s)`,
+                          clip.blendInSec && clip.blendInSec > 0
+                            ? `Giriş yumuşatma: ${clip.blendInSec.toFixed(2)}s`
+                            : null,
+                          clip.blendOutSec && clip.blendOutSec > 0
+                            ? `Çıkış yumuşatma: ${clip.blendOutSec.toFixed(2)}s`
+                            : null,
+                          hasConflict ? `Çakışma: ${conflictReasons.join(' | ')}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join('\n');
 
                         return (
                           <div
@@ -561,21 +640,47 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
                               width: `${widthPx}px`,
                               backgroundColor: ch.color,
                             }}
-                            className={`absolute top-1 bottom-1 rounded px-1.5 flex items-center justify-between text-[9px] font-semibold text-white cursor-grab select-none shadow-xs ${
+                            className={`absolute top-1 bottom-1 rounded px-1.5 flex items-center justify-between text-[9px] font-semibold text-white cursor-grab select-none shadow-xs overflow-hidden ${
                               clip.enabled === false ? 'opacity-40' : 'opacity-90'
-                            } ${isSelected ? 'ring-2 ring-slate-900' : ''}`}
-                            title={`${clip.name} (${displayStart.toFixed(1)}s - ${(displayStart + displayDur).toFixed(1)}s)`}
+                            } ${isSelected ? 'ring-2 ring-slate-900' : hasConflict ? 'ring-1 ring-amber-300' : ''}`}
+                            title={tooltipText}
                           >
+                            {/* Blend giriş / çıkış görsel geçiş bölgeleri */}
+                            {blendInPx > 0 && (
+                              <div
+                                data-blend-in={clip.id}
+                                style={{ width: `${blendInPx}px` }}
+                                className="pointer-events-none absolute left-0 top-0 bottom-0 rounded-l bg-gradient-to-r from-white/40 to-transparent border-r border-white/30"
+                              />
+                            )}
+                            {blendOutPx > 0 && (
+                              <div
+                                data-blend-out={clip.id}
+                                style={{ width: `${blendOutPx}px` }}
+                                className="pointer-events-none absolute right-0 top-0 bottom-0 rounded-r bg-gradient-to-l from-slate-950/35 to-transparent border-l border-white/30"
+                              />
+                            )}
                             {/* Sol kırpma */}
                             <div
                               onPointerDown={(e) =>
                                 handleStartMotionClipDrag(e, charObj, clip, 'trim-left')
                               }
-                              className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-white/40 rounded-l"
+                              className="absolute z-10 left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-white/40 rounded-l"
                             />
-                            <span className="truncate pl-1">{clip.name}</span>
+                            <div className="relative z-10 flex items-center gap-1 min-w-0 pl-1">
+                              {hasConflict && (
+                                <span
+                                  data-motion-conflict-badge={clip.id}
+                                  className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-400 text-slate-950 shrink-0"
+                                  title={conflictReasons.join(' | ')}
+                                >
+                                  <AlertTriangle className="w-2.5 h-2.5" />
+                                </span>
+                              )}
+                              <span className="truncate">{clip.name}</span>
+                            </div>
                             {isSelected && (
-                              <div className="flex items-center gap-0.5 shrink-0 pr-1">
+                              <div className="relative z-10 flex items-center gap-0.5 shrink-0 pr-1">
                                 <button
                                   type="button"
                                   onPointerDown={(e) => e.stopPropagation()}
@@ -641,7 +746,7 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
                               onPointerDown={(e) =>
                                 handleStartMotionClipDrag(e, charObj, clip, 'trim-right')
                               }
-                              className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-white/40 rounded-r"
+                              className="absolute z-10 right-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-white/40 rounded-r"
                             />
                           </div>
                         );

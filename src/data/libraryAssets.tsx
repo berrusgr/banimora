@@ -68,7 +68,7 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
     defaultAnimations: {
       enter: { type: 'none', duration: 0.9, delay: 0, easing: 'spring' },
       emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
-      exit: { type: 'fade-out', duration: 0.6, delay: 0, easing: 'ease-out' },
+      exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
     },
   },
   {
@@ -85,7 +85,7 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
     defaultAnimations: {
       enter: { type: 'none', duration: 0.8, delay: 0, easing: 'spring' },
       emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
-      exit: { type: 'fade-out', duration: 0.6, delay: 0, easing: 'ease-out' },
+      exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
     },
   },
   {
@@ -102,7 +102,7 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
     defaultAnimations: {
       enter: { type: 'none', duration: 0.9, delay: 0, easing: 'spring' },
       emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
-      exit: { type: 'fade-out', duration: 0.6, delay: 0, easing: 'ease-out' },
+      exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
     },
   },
   {
@@ -119,7 +119,7 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
     defaultAnimations: {
       enter: { type: 'none', duration: 0.8, delay: 0, easing: 'spring' },
       emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
-      exit: { type: 'shrink', duration: 0.6, delay: 0, easing: 'ease-in-out' },
+      exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
     },
   },
   {
@@ -136,7 +136,7 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
     defaultAnimations: {
       enter: { type: 'none', duration: 0.8, delay: 0, easing: 'spring' },
       emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
-      exit: { type: 'shrink', duration: 0.6, delay: 0, easing: 'ease-in-out' },
+      exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
     },
   },
   {
@@ -153,7 +153,7 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
     defaultAnimations: {
       enter: { type: 'none', duration: 0.9, delay: 0, easing: 'spring' },
       emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
-      exit: { type: 'fade-out', duration: 0.6, delay: 0, easing: 'ease-out' },
+      exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
     },
   },
   {
@@ -170,7 +170,7 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
     defaultAnimations: {
       enter: { type: 'none', duration: 0.8, delay: 0, easing: 'spring' },
       emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
-      exit: { type: 'shrink', duration: 0.6, delay: 0, easing: 'ease-in-out' },
+      exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
     },
   },
   {
@@ -187,7 +187,7 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
     defaultAnimations: {
       enter: { type: 'none', duration: 0.8, delay: 0, easing: 'spring' },
       emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
-      exit: { type: 'shrink', duration: 0.6, delay: 0, easing: 'ease-in-out' },
+      exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
     },
   },
 
@@ -208,7 +208,7 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
     defaultAnimations: {
       enter: { type: 'none', duration: 0.9, delay: 0, easing: 'spring' },
       emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
-      exit: { type: 'fade-out', duration: 0.6, delay: 0, easing: 'ease-out' },
+      exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
     },
   },
   {
@@ -225,7 +225,7 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
     defaultAnimations: {
       enter: { type: 'none', duration: 0.8, delay: 0, easing: 'spring' },
       emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
-      exit: { type: 'fade-out', duration: 0.6, delay: 0, easing: 'ease-out' },
+      exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
     },
   },
   {
@@ -242,7 +242,7 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
     defaultAnimations: {
       enter: { type: 'none', duration: 0.9, delay: 0, easing: 'spring' },
       emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
-      exit: { type: 'fade-out', duration: 0.6, delay: 0, easing: 'ease-out' },
+      exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
     },
   },
   {
@@ -259,7 +259,7 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
     defaultAnimations: {
       enter: { type: 'none', duration: 0.8, delay: 0, easing: 'spring' },
       emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
-      exit: { type: 'shrink', duration: 0.6, delay: 0, easing: 'ease-in-out' },
+      exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
     },
   },
   {
@@ -276,7 +276,7 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
     defaultAnimations: {
       enter: { type: 'none', duration: 0.8, delay: 0, easing: 'spring' },
       emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
-      exit: { type: 'shrink', duration: 0.6, delay: 0, easing: 'ease-in-out' },
+      exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
     },
   },
   {
@@ -305,7 +305,7 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
     defaultAnimations: {
       enter: { type: 'none', duration: 0.8, delay: 0, easing: 'spring' },
       emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
-      exit: { type: 'fade-out', duration: 0.6, delay: 0, easing: 'ease-out' },
+      exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
     },
   },
   {

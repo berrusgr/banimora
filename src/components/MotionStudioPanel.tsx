@@ -1281,14 +1281,14 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
             </div>
           )}
 
-          {/* Aktif Hareketler Özeti */}
-          <div className="rounded-xl border border-slate-200 bg-white p-2.5 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Karakterdeki Hareketler ({motionClips.length})</span>
-              </span>
-              {motionClips.length > 0 && (
+          {/* Aktif Hareketler Özeti (yalnızca klip varsa gösterilir) */}
+          {motionClips.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white p-2.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Karakterdeki Hareketler ({motionClips.length})</span>
+                </span>
                 <button
                   type="button"
                   onClick={() => setIsLibraryOpen(true)}
@@ -1296,38 +1296,32 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
                 >
                   + Birlikte Ekle
                 </button>
-              )}
-            </div>
+              </div>
 
-            {conflicts.length > 0 && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 space-y-1 text-[10.5px] text-amber-900">
-                <div className="font-semibold flex items-center gap-1 text-amber-800">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                  <span>Çakışan Hareket Uyarısı</span>
+              {conflicts.length > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 space-y-1 text-[10.5px] text-amber-900">
+                  <div className="font-semibold flex items-center gap-1 text-amber-800">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Çakışan Hareket Uyarısı</span>
+                  </div>
+                  {conflicts.map((c, idx) => {
+                    const a = motionClips.find((m) => m.id === c.clipAId);
+                    const b = motionClips.find((m) => m.id === c.clipBId);
+                    const regionLabel =
+                      a?.channelId && CHANNEL_LABELS[a.channelId]
+                        ? CHANNEL_LABELS[a.channelId]
+                        : 'aynı vücut bölgesi';
+                    return (
+                      <div key={idx} className="leading-snug text-amber-800">
+                        • <strong>{a?.name ?? c.clipAName}</strong> ve{' '}
+                        <strong>{b?.name ?? c.clipBName}</strong> aynı bölgeyi ({regionLabel})
+                        kontrol ediyor. Birlikte kullanılamayabilir veya biri diğerini baskılayabilir.
+                      </div>
+                    );
+                  })}
                 </div>
-                {conflicts.map((c, idx) => {
-                  const a = motionClips.find((m) => m.id === c.clipAId);
-                  const b = motionClips.find((m) => m.id === c.clipBId);
-                  const regionLabel =
-                    a?.channelId && CHANNEL_LABELS[a.channelId]
-                      ? CHANNEL_LABELS[a.channelId]
-                      : 'aynı vücut bölgesi';
-                  return (
-                    <div key={idx} className="leading-snug text-amber-800">
-                      • <strong>{a?.name ?? c.clipAName}</strong> ve{' '}
-                      <strong>{b?.name ?? c.clipBName}</strong> aynı bölgeyi ({regionLabel})
-                      kontrol ediyor. Birlikte kullanılamayabilir veya biri diğerini baskılayabilir.
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+              )}
 
-            {motionClips.length === 0 ? (
-              <div className="rounded-lg bg-slate-50 border border-dashed border-slate-200 p-2.5 text-[11px] text-slate-500">
-                Karaktere henüz hareket eklenmedi.
-              </div>
-            ) : (
               <div className="space-y-1.5 max-h-60 overflow-y-auto pr-0.5">
                 {motionClips.map((clip, clipIdx) => (
                   <MotionClipCard
@@ -1346,44 +1340,6 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
                     onRemove={handleRemoveClip}
                   />
                 ))}
-              </div>
-            )}
-          </div>
-
-          {/* Hızlı Erişim: Son Kullanılanlar / Favoriler */}
-          {(recentIds.length > 0 || favorites.length > 0) && (
-            <div className="rounded-xl border border-slate-200 bg-white p-2 space-y-1.5">
-              <div className="text-[10px] font-semibold text-slate-500 flex items-center justify-between">
-                <span>Hızlı Ekle</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedCategory(recentIds.length > 0 ? 'recent' : 'favorites');
-                    setIsLibraryOpen(true);
-                  }}
-                  className="text-indigo-600 hover:underline"
-                >
-                  Tümünü Gör
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {Array.from(new Set([...recentIds, ...favorites]))
-                  .slice(0, 4)
-                  .map((id) => {
-                    const preset = getMotionPresetById(id);
-                    if (!preset) return null;
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => handleAddPresetToTimeline(preset)}
-                        className="px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300 text-[10px] font-medium text-slate-700 flex items-center gap-1 transition"
-                      >
-                        <Plus className="w-2.5 h-2.5 text-indigo-600" />
-                        <span className="truncate max-w-[115px]">{preset.name}</span>
-                      </button>
-                    );
-                  })}
               </div>
             </div>
           )}

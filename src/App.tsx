@@ -814,14 +814,15 @@ export function App() {
           delay: 0,
           easing: 'ease-in-out',
         },
-      exit: isStaticItem
-        ? { type: 'none', duration: 0, delay: 0, easing: 'linear' }
-        : item.defaultAnimations?.exit || {
-          type: 'fade-out',
-          duration: 0.5,
-          delay: 0,
-          easing: 'ease-out',
-        },
+      exit:
+        isStaticItem || item.category === 'characters'
+          ? { type: 'none', duration: 0, delay: 0, easing: 'linear' }
+          : item.defaultAnimations?.exit || {
+              type: 'fade-out',
+              duration: 0.5,
+              delay: 0,
+              easing: 'ease-out',
+            },
     };
 
     const mathDef = getMathAssetDefinition(item.id);
@@ -1079,7 +1080,7 @@ export function App() {
       defaultAnimations: {
         enter: { type: 'none', duration: 0.9, delay: 0, easing: 'spring' },
         emphasis: { type: 'none', duration: 2.0, delay: 0, easing: 'ease-in-out' },
-        exit: { type: 'fade-out', duration: 0.5, delay: 0, easing: 'ease-out' },
+        exit: { type: 'none', duration: 0, delay: 0, easing: 'linear' },
       },
     };
 

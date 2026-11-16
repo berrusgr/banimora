@@ -158,7 +158,7 @@ export const DEFAULT_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
     secondaryTopColor: '#7c473b',
     bottomColor: '#2d3e4e',
     shoeColor: '#6e412a',
-    pose: 'explain',
+    pose: 'idle',
   },
   // 3. SENIOR / ELDER IN THIS SAME SLENDER PRO STYLE
   'char-pro-haluk': {
@@ -180,7 +180,7 @@ export const DEFAULT_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
     secondaryTopColor: '#5c3a21',
     bottomColor: '#334155',
     shoeColor: '#5c3a21',
-    pose: 'clipboard',
+    pose: 'idle',
   },
   // 4. YOUTH / UNIVERSITY TEEN IN THIS SAME SLENDER PRO STYLE
   'char-pro-kaan': {
@@ -203,7 +203,7 @@ export const DEFAULT_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
     secondaryTopColor: '#f8fafc',
     bottomColor: '#364f59',
     shoeColor: '#475569',
-    pose: 'wave',
+    pose: 'idle',
   },
   // 5. CHILD IN THIS SAME SLENDER PRO STYLE
   'char-pro-efe': {
@@ -226,7 +226,7 @@ export const DEFAULT_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
     secondaryTopColor: '#7c473b',
     bottomColor: '#364f59',
     shoeColor: '#6e412a',
-    pose: 'cheer',
+    pose: 'idle',
   },
   // 6. SENIOR FEMALE PROFESSOR IN SLENDER PRO STYLE
   'char-pro-selma': {
@@ -254,9 +254,7 @@ export const DEFAULT_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
     bottomStyle: 'skirt',
     shoeColor: '#475569',
     shoeStyle: 'heels',
-    pose: 'explain',
-    handProp: 'book',
-    handPropSide: 'left',
+    pose: 'idle',
   },
   // 7. YOUTH FEMALE IN SLENDER PRO STYLE (Ressam Pınar)
   'char-pro-defne': {
@@ -283,8 +281,7 @@ export const DEFAULT_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
     bottomStyle: 'jeans',
     shoeColor: '#f8fafc',
     shoeStyle: 'sneakers',
-    handProp: 'paint_brush',
-    pose: 'wave',
+    pose: 'idle',
   },
   // 8. GIRL CHILD IN SLENDER PRO STYLE
   'char-pro-zeynep': {
@@ -311,7 +308,7 @@ export const DEFAULT_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
     bottomStyle: 'skirt',
     shoeColor: '#ec4899',
     shoeStyle: 'sneakers',
-    pose: 'cheer',
+    pose: 'idle',
   },
   // Character 4 in Image 2: Wavy center-parted hair, beard, white open overshirt over blue tee, dark slim pants
   'char-coach-emre': {
@@ -353,7 +350,7 @@ export const DEFAULT_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
     secondaryTopColor: '#78350f',
     bottomColor: '#1f2428',
     shoeColor: '#18181b',
-    pose: 'explain',
+    pose: 'idle',
   },
   // Character 6/7 in Image 2: Senior Professor with white side hair, wire glasses, wisdom creases, grey buttoned shirt
   'char-prof-atlas': {
@@ -374,7 +371,7 @@ export const DEFAULT_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
     secondaryTopColor: '#d4d4d8',
     bottomColor: '#27272a',
     shoeColor: '#52525b',
-    pose: 'point',
+    pose: 'idle',
   },
   // Character 3 in Image 2: Teen/Youth with angled long bangs & magenta streaks, flame graphic tee, slim black pants
   'char-teen-ege': {
@@ -395,7 +392,7 @@ export const DEFAULT_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
     secondaryTopColor: '#f59e0b',
     bottomColor: '#18181b',
     shoeColor: '#18181b',
-    pose: 'wave',
+    pose: 'idle',
   },
   // Character 2 in Image 2: School Boy with spiky swept hair, white/green raglan tee & shorts
   'char-astro-leo': {
@@ -416,7 +413,7 @@ export const DEFAULT_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
     secondaryTopColor: '#f8fafc',
     bottomColor: '#c56b62',
     shoeColor: '#3f3f46',
-    pose: 'cheer',
+    pose: 'idle',
   },
   // Character 1 in Image 2: Young Kid with messy bangs, blue sweater, light pants
   'char-kid-can': {
@@ -459,7 +456,7 @@ export const DEFAULT_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
     secondaryTopColor: '#f8fafc',
     bottomColor: '#27272a',
     shoeColor: '#3f3f46',
-    pose: 'explain',
+    pose: 'idle',
   },
   // Female Student in the same lineless flat-vector style
   'char-student-zeynep': {
@@ -858,7 +855,7 @@ export function computePoseJointAngles(
       case 'idle':
       default:
         return {
-          headTilt: s * 1.8,
+          headTilt: 0,
           leftShoulder: 4 + s * 1.8,
           leftElbow: -4,
           leftWrist: 0,
@@ -869,7 +866,7 @@ export function computePoseJointAngles(
           leftKnee: 0,
           rightHip: 0,
           rightKnee: 0,
-          bodyBobY: s * -1.2,
+          bodyBobY: 0,
         };
     }
   };
@@ -5362,10 +5359,6 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
           </linearGradient>
         </defs>
 
-        {!portraitMode && (
-          <ellipse cx="110" cy="306" rx="56" ry="7" fill="rgba(0,0,0,0.14)" />
-        )}
-
         <g
           transform={`translate(${headLookShiftX * 0.9}, ${breathBob}) rotate(${subtleTilt} 110 140)`}
         >
@@ -5490,9 +5483,6 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
         viewBox="18 -26 195 362"
         className="w-full h-full overflow-visible select-none"
       >
-        {/* Soft studio floor shadow */}
-        <ellipse cx="104" cy="326" rx="44" ry="5.5" fill="rgba(0,0,0,0.12)" />
-
         <g transform={`${config.flipHorizontal ? 'translate(104, 0) scale(-1, 1) translate(-104, 0) ' : ''}translate(0, ${prop.translateY + bodyBobY})`}>
           {/* Action Background Props (e.g., Office Chair behind seated character) */}
           {renderActionBackgroundProps(config.pose, -24)}
@@ -6097,10 +6087,12 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                     </g>
                   </g>
                 </g>
+              </g>
+            </g>
 
-                {/* 3. REFINED SLENDER-PRO HEAD & NECK (Anchored to scaled collar so head never detaches!) */}
-                <g
-                  data-rig-group="head-collar-base"
+            {/* 3. REFINED SLENDER-PRO HEAD & NECK (Anchored to scaled collar in root space!) */}
+            <g
+              data-rig-group="head-collar-base"
                   transform={`translate(${collarAnchorInRootSpace.x}, ${collarAnchorInRootSpace.y + speechHeadBobY}) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
                 >
                   <g
@@ -6234,8 +6226,6 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                     </g>
                   </g>
                 </g>
-              </g>
-            </g>
 
             {/* Action Props Overlay (Laptop, Phone, Idea Bulb, Presentation Pointer, Medical Tool, Dumbbells) */}
                 {renderActionOverlayProps(config.pose, animTime, -24)}
@@ -6287,11 +6277,6 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   <circle cx="9" cy="9" r="1.6" fill={shadeColor(config.bottomColor, 40)} opacity="0.65" />
                 </pattern>
               </defs>
-
-              {/* Subtle soft ground shadow */}
-              {!portraitMode && (
-                <ellipse cx="110" cy="322" rx="40" ry="6" fill="rgba(0,0,0,0.10)" />
-              )}
 
               <g transform={`${config.flipHorizontal ? 'translate(110, 0) scale(-1, 1) translate(-110, 0) ' : ''}translate(0, ${prop.translateY + bodyBobY})`}>
                 {/* Action Background Props (e.g., Office Chair behind seated character) */}

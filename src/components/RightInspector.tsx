@@ -1505,108 +1505,6 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 className="hidden"
               />
 
-              {/* 1. KARAKTER EYLEMLERİ (AKILLI EYLEM KÜTÜPHANESİ - 11 KATEGORİ) */}
-              <DesignAccordionSection
-                isOpen={isSectionOpen('actions')}
-                onToggle={() => toggleSection('actions')}
-                containerClassName="bg-white p-2.5 rounded-xl border border-indigo-100"
-                titleClassName="text-[11px] font-bold text-slate-800"
-                title={
-                  <>
-                    <Bone className="w-3.5 h-3.5 text-indigo-600" />
-                    Akıllı Eylemler (Actions)
-                  </>
-                }
-              >
-                {onApplySmartAction ? (
-                  <SmartActionLibrarySection
-                    selectedObject={selectedObject}
-                    charConfig={resolvedCharConfig}
-                    onApplySmartAction={onApplySmartAction}
-                    pendingSmartActionTrial={pendingSmartActionTrial}
-                    onConfirmSmartAction={onConfirmSmartAction}
-                    onCancelSmartAction={onCancelSmartAction}
-                  />
-                ) : (
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {CHARACTER_ACTION_CATEGORIES.flatMap((c) => c.actions).map((act) => {
-                      const isPoseActive = resolvedCharConfig.pose === act.id;
-                      return (
-                        <button
-                          key={act.id}
-                          onClick={() =>
-                            onUpdateObject(selectedObject.id, {
-                              characterConfig: {
-                                ...resolvedCharConfig,
-                                pose: act.id,
-                              },
-                            })
-                          }
-                          className={`px-2 py-1.5 rounded-lg text-[10.5px] font-medium text-left border transition-all cursor-pointer truncate ${isPoseActive
-                            ? 'bg-indigo-600 text-white border-indigo-600 font-semibold shadow-2xs'
-                            : 'bg-slate-50 hover:bg-indigo-50/60 border-slate-200 text-slate-700'
-                            }`}
-                        >
-                          {act.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Action Speed & Intensity Sliders (Customizable Motion Parameters!) */}
-                <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
-                  <div className="bg-slate-50 rounded-lg p-1.5 border border-slate-200/80">
-                    <div className="flex justify-between text-[10px] mb-0.5">
-                      <span className="font-semibold text-slate-600">Hız (Tempo)</span>
-                      <span className="font-mono font-bold text-indigo-700">
-                        {(resolvedCharConfig.actionSpeed ?? 1.0).toFixed(1)}x
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.3}
-                      max={2.5}
-                      step={0.1}
-                      value={resolvedCharConfig.actionSpeed ?? 1.0}
-                      onChange={(e) =>
-                        onUpdateObject(selectedObject.id, {
-                          characterConfig: {
-                            ...resolvedCharConfig,
-                            actionSpeed: Number(e.target.value),
-                          },
-                        })
-                      }
-                      className="w-full accent-indigo-600 cursor-pointer h-1.5"
-                    />
-                  </div>
-                  <div className="bg-slate-50 rounded-lg p-1.5 border border-slate-200/80">
-                    <div className="flex justify-between text-[10px] mb-0.5">
-                      <span className="font-semibold text-slate-600">Genişlik (Açılar)</span>
-                      <span className="font-mono font-bold text-indigo-700">
-                        {(resolvedCharConfig.actionIntensity ?? 1.0).toFixed(1)}x
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.3}
-                      max={1.8}
-                      step={0.1}
-                      value={resolvedCharConfig.actionIntensity ?? 1.0}
-                      onChange={(e) =>
-                        onUpdateObject(selectedObject.id, {
-                          characterConfig: {
-                            ...resolvedCharConfig,
-                            actionIntensity: Number(e.target.value),
-                          },
-                        })
-                      }
-                      className="w-full accent-indigo-600 cursor-pointer h-1.5"
-                    />
-                  </div>
-                </div>
-              </DesignAccordionSection>
-
               {/* 2. YÜZ İFADELERİ & KAFA YÖNÜ (EXPRESSIONS & HEAD DIRECTION) */}
               <DesignAccordionSection
                 isOpen={isSectionOpen('expression')}
@@ -3317,6 +3215,110 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               onStageMotionPreviewChange={onStageMotionPreviewChange}
               rightOffsetPx={widthPx + 12}
             />
+          )}
+
+          {/* KARAKTER EYLEMLERİ (AKILLI EYLEM KÜTÜPHANESİ) */}
+          {isArticulatedCharacter && resolvedCharConfig && (
+            <DesignAccordionSection
+              isOpen={isSectionOpen('actions')}
+              onToggle={() => toggleSection('actions')}
+              containerClassName="bg-white p-2.5 rounded-xl border border-indigo-100"
+              titleClassName="text-[11px] font-bold text-slate-800"
+              title={
+                <>
+                  <Bone className="w-3.5 h-3.5 text-indigo-600" />
+                  Akıllı Eylemler (Actions)
+                </>
+              }
+            >
+              {onApplySmartAction ? (
+                <SmartActionLibrarySection
+                  selectedObject={selectedObject}
+                  charConfig={resolvedCharConfig}
+                  onApplySmartAction={onApplySmartAction}
+                  pendingSmartActionTrial={pendingSmartActionTrial}
+                  onConfirmSmartAction={onConfirmSmartAction}
+                  onCancelSmartAction={onCancelSmartAction}
+                />
+              ) : (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {CHARACTER_ACTION_CATEGORIES.flatMap((c) => c.actions).map((act) => {
+                    const isPoseActive = resolvedCharConfig.pose === act.id;
+                    return (
+                      <button
+                        key={act.id}
+                        onClick={() =>
+                          onUpdateObject(selectedObject.id, {
+                            characterConfig: {
+                              ...resolvedCharConfig,
+                              pose: act.id,
+                            },
+                          })
+                        }
+                        className={`px-2 py-1.5 rounded-lg text-[10.5px] font-medium text-left border transition-all cursor-pointer truncate ${isPoseActive
+                          ? 'bg-indigo-600 text-white border-indigo-600 font-semibold shadow-2xs'
+                          : 'bg-slate-50 hover:bg-indigo-50/60 border-slate-200 text-slate-700'
+                          }`}
+                      >
+                        {act.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Action Speed & Intensity Sliders (Customizable Motion Parameters!) */}
+              <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
+                <div className="bg-slate-50 rounded-lg p-1.5 border border-slate-200/80">
+                  <div className="flex justify-between text-[10px] mb-0.5">
+                    <span className="font-semibold text-slate-600">Hız (Tempo)</span>
+                    <span className="font-mono font-bold text-indigo-700">
+                      {(resolvedCharConfig.actionSpeed ?? 1.0).toFixed(1)}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.3}
+                    max={2.5}
+                    step={0.1}
+                    value={resolvedCharConfig.actionSpeed ?? 1.0}
+                    onChange={(e) =>
+                      onUpdateObject(selectedObject.id, {
+                        characterConfig: {
+                          ...resolvedCharConfig,
+                          actionSpeed: Number(e.target.value),
+                        },
+                      })
+                    }
+                    className="w-full accent-indigo-600 cursor-pointer h-1.5"
+                  />
+                </div>
+                <div className="bg-slate-50 rounded-lg p-1.5 border border-slate-200/80">
+                  <div className="flex justify-between text-[10px] mb-0.5">
+                    <span className="font-semibold text-slate-600">Genişlik (Açılar)</span>
+                    <span className="font-mono font-bold text-indigo-700">
+                      {(resolvedCharConfig.actionIntensity ?? 1.0).toFixed(1)}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.3}
+                    max={1.8}
+                    step={0.1}
+                    value={resolvedCharConfig.actionIntensity ?? 1.0}
+                    onChange={(e) =>
+                      onUpdateObject(selectedObject.id, {
+                        characterConfig: {
+                          ...resolvedCharConfig,
+                          actionIntensity: Number(e.target.value),
+                        },
+                      })
+                    }
+                    className="w-full accent-indigo-600 cursor-pointer h-1.5"
+                  />
+                </div>
+              </div>
+            </DesignAccordionSection>
           )}
 
           {/* CHARACTER HEAD DIRECTION IN ANIMATION TAB */}

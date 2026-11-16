@@ -1,5 +1,6 @@
 import React from 'react';
 import { VectorAssetId } from '../types/studio';
+import { deriveMaterialTones, ILLUSTRATION_TOKENS } from '../utils/illustrationSystem';
 
 interface LifestyleElementsSvgRendererProps {
   assetId: VectorAssetId;
@@ -12,6 +13,11 @@ export const LifestyleElementsSvgRenderer: React.FC<LifestyleElementsSvgRenderer
   color,
   secondaryColor,
 }) => {
+  const primaryTones = deriveMaterialTones(color);
+  const secondaryTones = deriveMaterialTones(secondaryColor);
+  const sw = ILLUSTRATION_TOKENS.stroke.regular;
+  const swDetail = ILLUSTRATION_TOKENS.stroke.detail;
+
   switch (assetId) {
     // ==========================================
     // 1. TEKNOLOJİK ALETLER (TECH & DEVICES)
@@ -19,44 +25,69 @@ export const LifestyleElementsSvgRenderer: React.FC<LifestyleElementsSvgRenderer
     case 'el-tech-laptop':
       return (
         <svg viewBox="0 0 180 120" className="w-full h-full">
-          {/* Screen Lid */}
-          <rect x="26" y="12" width="128" height="76" rx="7" fill={color} stroke="#0f172a" strokeWidth="2.5" />
-          {/* Display Area */}
-          <rect x="33" y="19" width="114" height="62" rx="3" fill={secondaryColor} />
+          {/* Outer Aluminum Lid + Bevel */}
+          <rect x="24" y="10" width="132" height="78" rx="8" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={sw} />
+          <path d="M28 14 H152" stroke={primaryTones.highlight} strokeWidth="1.8" strokeLinecap="round" opacity="0.7" />
+          {/* Display Bezel & Screen */}
+          <rect x="31" y="17" width="118" height="64" rx="4" fill="#0f172a" />
+          <rect x="34" y="20" width="112" height="58" rx="3" fill={secondaryTones.base} />
           {/* Screen UI Graphics */}
-          <rect x="40" y="26" width="46" height="22" rx="3" fill="#ffffff" opacity="0.9" />
-          <rect x="92" y="26" width="48" height="10" rx="2" fill="#ffffff" opacity="0.7" />
-          <rect x="92" y="40" width="36" height="8" rx="2" fill="#ffffff" opacity="0.55" />
-          <rect x="40" y="54" width="100" height="20" rx="3" fill="#0f172a" opacity="0.16" />
-          <circle cx="90" cy="15.5" r="1.5" fill="#94a3b8" />
+          <rect x="40" y="26" width="46" height="22" rx="3.5" fill="#ffffff" opacity="0.92" />
+          <rect x="44" y="30" width="18" height="4" rx="1.5" fill={primaryTones.base} opacity="0.75" />
+          <rect x="44" y="37" width="32" height="3" rx="1.5" fill="#cbd5e1" />
+          <rect x="92" y="26" width="48" height="10" rx="2.5" fill="#ffffff" opacity="0.78" />
+          <rect x="92" y="40" width="36" height="8" rx="2.5" fill="#ffffff" opacity="0.58" />
+          <rect x="40" y="54" width="100" height="19" rx="3.5" fill="#0f172a" opacity="0.16" />
+          {/* Diagonal Glass Reflection */}
+          <polygon points="34,20 76,20 48,78 34,78" fill="#ffffff" opacity="0.12" />
+          {/* Webcam */}
+          <circle cx="90" cy="14" r="1.6" fill="#64748b" />
+          {/* Hinge */}
+          <rect x="64" y="85" width="52" height="4" rx="2" fill={primaryTones.deepShadow} />
           {/* Base / Keyboard Deck */}
-          <path d="M 14,88 L 166,88 L 174,104 Q 174,108 168,108 L 12,108 Q 6,108 6,104 Z" fill="#e2e8f0" stroke="#0f172a" strokeWidth="2.5" strokeLinejoin="round" />
-          {/* Keyboard Keys */}
-          <rect x="30" y="92" width="120" height="6" rx="1.5" fill="#475569" opacity="0.65" />
-          <rect x="72" y="100" width="36" height="4" rx="1.5" fill="#94a3b8" />
+          <path
+            d="M 14,88 L 166,88 L 174,104 Q 174,109 167,109 L 13,109 Q 6,109 6,104 Z"
+            fill="#e2e8f0"
+            stroke={primaryTones.stroke}
+            strokeWidth={sw}
+            strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin}
+          />
+          <line x1="16" y1="90.5" x2="164" y2="90.5" stroke="#ffffff" strokeWidth="1.4" opacity="0.8" />
+          {/* Keyboard Keys & Trackpad */}
+          <rect x="28" y="92.5" width="124" height="6.5" rx="2" fill="#475569" opacity="0.72" />
+          <rect x="72" y="101" width="36" height="4.5" rx="1.5" fill="#94a3b8" />
+          <path d="M12 106.5 H168" stroke="#94a3b8" strokeWidth="1.4" opacity="0.6" />
         </svg>
       );
 
     case 'el-tech-phone':
       return (
         <svg viewBox="0 0 90 150" className="w-full h-full">
+          {/* Side Buttons */}
+          <rect x="11.5" y="34" width="3" height="12" rx="1.5" fill={primaryTones.shadow} />
+          <rect x="11.5" y="50" width="3" height="12" rx="1.5" fill={primaryTones.shadow} />
+          <rect x="75.5" y="40" width="3" height="16" rx="1.5" fill={primaryTones.shadow} />
           {/* Phone Body */}
-          <rect x="14" y="8" width="62" height="134" rx="12" fill={color} stroke="#0f172a" strokeWidth="2.5" />
+          <rect x="14" y="8" width="62" height="134" rx="13" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={sw} />
+          <rect x="16.5" y="10.5" width="57" height="129" rx="11" fill="none" stroke={primaryTones.highlight} strokeWidth="1.2" opacity="0.55" />
           {/* Screen */}
-          <rect x="19" y="16" width="52" height="114" rx="7" fill={secondaryColor} />
-          {/* Notch */}
-          <rect x="34" y="16" width="22" height="5" rx="2.5" fill="#0f172a" />
+          <rect x="19" y="15" width="52" height="116" rx="8" fill={secondaryTones.base} />
+          {/* Dynamic Island / Notch */}
+          <rect x="33" y="18" width="24" height="5.5" rx="2.75" fill="#0f172a" />
+          <circle cx="51" cy="20.75" r="1.3" fill="#38bdf8" opacity="0.65" />
           {/* App Widgets */}
-          <rect x="24" y="28" width="42" height="26" rx="5" fill="#ffffff" opacity="0.9" />
-          <circle cx="33" cy="41" r="6" fill={color} opacity="0.8" />
-          <rect x="43" y="36" width="18" height="4" rx="2" fill="#94a3b8" />
-          <rect x="43" y="43" width="12" height="3" rx="1.5" fill="#cbd5e1" />
-          <rect x="24" y="61" width="19" height="19" rx="4" fill="#38bdf8" />
-          <rect x="47" y="61" width="19" height="19" rx="4" fill="#fb7185" />
-          <rect x="24" y="85" width="19" height="19" rx="4" fill="#34d399" />
-          <rect x="47" y="85" width="19" height="19" rx="4" fill="#fbbf24" />
-          {/* Dock */}
-          <rect x="24" y="112" width="42" height="12" rx="4" fill="#ffffff" opacity="0.55" />
+          <rect x="24" y="29" width="42" height="25" rx="5.5" fill="#ffffff" opacity="0.92" />
+          <circle cx="33" cy="41.5" r="6" fill={primaryTones.base} opacity="0.85" />
+          <rect x="43" y="36.5" width="18" height="4" rx="2" fill="#94a3b8" />
+          <rect x="43" y="43.5" width="12" height="3" rx="1.5" fill="#cbd5e1" />
+          <rect x="24" y="61" width="19" height="19" rx="4.5" fill="#38bdf8" />
+          <rect x="47" y="61" width="19" height="19" rx="4.5" fill="#fb7185" />
+          <rect x="24" y="85" width="19" height="19" rx="4.5" fill="#34d399" />
+          <rect x="47" y="85" width="19" height="19" rx="4.5" fill="#fbbf24" />
+          {/* Glass Reflection */}
+          <polygon points="19,15 48,15 28,131 19,131" fill="#ffffff" opacity="0.1" />
+          {/* Dock & Home Bar */}
+          <rect x="24" y="112" width="42" height="12" rx="4.5" fill="#ffffff" opacity="0.58" />
           <rect x="36" y="135" width="18" height="3" rx="1.5" fill="#cbd5e1" />
         </svg>
       );
@@ -84,20 +115,26 @@ export const LifestyleElementsSvgRenderer: React.FC<LifestyleElementsSvgRenderer
     case 'el-tech-monitor':
       return (
         <svg viewBox="0 0 170 135" className="w-full h-full">
-          {/* Stand Neck & Base */}
-          <rect x="73" y="96" width="24" height="22" fill="#94a3b8" stroke="#0f172a" strokeWidth="2" />
-          <rect x="52" y="116" width="66" height="9" rx="4" fill="#cbd5e1" stroke="#0f172a" strokeWidth="2" />
+          {/* Tapered Stand Neck & Sculpted Base */}
+          <path d="M 74,96 L 96,96 L 100,118 L 70,118 Z" fill="#94a3b8" stroke={primaryTones.stroke} strokeWidth={swDetail} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} />
+          <path d="M 52,116 Q 85,112 118,116 L 122,124 Q 85,127 48,124 Z" fill="#cbd5e1" stroke={primaryTones.stroke} strokeWidth={swDetail} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} />
+          <line x1="56" y1="118" x2="114" y2="118" stroke="#ffffff" strokeWidth="1.4" opacity="0.7" />
           {/* Monitor Frame */}
-          <rect x="12" y="10" width="146" height="90" rx="8" fill={color} stroke="#0f172a" strokeWidth="2.5" />
+          <rect x="12" y="10" width="146" height="90" rx="9" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={sw} />
+          <line x1="20" y1="13" x2="150" y2="13" stroke={primaryTones.highlight} strokeWidth="1.6" strokeLinecap="round" opacity="0.6" />
           {/* Screen */}
-          <rect x="20" y="18" width="130" height="70" rx="4" fill={secondaryColor} />
+          <rect x="20" y="17" width="130" height="71" rx="4.5" fill={secondaryTones.base} />
           {/* Bar Chart & Window UI */}
-          <rect x="28" y="26" width="52" height="54" rx="4" fill="#ffffff" opacity="0.9" />
-          <rect x="35" y="56" width="8" height="18" rx="1.5" fill={color} />
-          <rect x="47" y="44" width="8" height="30" rx="1.5" fill="#38bdf8" />
-          <rect x="59" y="36" width="8" height="38" rx="1.5" fill="#10b981" />
-          <rect x="86" y="26" width="56" height="24" rx="4" fill="#ffffff" opacity="0.85" />
-          <rect x="86" y="56" width="56" height="24" rx="4" fill="#ffffff" opacity="0.7" />
+          <rect x="28" y="25" width="52" height="55" rx="4.5" fill="#ffffff" opacity="0.93" />
+          <rect x="35" y="55" width="8" height="19" rx="2" fill={primaryTones.base} />
+          <rect x="47" y="43" width="8" height="31" rx="2" fill="#38bdf8" />
+          <rect x="59" y="35" width="8" height="39" rx="2" fill="#10b981" />
+          <rect x="86" y="25" width="56" height="25" rx="4.5" fill="#ffffff" opacity="0.88" />
+          <rect x="92" y="32" width="32" height="4" rx="2" fill={primaryTones.base} opacity="0.45" />
+          <rect x="92" y="39" width="42" height="3.5" rx="1.75" fill="#cbd5e1" />
+          <rect x="86" y="55" width="56" height="25" rx="4.5" fill="#ffffff" opacity="0.75" />
+          {/* Glass reflection */}
+          <polygon points="20,17 66,17 38,88 20,88" fill="#ffffff" opacity="0.1" />
           <circle cx="85" cy="94" r="2.2" fill="#cbd5e1" />
         </svg>
       );
@@ -285,18 +322,23 @@ export const LifestyleElementsSvgRenderer: React.FC<LifestyleElementsSvgRenderer
     case 'el-life-coffee':
       return (
         <svg viewBox="0 0 130 130" className="w-full h-full">
-          {/* Steam */}
-          <path d="M 46,32 Q 40,22 48,14" fill="none" stroke="#94a3b8" strokeWidth="3.5" strokeLinecap="round" />
-          <path d="M 62,30 Q 56,18 64,10" fill="none" stroke="#94a3b8" strokeWidth="3.5" strokeLinecap="round" />
-          <path d="M 78,32 Q 72,22 80,14" fill="none" stroke="#94a3b8" strokeWidth="3.5" strokeLinecap="round" />
+          {/* Soft Steam */}
+          <path d="M 46,31 Q 40,21 48,13" fill="none" stroke="#94a3b8" strokeWidth="3.2" strokeLinecap="round" opacity="0.7" />
+          <path d="M 62,29 Q 56,17 64,9" fill="none" stroke="#94a3b8" strokeWidth="3.2" strokeLinecap="round" opacity="0.85" />
+          <path d="M 78,31 Q 72,21 80,13" fill="none" stroke="#94a3b8" strokeWidth="3.2" strokeLinecap="round" opacity="0.7" />
+          {/* Ceramic Saucer */}
+          <ellipse cx="60" cy="112" rx="44" ry="7.5" fill="#e2e8f0" stroke={primaryTones.stroke} strokeWidth={swDetail} />
+          <ellipse cx="60" cy="110.5" rx="34" ry="4" fill="#f8fafc" />
           {/* Handle */}
-          <path d="M 92,50 L 102,50 A 14,16 0 0 1 102,84 L 90,84" fill="none" stroke={color} strokeWidth="7" strokeLinecap="round" />
-          {/* Mug Body */}
-          <path d="M 26,42 L 94,42 L 90,94 Q 88,108 60,108 Q 32,108 30,94 Z" fill={secondaryColor} stroke={color} strokeWidth="3" strokeLinejoin="round" />
-          {/* Coffee Rim */}
-          <ellipse cx="60" cy="42" rx="34" ry="7" fill="#78350f" stroke={color} strokeWidth="2.5" />
-          {/* Saucer */}
-          <ellipse cx="60" cy="112" rx="44" ry="7" fill="#e2e8f0" stroke={color} strokeWidth="2.5" />
+          <path d="M 91,50 L 101,50 A 13,15 0 0 1 101,82 L 90,82" fill="none" stroke={primaryTones.stroke} strokeWidth="9.5" strokeLinecap="round" />
+          <path d="M 91,50 L 101,50 A 13,15 0 0 1 101,82 L 90,82" fill="none" stroke={secondaryTones.base} strokeWidth="5.5" strokeLinecap="round" />
+          {/* Mug Body + Highlight/Shadow */}
+          <path d="M 26,42 L 94,42 L 90,94 Q 88,108 60,108 Q 32,108 30,94 Z" fill={secondaryTones.base} stroke={primaryTones.stroke} strokeWidth={sw} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} />
+          <path d="M 33,48 L 36,92 Q 37,100 44,103" fill="none" stroke={secondaryTones.specular} strokeWidth="3.5" strokeLinecap="round" opacity="0.55" />
+          <path d="M 80,45 L 88,45 L 85,93 Q 83,103 68,105 Q 78,99 80,90 Z" fill={secondaryTones.shadow} opacity="0.55" />
+          {/* Coffee Surface & Crema */}
+          <ellipse cx="60" cy="42" rx="34" ry="7.5" fill="#78350f" stroke={primaryTones.stroke} strokeWidth={swDetail} />
+          <ellipse cx="56" cy="41.5" rx="18" ry="3.5" fill="#b45309" opacity="0.5" />
         </svg>
       );
 
@@ -413,14 +455,18 @@ export const LifestyleElementsSvgRenderer: React.FC<LifestyleElementsSvgRenderer
     case 'el-life-plant':
       return (
         <svg viewBox="0 0 110 140" className="w-full h-full">
-          {/* Leaves */}
-          <path d="M 55,74 Q 26,54 24,26 Q 48,32 55,68 Z" fill="#22c55e" stroke="#14532d" strokeWidth="2" />
-          <path d="M 55,74 Q 84,54 86,26 Q 62,32 55,68 Z" fill="#16a34a" stroke="#14532d" strokeWidth="2" />
-          <path d="M 55,74 Q 44,34 55,12 Q 66,34 55,74 Z" fill="#4ade80" stroke="#14532d" strokeWidth="2" />
-          {/* Pot Rim */}
-          <rect x="26" y="72" width="58" height="12" rx="4" fill={color} stroke="#0f172a" strokeWidth="2.2" />
-          {/* Pot Body */}
-          <polygon points="32,84 78,84 70,128 40,128" fill={secondaryColor} stroke="#0f172a" strokeWidth="2.2" strokeLinejoin="round" />
+          {/* Layered Botanical Leaves + Midrib Veins */}
+          <path d="M 55,74 Q 24,54 22,25 Q 48,30 55,68 Z" fill="#22c55e" stroke="#14532d" strokeWidth={swDetail} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} />
+          <path d="M 53,68 Q 40,46 28,31" fill="none" stroke="#86efac" strokeWidth="1.4" strokeLinecap="round" opacity="0.7" />
+          <path d="M 55,74 Q 86,54 88,25 Q 62,30 55,68 Z" fill="#16a34a" stroke="#14532d" strokeWidth={swDetail} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} />
+          <path d="M 57,68 Q 70,46 82,31" fill="none" stroke="#4ade80" strokeWidth="1.4" strokeLinecap="round" opacity="0.6" />
+          <path d="M 55,74 Q 43,34 55,11 Q 67,34 55,74 Z" fill="#4ade80" stroke="#14532d" strokeWidth={swDetail} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} />
+          <path d="M 55,70 L 55,22" fill="none" stroke="#bbf7d0" strokeWidth="1.4" strokeLinecap="round" opacity="0.7" />
+          {/* Terracotta / Ceramic Pot */}
+          <path d="M 32,84 L 78,84 L 71,126 Q 55,131 39,126 Z" fill={secondaryTones.base} stroke={secondaryTones.stroke} strokeWidth={sw} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} />
+          <path d="M 65,86 L 74,86 L 68,125 L 59,127 Z" fill={secondaryTones.shadow} opacity="0.45" />
+          <rect x="25" y="72" width="60" height="13" rx="4.5" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={sw} />
+          <line x1="29" y1="75.5" x2="81" y2="75.5" stroke={primaryTones.highlight} strokeWidth="1.8" strokeLinecap="round" opacity="0.6" />
         </svg>
       );
 
@@ -428,54 +474,75 @@ export const LifestyleElementsSvgRenderer: React.FC<LifestyleElementsSvgRenderer
       return (
         <svg viewBox="0 0 150 125" className="w-full h-full">
           {/* Bottom Book */}
-          <rect x="18" y="84" width="114" height="24" rx="4" fill={color} stroke="#0f172a" strokeWidth="2.2" />
-          <rect x="26" y="88" width="96" height="16" rx="2" fill="#f8fafc" />
+          <rect x="18" y="84" width="114" height="24" rx="4.5" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={sw} />
+          <rect x="26" y="88" width="98" height="16" rx="2.5" fill="#f8fafc" />
+          <line x1="30" y1="93" x2="116" y2="93" stroke="#e2e8f0" strokeWidth="1.4" />
+          <line x1="30" y1="98" x2="116" y2="98" stroke="#e2e8f0" strokeWidth="1.4" />
+          <rect x="18" y="84" width="10" height="24" rx="3" fill={primaryTones.shadow} />
           {/* Middle Book */}
-          <rect x="26" y="56" width="104" height="24" rx="4" fill={secondaryColor} stroke="#0f172a" strokeWidth="2.2" />
-          <rect x="34" y="60" width="88" height="16" rx="2" fill="#f8fafc" />
+          <rect x="26" y="56" width="104" height="24" rx="4.5" fill={secondaryTones.base} stroke={secondaryTones.stroke} strokeWidth={sw} />
+          <rect x="34" y="60" width="88" height="16" rx="2.5" fill="#f8fafc" />
+          <line x1="38" y1="65" x2="114" y2="65" stroke="#e2e8f0" strokeWidth="1.4" />
+          <line x1="38" y1="70" x2="114" y2="70" stroke="#e2e8f0" strokeWidth="1.4" />
+          <rect x="26" y="56" width="10" height="24" rx="3" fill={secondaryTones.shadow} />
           {/* Top Book */}
-          <rect x="20" y="28" width="102" height="24" rx="4" fill="#f59e0b" stroke="#0f172a" strokeWidth="2.2" />
-          <rect x="28" y="32" width="84" height="16" rx="2" fill="#f8fafc" />
+          <rect x="20" y="28" width="102" height="24" rx="4.5" fill="#f59e0b" stroke="#92400e" strokeWidth={sw} />
+          <rect x="28" y="32" width="86" height="16" rx="2.5" fill="#f8fafc" />
+          <line x1="32" y1="37" x2="106" y2="37" stroke="#e2e8f0" strokeWidth="1.4" />
+          <line x1="32" y1="42" x2="106" y2="42" stroke="#e2e8f0" strokeWidth="1.4" />
+          <rect x="20" y="28" width="10" height="24" rx="3" fill="#d97706" />
           {/* Bookmark Ribbon */}
-          <polygon points="104,52 114,52 114,72 109,66 104,72" fill="#ef4444" />
+          <polygon points="102,52 112,52 112,73 107,67 102,73" fill="#ef4444" stroke="#991b1b" strokeWidth="1" strokeLinejoin="round" />
         </svg>
       );
 
     case 'el-office-desk':
       return (
         <svg viewBox="0 0 240 140" className="w-full h-full">
-          {/* Legs */}
-          <rect x="22" y="42" width="12" height="90" rx="3" fill={secondaryColor} stroke="#0f172a" strokeWidth="2.4" />
-          <rect x="206" y="42" width="12" height="90" rx="3" fill={secondaryColor} stroke="#0f172a" strokeWidth="2.4" />
-          {/* Modesty panel */}
-          <rect x="34" y="42" width="172" height="30" rx="2" fill={secondaryColor} opacity="0.85" stroke="#0f172a" strokeWidth="2" />
-          {/* Drawer unit */}
-          <rect x="150" y="42" width="56" height="58" rx="4" fill={color} stroke="#0f172a" strokeWidth="2.2" />
-          <line x1="170" y1="58" x2="186" y2="58" stroke="#f8fafc" strokeWidth="3" strokeLinecap="round" />
-          <line x1="170" y1="80" x2="186" y2="80" stroke="#f8fafc" strokeWidth="3" strokeLinecap="round" />
-          {/* Tabletop */}
-          <rect x="10" y="26" width="220" height="16" rx="5" fill={color} stroke="#0f172a" strokeWidth="2.4" />
-          <rect x="14" y="28" width="212" height="5" rx="2.5" fill="#ffffff" opacity="0.22" />
+          {/* Tapered Legs with Floor Pads */}
+          <rect x="22" y="42" width="12" height="88" rx="3" fill={secondaryTones.base} stroke={secondaryTones.stroke} strokeWidth={sw} />
+          <rect x="20" y="128" width="16" height="5" rx="2" fill={secondaryTones.deepShadow} />
+          <rect x="206" y="42" width="12" height="88" rx="3" fill={secondaryTones.base} stroke={secondaryTones.stroke} strokeWidth={sw} />
+          <rect x="204" y="128" width="16" height="5" rx="2" fill={secondaryTones.deepShadow} />
+          {/* Modesty Panel + Under-desk Shadow */}
+          <rect x="34" y="42" width="172" height="30" rx="2" fill={secondaryTones.shadow} stroke={secondaryTones.stroke} strokeWidth={swDetail} />
+          <rect x="34" y="42" width="172" height="6" fill={secondaryTones.deepShadow} opacity="0.4" />
+          {/* Drawer Unit */}
+          <rect x="148" y="42" width="58" height="60" rx="4.5" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={sw} />
+          <rect x="153" y="47" width="48" height="23" rx="2.5" fill={primaryTones.highlight} opacity="0.35" stroke={primaryTones.seam} strokeWidth="1.1" />
+          <rect x="153" y="74" width="48" height="23" rx="2.5" fill={primaryTones.highlight} opacity="0.35" stroke={primaryTones.seam} strokeWidth="1.1" />
+          <line x1="169" y1="58.5" x2="185" y2="58.5" stroke="#f8fafc" strokeWidth="3" strokeLinecap="round" />
+          <line x1="169" y1="85.5" x2="185" y2="85.5" stroke="#f8fafc" strokeWidth="3" strokeLinecap="round" />
+          {/* Beveled Tabletop */}
+          <rect x="10" y="25" width="220" height="17" rx="5.5" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={sw} />
+          <rect x="13" y="27" width="214" height="5" rx="2.5" fill={primaryTones.specular} opacity="0.45" />
+          <line x1="14" y1="39" x2="226" y2="39" stroke={primaryTones.shadow} strokeWidth="2" strokeLinecap="round" opacity="0.55" />
         </svg>
       );
 
     case 'el-office-chair':
       return (
         <svg viewBox="0 0 110 160" className="w-full h-full">
-          {/* Spine & cylinder */}
-          <rect x="50" y="72" width="10" height="58" rx="3" fill={secondaryColor} stroke="#0f172a" strokeWidth="2.2" />
-          {/* 5-star base */}
-          <path d="M55 128 L24 146 M55 128 L86 146 M55 128 L55 148" stroke={secondaryColor} strokeWidth="5.5" strokeLinecap="round" />
-          <circle cx="22" cy="148" r="5" fill="#0f172a" />
-          <circle cx="55" cy="150" r="5" fill="#0f172a" />
-          <circle cx="88" cy="148" r="5" fill="#0f172a" />
-          {/* Backrest */}
-          <rect x="26" y="14" width="58" height="62" rx="12" fill={color} stroke="#0f172a" strokeWidth="2.4" />
-          <rect x="34" y="22" width="42" height="44" rx="7" fill={secondaryColor} opacity="0.35" />
-          {/* Seat */}
-          <rect x="20" y="88" width="70" height="16" rx="7" fill={color} stroke="#0f172a" strokeWidth="2.4" />
+          {/* Hydraulic Cylinder */}
+          <rect x="50" y="72" width="10" height="58" rx="3.5" fill={secondaryTones.base} stroke={secondaryTones.stroke} strokeWidth={swDetail} />
+          <line x1="53" y1="76" x2="53" y2="124" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" opacity="0.45" />
+          {/* 5-Star Base & Casters */}
+          <path d="M55 128 L24 146 M55 128 L86 146 M55 128 L55 148" stroke={secondaryTones.stroke} strokeWidth="6.5" strokeLinecap="round" />
+          <path d="M55 128 L24 146 M55 128 L86 146 M55 128 L55 148" stroke={secondaryTones.base} strokeWidth="3.5" strokeLinecap="round" />
+          <circle cx="22" cy="148" r="5" fill="#1e293b" />
+          <circle cx="55" cy="150" r="5" fill="#1e293b" />
+          <circle cx="88" cy="148" r="5" fill="#1e293b" />
+          {/* Ergonomic Backrest */}
+          <rect x="25" y="13" width="60" height="64" rx="14" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={sw} />
+          <rect x="33" y="21" width="44" height="46" rx="8" fill={primaryTones.shadow} opacity="0.38" />
+          <path d="M35 28 Q55 24 75 28" fill="none" stroke={primaryTones.highlight} strokeWidth="1.8" strokeLinecap="round" opacity="0.6" />
           {/* Armrests */}
-          <path d="M22 72 L22 92 M88 72 L88 92" stroke={secondaryColor} strokeWidth="4.5" strokeLinecap="round" />
+          <path d="M22 70 L22 92 M88 70 L88 92" stroke={secondaryTones.stroke} strokeWidth="5" strokeLinecap="round" />
+          <rect x="15" y="66" width="14" height="6" rx="3" fill={secondaryTones.base} stroke={secondaryTones.stroke} strokeWidth="1.3" />
+          <rect x="81" y="66" width="14" height="6" rx="3" fill={secondaryTones.base} stroke={secondaryTones.stroke} strokeWidth="1.3" />
+          {/* Waterfall Seat Cushion */}
+          <rect x="19" y="87" width="72" height="17" rx="8" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={sw} />
+          <line x1="26" y1="90.5" x2="84" y2="90.5" stroke={primaryTones.highlight} strokeWidth="1.8" strokeLinecap="round" opacity="0.6" />
         </svg>
       );
 
@@ -509,21 +576,26 @@ export const LifestyleElementsSvgRenderer: React.FC<LifestyleElementsSvgRenderer
       return (
         <svg viewBox="0 0 280 190" className="w-full h-full">
           {/* Stand legs */}
-          <line x1="56" y1="148" x2="40" y2="184" stroke={secondaryColor} strokeWidth="6" strokeLinecap="round" />
-          <line x1="224" y1="148" x2="240" y2="184" stroke={secondaryColor} strokeWidth="6" strokeLinecap="round" />
+          <line x1="56" y1="148" x2="40" y2="184" stroke={secondaryTones.stroke} strokeWidth="6.5" strokeLinecap="round" />
+          <line x1="224" y1="148" x2="240" y2="184" stroke={secondaryTones.stroke} strokeWidth="6.5" strokeLinecap="round" />
+          <line x1="56" y1="148" x2="40" y2="184" stroke={secondaryTones.base} strokeWidth="3.5" strokeLinecap="round" />
+          <line x1="224" y1="148" x2="240" y2="184" stroke={secondaryTones.base} strokeWidth="3.5" strokeLinecap="round" />
           {/* Board frame & surface */}
-          <rect x="16" y="14" width="248" height="136" rx="6" fill={color} stroke={secondaryColor} strokeWidth="7" />
-          <rect x="16" y="14" width="248" height="136" rx="6" fill="none" stroke="#0f172a" strokeWidth="2" />
+          <rect x="16" y="14" width="248" height="136" rx="7" fill={primaryTones.base} stroke={secondaryTones.base} strokeWidth="7" />
+          <rect x="16" y="14" width="248" height="136" rx="7" fill="none" stroke={secondaryTones.stroke} strokeWidth={sw} />
+          {/* Subtle inner bevel shadow */}
+          <path d="M21 20 H259" stroke="#cbd5e1" strokeWidth="2" opacity="0.55" />
           {/* Marker tray */}
-          <rect x="52" y="148" width="176" height="9" rx="3" fill={secondaryColor} stroke="#0f172a" strokeWidth="1.8" />
-          <rect x="70" y="144" width="22" height="4.5" rx="1.5" fill="#2563eb" />
-          <rect x="98" y="144" width="22" height="4.5" rx="1.5" fill="#ef4444" />
+          <rect x="52" y="148" width="176" height="9" rx="3.5" fill={secondaryTones.base} stroke={secondaryTones.stroke} strokeWidth={swDetail} />
+          <rect x="70" y="143.5" width="22" height="5" rx="2" fill="#2563eb" />
+          <rect x="98" y="143.5" width="22" height="5" rx="2" fill="#ef4444" />
           {/* Educational board markings */}
-          <line x1="36" y1="42" x2="132" y2="42" stroke="#0284c7" strokeWidth="4" strokeLinecap="round" />
+          <line x1="36" y1="42" x2="132" y2="42" stroke="#0284c7" strokeWidth="4.2" strokeLinecap="round" />
           <line x1="36" y1="62" x2="112" y2="62" stroke="#64748b" strokeWidth="3" strokeLinecap="round" />
           <line x1="36" y1="80" x2="145" y2="80" stroke="#64748b" strokeWidth="3" strokeLinecap="round" />
-          <rect x="168" y="38" width="72" height="72" rx="6" fill="#e0f2fe" stroke="#0284c7" strokeWidth="2" />
+          <rect x="168" y="38" width="72" height="72" rx="6" fill="#e0f2fe" stroke="#0284c7" strokeWidth={swDetail} />
           <polyline points="178,94 196,74 212,84 230,54" fill="none" stroke="#0284c7" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="230" cy="54" r="3.5" fill="#0284c7" />
         </svg>
       );
 

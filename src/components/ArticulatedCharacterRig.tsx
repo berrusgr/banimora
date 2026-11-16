@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { deriveMaterialTones, ILLUSTRATION_TOKENS, mixHex } from '../utils/illustrationSystem';
 import {
   buildDicebearHeadInnerSvg,
   getDicebearHairHex,
@@ -3791,81 +3792,171 @@ export function renderAccessory(
         );
       case 'nurse-cap':
         return (
-          <g>
-            <path d="M84 42 L90 22 H130 L136 42 Z" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1.6" />
-            <rect x="107" y="26" width="6" height="12" rx="1" fill="#ef4444" />
-            <rect x="104" y="29" width="12" height="6" rx="1" fill="#ef4444" />
+          <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+            <path
+              d="M84 42 Q87 28 91 21 Q110 18 129 21 Q133 28 136 42 Q110 44 84 42 Z"
+              fill="#f8fafc"
+              stroke="#94a3b8"
+              strokeWidth={ILLUSTRATION_TOKENS.stroke.detail}
+            />
+            <path d="M86 38 Q110 41 134 38 L136 42 Q110 44 84 42 Z" fill="#e2e8f0" />
+            <path d="M93 23 Q110 21 127 23" fill="none" stroke="#ffffff" strokeWidth="1.4" opacity="0.85" />
+            <rect x="107.2" y="25.5" width="5.6" height="11" rx="1.2" fill="#ef4444" />
+            <rect x="104.5" y="28.2" width="11" height="5.6" rx="1.2" fill="#ef4444" />
           </g>
         );
       case 'police-cap':
         return (
-          <g>
-            <path d="M76 42 C78 24 142 24 144 42 Z" fill="#1e3a8a" />
-            <rect x="78" y="38" width="64" height="7" rx="2" fill="#0f172a" />
-            <polygon points="110,25 116,31 110,37 104,31" fill="#fbbf24" />
+          <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+            {/* Crown */}
+            <path
+              d="M75 41 C76 20 144 20 145 41 Z"
+              fill="#1e3a8a"
+              stroke="#0f172a"
+              strokeWidth={ILLUSTRATION_TOKENS.stroke.detail}
+            />
+            {/* Top-left crown highlight */}
+            <path d="M84 31 Q104 22 128 28" fill="none" stroke="#60a5fa" strokeWidth="2.2" opacity="0.32" />
+            {/* Gold hatband & glossy visor */}
+            <rect x="77" y="36" width="66" height="4" rx="1.5" fill="#fbbf24" />
+            <path d="M77 39 Q110 42 143 39 L146 45 Q110 49 74 45 Z" fill="#0f172a" />
+            <path d="M84 42 Q105 44 126 42" fill="none" stroke="#475569" strokeWidth="1.2" opacity="0.65" />
+            {/* Gold star/shield emblem */}
+            <path d="M110 23 L116 28 L114 35 L106 35 L104 28 Z" fill="#fbbf24" stroke="#b45309" strokeWidth="0.9" />
+            <circle cx="110" cy="29.5" r="2.2" fill="#fef3c7" opacity="0.8" />
           </g>
         );
       case 'fire-helmet':
         return (
-          <g>
-            <path d="M74 44 C76 18 144 18 146 44 L154 48 H66 Z" fill="#dc2626" stroke="#991b1b" strokeWidth="1.5" />
-            <rect x="102" y="24" width="16" height="12" rx="2" fill="#facc15" />
+          <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+            {/* Dome + extended rear neck guard */}
+            <path
+              d="M73 43 C74 15 146 15 147 43 L156 48 Q110 52 64 48 Z"
+              fill="#dc2626"
+              stroke="#7f1d1d"
+              strokeWidth={ILLUSTRATION_TOKENS.stroke.regular}
+            />
+            {/* Top ridge */}
+            <path d="M107 18 Q110 15 113 18 L114 43 H106 Z" fill="#b91c1c" />
+            {/* Highlight arc */}
+            <path d="M82 32 Q95 21 106 21" fill="none" stroke="#fca5a5" strokeWidth="2.2" opacity="0.55" />
+            {/* Reflective yellow band & front shield */}
+            <path d="M74 42 Q110 46 146 42" fill="none" stroke="#fde047" strokeWidth="2.6" />
+            <path d="M102 24 L118 24 L116 36 Q110 39 104 36 Z" fill="#facc15" stroke="#a16207" strokeWidth="1.1" />
+            <circle cx="110" cy="30" r="2.5" fill="#fef9c3" />
           </g>
         );
       case 'chef-hat':
         return (
-          <g>
-            <circle cx="94" cy="24" r="14" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1.4" />
-            <circle cx="110" cy="18" r="16" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1.4" />
-            <circle cx="126" cy="24" r="14" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1.4" />
-            <rect x="84" y="30" width="52" height="14" rx="2" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1.4" />
+          <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+            {/* Puffy toque silhouette */}
+            <path
+              d="M84 32 C76 28 77 14 91 14 C96 7 124 7 129 14 C143 14 144 28 136 32 Z"
+              fill="#ffffff"
+              stroke="#94a3b8"
+              strokeWidth={ILLUSTRATION_TOKENS.stroke.detail}
+            />
+            {/* Soft pleats */}
+            <path d="M97 17 Q96 25 98 31" fill="none" stroke="#cbd5e1" strokeWidth="1.3" />
+            <path d="M110 14 Q110 23 110 31" fill="none" stroke="#cbd5e1" strokeWidth="1.3" />
+            <path d="M123 17 Q124 25 122 31" fill="none" stroke="#cbd5e1" strokeWidth="1.3" />
+            {/* Band */}
+            <rect x="84" y="30" width="52" height="13" rx="3" fill="#f8fafc" stroke="#94a3b8" strokeWidth={ILLUSTRATION_TOKENS.stroke.detail} />
+            <line x1="86" y1="39" x2="134" y2="39" stroke="#e2e8f0" strokeWidth="2" />
           </g>
         );
       case 'artist-beret':
         return (
-          <g>
-            <ellipse cx="112" cy="34" rx="34" ry="11" transform="rotate(-10 112 34)" fill="#e11d48" />
-            <line x1="112" y1="20" x2="115" y2="25" stroke="#9f1239" strokeWidth="3" strokeLinecap="round" />
+          <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+            <path
+              d="M78 39 C76 24 140 19 146 31 C148 39 128 43 108 42 C90 42 79 42 78 39 Z"
+              fill="#e11d48"
+              stroke="#881337"
+              strokeWidth={ILLUSTRATION_TOKENS.stroke.detail}
+            />
+            <path d="M88 30 Q112 24 134 28" fill="none" stroke="#fda4af" strokeWidth="2" opacity="0.45" />
+            <path d="M80 39 Q110 42 142 37" fill="none" stroke="#9f1239" strokeWidth="2.2" />
+            <path d="M111 22 L114 17" stroke="#881337" strokeWidth="2.8" />
           </g>
         );
       case 'straw-hat':
         return (
-          <g>
-            <ellipse cx="110" cy="40" rx="44" ry="7" fill="#fde047" stroke="#ca8a04" strokeWidth="1.5" />
-            <path d="M84 38 C86 20 134 20 136 38 Z" fill="#facc15" stroke="#ca8a04" strokeWidth="1.5" />
-            <rect x="84" y="34" width="52" height="4" fill="#dc2626" />
+          <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+            <ellipse cx="110" cy="40" rx="45" ry="7.5" fill="#fde047" stroke="#a16207" strokeWidth={ILLUSTRATION_TOKENS.stroke.detail} />
+            <ellipse cx="110" cy="40" rx="36" ry="4.5" fill="#facc15" opacity="0.45" />
+            <path
+              d="M84 38 C86 19 134 19 136 38 Q110 41 84 38 Z"
+              fill="#facc15"
+              stroke="#a16207"
+              strokeWidth={ILLUSTRATION_TOKENS.stroke.detail}
+            />
+            <path d="M90 28 Q110 24 130 28" fill="none" stroke="#fef08a" strokeWidth="1.6" opacity="0.7" />
+            <path d="M84 34 Q110 37 136 34 L136 38 Q110 41 84 38 Z" fill="#dc2626" />
           </g>
         );
       case 'hard-hat':
         return (
-          <g>
-            <path d="M76 42 C78 18 142 18 144 42 Z" fill="#facc15" stroke="#ca8a04" strokeWidth="1.6" />
-            <rect x="72" y="40" width="76" height="5" rx="2.5" fill="#eab308" />
-            <rect x="106" y="20" width="8" height="18" rx="2" fill="#fde047" />
+          <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+            <path
+              d="M76 41 C77 16 143 16 144 41 Z"
+              fill="#facc15"
+              stroke="#a16207"
+              strokeWidth={ILLUSTRATION_TOKENS.stroke.detail}
+            />
+            <path d="M85 31 Q96 20 105 20" fill="none" stroke="#fef9c3" strokeWidth="2.4" opacity="0.7" />
+            <rect x="106" y="19" width="8" height="20" rx="2.5" fill="#fde047" stroke="#ca8a04" strokeWidth="1" />
+            <path d="M71 40 Q110 43 149 40 L149 44 Q110 47 71 44 Z" fill="#eab308" stroke="#a16207" strokeWidth="1.2" />
           </g>
         );
       case 'astronaut-helmet':
         return (
-          <g>
-            <circle cx="110" cy="68" r="46" fill="rgba(186,230,253,0.22)" stroke="#e2e8f0" strokeWidth="4.5" />
-            <path d="M76 52 Q92 38 110 40" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" opacity="0.65" />
+          <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+            <circle cx="110" cy="68" r="46" fill="rgba(186,230,253,0.20)" stroke="#cbd5e1" strokeWidth="5" />
+            <circle cx="110" cy="68" r="48.5" fill="none" stroke="#64748b" strokeWidth="1.4" opacity="0.7" />
+            <path d="M75 50 Q92 34 114 37" fill="none" stroke="#ffffff" strokeWidth="3" opacity="0.75" />
+            <path d="M74 60 Q76 54 81 49" fill="none" stroke="#ffffff" strokeWidth="1.6" opacity="0.55" />
+            {/* Collar locking ring */}
+            <path d="M78 106 Q110 116 142 106" fill="none" stroke="#94a3b8" strokeWidth="5.5" />
+            <path d="M78 106 Q110 116 142 106" fill="none" stroke="#e2e8f0" strokeWidth="2.5" />
           </g>
         );
       case 'pilot-cap':
         return (
-          <g>
-            <path d="M76 42 C78 24 142 24 144 42 Z" fill="#0f172a" />
-            <rect x="76" y="39" width="68" height="6" rx="2" fill="#020617" />
-            <path d="M98 31 H122 L118 35 H102 Z" fill="#fbbf24" />
+          <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+            <path
+              d="M75 41 C77 20 143 20 145 41 Z"
+              fill="#0f172a"
+              stroke="#020617"
+              strokeWidth={ILLUSTRATION_TOKENS.stroke.detail}
+            />
+            <path d="M86 30 Q108 22 130 28" fill="none" stroke="#334155" strokeWidth="2" opacity="0.65" />
+            <rect x="77" y="36" width="66" height="3.5" rx="1.5" fill="#fbbf24" />
+            <path d="M75 39 Q110 42 145 39 L148 45 Q110 49 72 45 Z" fill="#020617" />
+            {/* Gold wings emblem */}
+            <path d="M96 29 L106 32 L110 27 L114 32 L124 29 L118 35 H102 Z" fill="#fbbf24" stroke="#b45309" strokeWidth="0.8" />
           </g>
         );
       case 'medical-mask':
         return (
-          <g>
-            <rect x="92" y="80" width="36" height="20" rx="6" fill="#38bdf8" stroke="#0284c7" strokeWidth="1.4" />
-            <line x1="84" y1="84" x2="92" y2="86" stroke="#bae6fd" strokeWidth="1.6" />
-            <line x1="128" y1="86" x2="136" y2="84" stroke="#bae6fd" strokeWidth="1.6" />
-            <circle cx="110" cy="40" r="6" fill="#e2e8f0" stroke="#64748b" strokeWidth="1.6" />
+          <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+            {/* Ear loops */}
+            <path d="M77 80 Q85 83 92 85" fill="none" stroke="#e0f2fe" strokeWidth="1.8" />
+            <path d="M143 80 Q135 83 128 85" fill="none" stroke="#e0f2fe" strokeWidth="1.8" />
+            {/* Contoured surgical mask */}
+            <path
+              d="M91 81 Q110 77 129 81 L127 97 Q110 104 93 97 Z"
+              fill="#38bdf8"
+              stroke="#0284c7"
+              strokeWidth={ILLUSTRATION_TOKENS.stroke.detail}
+            />
+            {/* Mask pleats */}
+            <path d="M95 86 Q110 89 125 86" fill="none" stroke="#7dd3fc" strokeWidth="1.2" />
+            <path d="M95 92 Q110 95 125 92" fill="none" stroke="#0369a1" strokeWidth="1" opacity="0.45" />
+            {/* Head mirror */}
+            <line x1="80" y1="42" x2="140" y2="42" stroke="#475569" strokeWidth="2.5" />
+            <circle cx="110" cy="40" r="6.8" fill="#e2e8f0" stroke="#475569" strokeWidth="1.5" />
+            <circle cx="110" cy="40" r="3.8" fill="#f8fafc" />
+            <circle cx="108.5" cy="38.5" r="1.2" fill="#ffffff" />
           </g>
         );
       case 'cap-hat':
@@ -4641,9 +4732,13 @@ export function renderFacialSculptAndExpressionDetails(
 ): React.ReactNode {
   const contourTone = shadeColor(skinTone, -20);
   const deepCrease = shadeColor(skinTone, -34);
+  const warmCheek = mixHex(skinTone, '#fb7185', 0.28);
 
   return (
     <g>
+      {/* Soft natural cheek warmth & cheekbone volume */}
+      <ellipse cx="86" cy="82" rx="6.2" ry="3.2" fill={warmCheek} opacity="0.28" />
+      <ellipse cx="134" cy="82" rx="6.2" ry="3.2" fill={warmCheek} opacity="0.28" />
       {/* Subtle Cheekbone & Jawline Tonal Definition */}
       <path
         d="M82 81 Q84 86 88 89"
@@ -5360,47 +5455,61 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
       switch (sStyle) {
         case 'sneakers':
           return (
-            <g transform={`rotate(${splay} 10 4)`}>
+            <g transform={`rotate(${splay} 10 4)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
               <path
-                d="M0 2 C0 -1, 20 -1, 20 2 L22 10 C22 13, -2 13, -2 10 Z"
+                d="M-1 3 C0 -1, 20 -1, 21 3 L22.5 10.5 C22.5 13, -2 13, -2 10.5 Z"
                 fill={config.shoeColor}
+                stroke={deriveMaterialTones(config.shoeColor).stroke}
+                strokeWidth="1.2"
               />
-              <path d="M1 8.5 C4 5.5, 16 5.5, 19 8.5 L21 11.5 L-1 11.5 Z" fill="#f8fafc" />
-              <line x1="6" y1="3.5" x2="14" y2="3.5" stroke="#f8fafc" strokeWidth="1.6" strokeLinecap="round" />
-              <line x1="5.5" y1="5.8" x2="14.5" y2="5.8" stroke="#f8fafc" strokeWidth="1.6" strokeLinecap="round" />
-              <rect x="-2.5" y="11" width="25" height="3.8" rx="1.6" fill="#f8fafc" />
+              {/* Toe cap & tongue depth */}
+              <path d="M1 8.8 C4 5.2, 16 5.2, 19 8.8 L21.5 11.5 L-1.5 11.5 Z" fill="#f8fafc" />
+              <path d="M4 3.5 Q10 1.5 16 3.5" fill="none" stroke={shoeHighlight} strokeWidth="1.2" opacity="0.7" />
+              <line x1="6" y1="3.8" x2="14" y2="3.8" stroke="#f8fafc" strokeWidth="1.6" />
+              <line x1="5.5" y1="6.1" x2="14.5" y2="6.1" stroke="#f8fafc" strokeWidth="1.6" />
+              {/* Contoured outsole */}
+              <rect x="-2.5" y="11" width="25" height="3.8" rx="1.8" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="0.9" />
+              <line x1="-1" y1="13.2" x2="21" y2="13.2" stroke="#e2e8f0" strokeWidth="1" />
             </g>
           );
         case 'boots':
           return (
-            <g transform={`rotate(${splay} 10 4)`}>
+            <g transform={`rotate(${splay} 10 4)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
               <path
-                d="M0 -8 L20 -8 L21 10 C21 13, -1 13, -1 10 Z"
+                d="M0 -8 Q10 -10 20 -8 L21.5 10 C21.5 13, -1.5 13, -1.5 10 Z"
                 fill={config.shoeColor}
+                stroke={deriveMaterialTones(config.shoeColor).stroke}
+                strokeWidth="1.2"
               />
-              <line x1="1" y1="-3" x2="19" y2="-3" stroke={shoeHighlight} strokeWidth="1.4" />
-              <rect x="-2" y="11" width="24" height="3.8" rx="1.2" fill="#1e293b" />
+              <path d="M2 -3 Q10 -1 18 -3" fill="none" stroke={shoeHighlight} strokeWidth="1.4" />
+              <path d="M4 7 Q10 5 16 7" fill="none" stroke={shoeHighlight} strokeWidth="1.2" opacity="0.75" />
+              <rect x="-2.2" y="10.8" width="24.4" height="4" rx="1.4" fill="#1e293b" />
             </g>
           );
         case 'loafers':
           return (
-            <g transform={`rotate(${splay} 10 4)`}>
+            <g transform={`rotate(${splay} 10 4)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
               <path
-                d="M0 3 C3 1, 17 1, 20 3 L21 10 C21 13, -1 13, -1 10 Z"
+                d="M0 3 C3 0.5, 17 0.5, 20 3 L21.5 10 C21.5 13, -1.5 13, -1.5 10 Z"
                 fill={config.shoeColor}
+                stroke={deriveMaterialTones(config.shoeColor).stroke}
+                strokeWidth="1.2"
               />
-              <rect x="6" y="4.5" width="8" height="2.8" rx="1" fill="#eab308" />
-              <rect x="-1.5" y="11.5" width="23" height="2.8" rx="1.2" fill="#334155" />
+              <path d="M4 4.5 Q10 3 16 4.5" fill="none" stroke={shoeHighlight} strokeWidth="1.1" opacity="0.65" />
+              <rect x="6" y="4.5" width="8" height="2.6" rx="1.2" fill="#fbbf24" stroke="#b45309" strokeWidth="0.6" />
+              <rect x="-1.5" y="11.4" width="23" height="2.8" rx="1.2" fill="#334155" />
             </g>
           );
         case 'heels':
           return (
-            <g transform={`rotate(${splay} 10 4)`}>
+            <g transform={`rotate(${splay} 10 4)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
               <path
-                d="M2 2 L18 2 L20 10 C20 13, 0 13, 0 10 Z"
+                d="M2 2 L18 2 L20.5 10 C20.5 13, -0.5 13, -0.5 10 Z"
                 fill={config.shoeColor}
+                stroke={deriveMaterialTones(config.shoeColor).stroke}
+                strokeWidth="1.1"
               />
-              <path d="M5 2 Q10 7 15 2" fill={config.skinTone} />
+              <path d="M5 2 Q10 7.5 15 2" fill={config.skinTone} />
               <rect x="7" y="12" width="6" height="2.8" rx="0.8" fill={config.shoeColor} />
               <rect x="1" y="11.5" width="18" height="1.6" rx="0.8" fill="#1e293b" />
             </g>
@@ -5408,14 +5517,17 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
         case 'dress':
         default:
           return (
-            <g transform={`rotate(${splay} 10 4)`}>
+            <g transform={`rotate(${splay} 10 4)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
               <path
-                d="M0 1 C3 -1, 17 -1, 20 1 L21.5 10 C21.5 13, -1.5 13, -1.5 10 Z"
+                d="M0 1 C3 -1.2, 17 -1.2, 20 1 L21.5 10 C21.5 13, -1.5 13, -1.5 10 Z"
                 fill={config.shoeColor}
+                stroke={deriveMaterialTones(config.shoeColor).stroke}
+                strokeWidth="1.2"
               />
-              <line x1="6" y1="3.5" x2="14" y2="3.5" stroke={shoeHighlight} strokeWidth="1.3" strokeLinecap="round" />
-              <line x1="5.5" y1="6" x2="14.5" y2="6" stroke={shoeHighlight} strokeWidth="1.3" strokeLinecap="round" />
-              <rect x="-2" y="11.5" width="24" height="3" rx="1.2" fill="#f5f5f4" />
+              <path d="M4 8.5 Q10 6.8 16 8.5" fill="none" stroke={shoeHighlight} strokeWidth="1.1" opacity="0.6" />
+              <line x1="6" y1="3.5" x2="14" y2="3.5" stroke={shoeHighlight} strokeWidth="1.3" />
+              <line x1="5.5" y1="6" x2="14.5" y2="6" stroke={shoeHighlight} strokeWidth="1.3" />
+              <rect x="-2" y="11.5" width="24" height="3" rx="1.2" fill="#e2e8f0" />
             </g>
           );
       }
@@ -6716,6 +6828,12 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   <circle cx="3" cy="3" r="1.6" fill={shadeColor(config.bottomColor, 40)} opacity="0.65" />
                   <circle cx="9" cy="9" r="1.6" fill={shadeColor(config.bottomColor, 40)} opacity="0.65" />
                 </pattern>
+                {/* Directional 2D Animation Volume Shading */}
+                <linearGradient id={`${patternUid}-torso-volume`} x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#ffffff" stopOpacity="0.16" />
+                  <stop offset="48%" stopColor="#ffffff" stopOpacity="0" />
+                  <stop offset="100%" stopColor="#0f172a" stopOpacity="0.16" />
+                </linearGradient>
               </defs>
 
               <g transform={`${config.flipHorizontal ? 'translate(110, 0) scale(-1, 1) translate(-110, 0) ' : ''}translate(0, ${prop.translateY + bodyBobY})`}>
@@ -6921,14 +7039,32 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                         data-canonical-bone="chest"
                         transform={chestAngle !== 0 ? `rotate(${chestAngle} 110 155)` : undefined}
                       >
-                        {/* TORSO BASE SILHOUETTE (Lineless) */}
+                        {/* TORSO BASE SILHOUETTE (Anatomical 2D Vector Contour + Volume Shading) */}
                         <path
                           d={
                             config.genderAge === 'female'
-                              ? 'M76 118 C84 114, 136 114, 144 118 L137 162 L139 198 L81 198 L83 162 Z'
-                              : 'M74 118 C84 114, 136 114, 146 118 L138 198 L82 198 Z'
+                              ? 'M75 119 C84 113, 136 113, 145 119 C147 123, 143 142, 137 161 C136 174, 140 189, 139 197 Q110 202 81 197 C80 189, 84 174, 83 161 C77 142, 73 123, 75 119 Z'
+                              : 'M73 119 C83 113, 137 113, 147 119 C149 124, 144 150, 140 174 L138 197 Q110 202 82 197 L80 174 C76 150, 71 124, 73 119 Z'
                           }
                           fill={torsoFill}
+                        />
+                        <path
+                          d={
+                            config.genderAge === 'female'
+                              ? 'M75 119 C84 113, 136 113, 145 119 C147 123, 143 142, 137 161 C136 174, 140 189, 139 197 Q110 202 81 197 C80 189, 84 174, 83 161 C77 142, 73 123, 75 119 Z'
+                              : 'M73 119 C83 113, 137 113, 147 119 C149 124, 144 150, 140 174 L138 197 Q110 202 82 197 L80 174 C76 150, 71 124, 73 119 Z'
+                          }
+                          fill={`url(#${patternUid}-torso-volume)`}
+                          pointerEvents="none"
+                        />
+                        {/* Subtle shoulder & chest fold detail */}
+                        <path
+                          d="M84 126 Q90 142 86 158 M136 126 Q130 142 134 158"
+                          fill="none"
+                          stroke={shadeColor(config.topColor, -18)}
+                          strokeWidth="1.1"
+                          strokeLinecap="round"
+                          opacity="0.35"
                         />
                         {topPat === 'cuff-striped' && (
                           <g>
@@ -7103,29 +7239,39 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                           </g>
                         )}
 
-                        {/* 6. Lab Coat */}
+                        {/* 6. Lab Coat (Doktor, Bilim İnsanı, Diş Hekimi) */}
                         {config.outfitStyle === 'lab-coat' && (
-                          <g>
-                            <polygon points="94,116 126,116 110,174" fill={config.topColor} />
-                            <polygon points="92,116 84,152 106,162" fill="#e2e8f0" />
-                            <polygon points="128,116 136,152 114,162" fill="#e2e8f0" />
-                            <line x1="110" y1="172" x2="110" y2="198" stroke="#cbd5e1" strokeWidth="2" />
+                          <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+                            {/* Inner shirt */}
+                            <path d="M94 116 L126 116 L110 172 Z" fill={secondaryTop} />
+                            {/* Tailored lapels */}
+                            <path d="M92 115 L83 148 L106 164 L103 136 Z" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                            <path d="M128 115 L137 148 L114 164 L117 136 Z" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+                            {/* Center coat placket & buttons */}
+                            <line x1="110" y1="168" x2="110" y2="198" stroke="#cbd5e1" strokeWidth="1.8" />
+                            <circle cx="110" cy="175" r="2" fill="#94a3b8" />
+                            <circle cx="110" cy="187" r="2" fill="#94a3b8" />
+                            {/* Stitched chest pocket + pen */}
+                            <rect x="118" y="138" width="13" height="12" rx="2" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1.1" />
+                            <line x1="122" y1="133" x2="122" y2="139" stroke="#0284c7" strokeWidth="1.8" />
                           </g>
                         )}
 
                         {/* 7. Formal Suit */}
                         {config.outfitStyle === 'formal-suit' && (
-                          <g>
-                            <polygon points="96,116 124,116 110,162" fill="#f8fafc" />
-                            <polygon points="107,120 113,120 114,156 110,164 106,156" fill="#dc2626" />
-                            <polygon
-                              points="94,116 86,150 107,160"
+                          <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+                            <polygon points="96,116 124,116 110,164" fill="#f8fafc" />
+                            <path d="M107 120 H113 L114.5 156 L110 165 L105.5 156 Z" fill="#dc2626" />
+                            <path d="M108 122 L112 122 L110 127 Z" fill="#991b1b" />
+                            <path
+                              d="M94 115 L85 150 L107 162 L103 136 Z"
                               fill={shadeColor(config.topColor, -16)}
                             />
-                            <polygon
-                              points="126,116 134,150 113,160"
+                            <path
+                              d="M126 115 L135 150 L113 162 L117 136 Z"
                               fill={shadeColor(config.topColor, -16)}
                             />
+                            <rect x="119" y="139" width="11" height="2.2" rx="1" fill="#f8fafc" opacity="0.85" />
                           </g>
                         )}
 
@@ -7153,11 +7299,20 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
 
                         {/* 9. Space Suit */}
                         {config.outfitStyle === 'space-suit' && (
-                          <g>
-                            <rect x="92" y="138" width="36" height="24" rx="5" fill={shadeColor(config.topColor, -30)} />
-                            <circle cx="101" cy="150" r="3" fill="#38bdf8" />
-                            <circle cx="110" cy="150" r="3" fill="#4ade80" />
-                            <circle cx="119" cy="150" r="3" fill="#fb7185" />
+                          <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+                            {/* Collar ring & shoulder harness */}
+                            <path d="M90 117 Q110 126 130 117" fill="none" stroke="#94a3b8" strokeWidth="4" />
+                            <line x1="90" y1="122" x2="88" y2="196" stroke="#cbd5e1" strokeWidth="2.4" />
+                            <line x1="130" y1="122" x2="132" y2="196" stroke="#cbd5e1" strokeWidth="2.4" />
+                            {/* Chest life-support module */}
+                            <rect x="92" y="136" width="36" height="26" rx="5" fill={shadeColor(config.topColor, -28)} stroke="#64748b" strokeWidth="1.2" />
+                            <rect x="96" y="140" width="28" height="7" rx="2" fill="#0f172a" />
+                            <circle cx="101" cy="154" r="3" fill="#38bdf8" />
+                            <circle cx="110" cy="154" r="3" fill="#4ade80" />
+                            <circle cx="119" cy="154" r="3" fill="#fb7185" />
+                            {/* Utility belt */}
+                            <rect x="82" y="180" width="56" height="8" rx="2" fill="#64748b" />
+                            <rect x="103" y="179" width="14" height="10" rx="2" fill="#e2e8f0" />
                           </g>
                         )}
 
@@ -7233,43 +7388,90 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
 
                     {/* 15. Uniform Belted (Polis, İtfaiyeci, Hemşire, Pilot, Veteriner) */}
                     {config.outfitStyle === 'uniform-belted' && (
-                      <g>
-                        <polygon points="96,116 124,116 110,136" fill={secondaryTop} opacity="0.35" />
-                        <rect x="82" y="180" width="56" height="8" rx="1.5" fill="#1e293b" />
-                        <rect x="105" y="179" width="10" height="10" rx="1.5" fill={secondaryTop} />
-                        <rect x="118" y="132" width="12" height="10" rx="2" fill={secondaryTop} />
+                      <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+                        {/* Tailored collar & lapel fold */}
+                        <path d="M96 116 L124 116 L110 137 Z" fill={secondaryTop} opacity="0.4" />
+                        <path d="M95 116 L88 128 L104 126 Z" fill={shadeColor(config.topColor, 12)} opacity="0.7" />
+                        <path d="M125 116 L132 128 L116 126 Z" fill={shadeColor(config.topColor, 12)} opacity="0.7" />
+                        {/* Center button placket */}
+                        <line x1="110" y1="136" x2="110" y2="180" stroke={shadeColor(config.topColor, -22)} strokeWidth="1.4" />
+                        <circle cx="110" cy="146" r="1.8" fill={secondaryTop} />
+                        <circle cx="110" cy="161" r="1.8" fill={secondaryTop} />
+                        {/* Stitched chest pocket & badge */}
+                        <rect x="117" y="131" width="13" height="11" rx="2" fill={shadeColor(config.topColor, -14)} stroke={secondaryTop} strokeWidth="0.9" />
+                        <line x1="118.5" y1="134" x2="128.5" y2="134" stroke={secondaryTop} strokeWidth="1.4" />
+                        {/* Utility belt & metallic buckle */}
+                        <rect x="81" y="179" width="58" height="8.5" rx="2" fill="#1e293b" />
+                        <rect x="104" y="178" width="12" height="10.5" rx="2" fill="#fbbf24" stroke="#b45309" strokeWidth="0.9" />
+                        <rect x="107" y="180.5" width="6" height="5.5" rx="1" fill="#1e293b" />
                       </g>
                     )}
 
                     {/* 16. Chef Apron */}
                     {config.outfitStyle === 'chef-apron' && (
-                      <g>
-                        <polygon points="104,120 116,120 110,132" fill={secondaryTop} />
-                        <rect x="86" y="138" width="48" height="60" rx="4" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1.2" />
-                        <circle cx="102" cy="132" r="2.2" fill="#334155" />
-                        <circle cx="118" cy="132" r="2.2" fill="#334155" />
+                      <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+                        {/* Double-breasted collar & neckerchief */}
+                        <path d="M101 116 L119 116 L110 132 Z" fill={secondaryTop} />
+                        <path d="M105 127 L115 127 L112 136 L108 136 Z" fill={secondaryTop} />
+                        <circle cx="101" cy="128" r="2" fill="#334155" />
+                        <circle cx="119" cy="128" r="2" fill="#334155" />
+                        {/* Crisp apron with waist ties */}
+                        <path d="M84 142 L136 142" stroke="#94a3b8" strokeWidth="2.4" />
+                        <path
+                          d="M86 138 Q110 136 134 138 L136 197 Q110 201 84 197 Z"
+                          fill="#f8fafc"
+                          stroke="#cbd5e1"
+                          strokeWidth="1.2"
+                        />
+                        <rect x="97" y="158" width="26" height="18" rx="3" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
                       </g>
                     )}
 
                     {/* 17. Painter Apron */}
                     {config.outfitStyle === 'painter-apron' && (
-                      <g>
-                        <rect x="86" y="132" width="48" height="66" rx="4" fill={secondaryTop} />
-                        <circle cx="98" cy="154" r="4.5" fill="#3b82f6" />
-                        <circle cx="116" cy="166" r="5" fill="#eab308" />
-                        <circle cx="104" cy="176" r="3.8" fill="#ef4444" />
+                      <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+                        {/* Neck strap */}
+                        <path d="M94 117 L94 134 M126 117 L126 134" stroke={shadeColor(secondaryTop, -18)} strokeWidth="3.2" />
+                        <path
+                          d="M86 132 Q110 130 134 132 L136 197 Q110 201 84 197 Z"
+                          fill={secondaryTop}
+                          stroke={shadeColor(secondaryTop, -22)}
+                          strokeWidth="1.2"
+                        />
+                        {/* Stitched front pocket */}
+                        <rect x="95" y="164" width="30" height="19" rx="3" fill={shadeColor(secondaryTop, -12)} />
+                        {/* Organic paint splatters */}
+                        <path d="M95 148 Q101 144 103 151 Q99 156 94 152 Z" fill="#3b82f6" />
+                        <circle cx="104" cy="155" r="1.8" fill="#3b82f6" />
+                        <path d="M114 143 Q122 141 121 148 Q115 151 112 146 Z" fill="#eab308" />
+                        <path d="M106 172 Q113 169 115 176 Q108 180 104 176 Z" fill="#ef4444" />
                       </g>
                     )}
 
                     {/* 18. Overalls (Çiftçi / Tamirci) */}
                     {config.outfitStyle === 'overalls' && (
-                      <g>
-                        <rect x="90" y="118" width="8" height="30" fill={secondaryTop} />
-                        <rect x="122" y="118" width="8" height="30" fill={secondaryTop} />
-                        <rect x="84" y="144" width="52" height="54" rx="4" fill={secondaryTop} />
-                        <rect x="98" y="156" width="24" height="18" rx="3" fill={shadeColor(secondaryTop, -18)} />
-                        <circle cx="94" cy="148" r="2.5" fill="#fbbf24" />
-                        <circle cx="126" cy="148" r="2.5" fill="#fbbf24" />
+                      <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+                        {/* Straps */}
+                        <rect x="90" y="117" width="8.5" height="30" rx="2" fill={secondaryTop} />
+                        <rect x="121.5" y="117" width="8.5" height="30" rx="2" fill={secondaryTop} />
+                        {/* Bib & lower torso */}
+                        <path
+                          d="M85 143 H135 L138 197 Q110 201 82 197 Z"
+                          fill={secondaryTop}
+                          stroke={shadeColor(secondaryTop, -20)}
+                          strokeWidth="1.1"
+                        />
+                        {/* Stitched bib pocket */}
+                        <path
+                          d="M97 154 H123 V169 Q110 174 97 169 Z"
+                          fill={shadeColor(secondaryTop, -14)}
+                          stroke={shadeColor(secondaryTop, 18)}
+                          strokeWidth="0.9"
+                          strokeDasharray="2.5 2"
+                        />
+                        {/* Brass overall buckles */}
+                        <circle cx="94.2" cy="147" r="2.6" fill="#fbbf24" stroke="#b45309" strokeWidth="0.8" />
+                        <circle cx="125.8" cy="147" r="2.6" fill="#fbbf24" stroke="#b45309" strokeWidth="0.8" />
                       </g>
                     )}
 

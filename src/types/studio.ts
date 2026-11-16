@@ -363,6 +363,13 @@ export type CustomJointAngles = Partial<Record<RigJointKey, number>>;
 
 export type RigMotionMode = 'preset' | 'hybrid' | 'manual' | 'pose-to-pose';
 
+export interface LipSyncAudioClipRef {
+  clipId?: string;
+  audioUrl?: string;
+  audioName?: string;
+  startTime?: number;
+}
+
 export interface CharacterConfig {
   bodyStyle?: CharacterBodyStyle;
   genderAge: CharacterGenderAge;
@@ -406,6 +413,7 @@ export interface CharacterConfig {
   lipSyncAudioUrl?: string;
   lipSyncAudioName?: string;
   lipSyncAudioStartTime?: number;
+  lipSyncAudioClips?: LipSyncAudioClipRef[];
   // AI Photo-to-Character / Realistic Talking Avatar fields
   photoAvatarMode?: 'vector' | 'hybrid-head' | 'realistic-avatar';
   photoAvatarUrl?: string;

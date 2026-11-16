@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Film, Loader2 } from 'lucide-react';
+import { AlertCircle, Film, Loader2, VolumeX } from 'lucide-react';
 import { usePlayerRuntime } from '../runtime/usePlayerRuntime';
 import type { PublishedContentPackage } from '../types/publishing';
 import type { InteractionQuestion, LearningSession, Scene } from '../types/studio';
@@ -11,6 +11,12 @@ import {
   skipQuestionInSession,
   submitQuestionAnswer,
 } from '../utils/studentPlayerEngine';
+import {
+  createWatchAudioPort,
+  getActiveSceneAudioClipsAtTime,
+  packageHasAudio,
+  probeWatchAutoplay,
+} from '../utils/watchAutoplay';
 import {
   formatWatchPublishError,
   loadPublishedWatchForViewer,
@@ -49,6 +55,20 @@ const WatchRuntimeStage: React.FC<{
   const [reviewIndex, setReviewIndex] = useState(0);
   const [showResultScreen, setShowResultScreen] = useState(false);
   const [showCompletedNotice, setShowCompletedNotice] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+
+  const hasAudio = useMemo(() => packageHasAudio(packageData), [packageData]);
+  const isMutedRef = useRef(isMuted);
+  isMutedRef.current = isMuted;
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
+  const currentTimeRef = useRef(currentTime);
+  currentTimeRef.current = currentTime;
+
+  const watchAudioPort = useMemo(
+    () => createWatchAudioPort(soundEngine, isMutedRef),
+    []
+  );
 
   const sessionRef = useRef(session);
   sessionRef.current = session;
@@ -59,6 +79,29 @@ const WatchRuntimeStage: React.FC<{
     () => scenes.find((s) => s.id === activeSceneId) ?? scenes[0],
     [activeSceneId, scenes]
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    const startAutoplay = async () => {
+      try {
+        const result = await probeWatchAutoplay({ hasAudio });
+        if (cancelled) return;
+        const muted = result.mode === 'muted';
+        isMutedRef.current = muted;
+        setIsMuted(muted);
+        setIsPlaying(true);
+      } catch {
+        if (!cancelled) {
+          setIsPlaying(false);
+        }
+      }
+    };
+    void startAutoplay();
+    return () => {
+      cancelled = true;
+      soundEngine.stopAll();
+    };
+  }, [hasAudio]);
 
   usePlayerRuntime({
     mode: 'student',
@@ -72,7 +115,7 @@ const WatchRuntimeStage: React.FC<{
     playerSettings,
     session,
     activeQuestion,
-    audioPort: soundEngine,
+    audioPort: watchAudioPort,
     callbacks: {
       onTimeChange: setCurrentTime,
       onPlayingChange: setIsPlaying,
@@ -159,6 +202,21 @@ const WatchRuntimeStage: React.FC<{
     [activeScene.id, currentTime, interactions, playerSettings.allowSkipQuestion, reviewQueue.length]
   );
 
+  const handleUnmute = useCallback(() => {
+    isMutedRef.current = false;
+    setIsMuted(false);
+    soundEngine.playToneSequence([]);
+    if (isPlayingRef.current) {
+      const activeClips = getActiveSceneAudioClipsAtTime(
+        activeScene,
+        currentTimeRef.current
+      );
+      for (const { clip, offsetSec } of activeClips) {
+        soundEngine.playClip(clip, offsetSec);
+      }
+    }
+  }, [activeScene]);
+
   const activeReviewQuestion =
     reviewQueue.length > 0 && reviewIndex < reviewQueue.length
       ? reviewQueue[reviewIndex]
@@ -184,6 +242,19 @@ const WatchRuntimeStage: React.FC<{
         onRestart={handleRestart}
         onExitStudentMode={() => {}}
       >
+        {isMuted && hasAudio && (
+          <button
+            type="button"
+            data-testid="watch-unmute-btn"
+            onClick={handleUnmute}
+            className="absolute top-3 right-3 z-20 inline-flex items-center gap-2 rounded-full bg-slate-900/90 hover:bg-slate-800 text-white border border-white/20 px-3.5 py-1.5 text-xs font-bold shadow-lg backdrop-blur-xs transition-colors cursor-pointer"
+            aria-label="Sesi aç"
+          >
+            <VolumeX className="w-4 h-4 text-amber-400" />
+            <span>Sesi Aç</span>
+          </button>
+        )}
+
         {activeQuestion && session && (
           <StudentQuestionOverlay
             question={activeQuestion}

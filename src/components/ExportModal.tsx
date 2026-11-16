@@ -198,14 +198,14 @@ async function prepareSceneDynamicRasters(
             assetId={obj.assetId}
             color={obj.color}
             secondaryColor={obj.secondaryColor}
-            characterConfig={resolveEffectiveCharacterConfig(obj, scene.audioClips)}
+            characterConfig={resolveEffectiveCharacterConfig(obj, scene.audioClips, localTime)}
             timelineRig={
               obj.category === 'characters' && obj.timelineData
                 ? evaluateCharacterTimelineForRig(
                     obj,
                     localTime,
                     buildCharacterRigProfile(
-                      resolveEffectiveCharacterConfig(obj, scene.audioClips) ||
+                      resolveEffectiveCharacterConfig(obj, scene.audioClips, localTime) ||
                         DEFAULT_CHARACTER_CONFIGS[obj.assetId] ||
                         DEFAULT_CHARACTER_CONFIGS['char-pro-sinan'],
                       obj.assetId

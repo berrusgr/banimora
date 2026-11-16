@@ -81,7 +81,12 @@ import {
   formatCompactDuration,
   MAX_TOTAL_PROJECT_DURATION,
 } from '../utils/animationEngine';
-import { ensureAudioLipSyncAnalyzed, resolveEffectiveCharacterConfig } from '../utils/audioLipSync';
+import {
+  ensureAudioLipSyncAnalyzed,
+  isSceneClipLinkedToCharacter,
+  resolveEffectiveCharacterConfig,
+  toggleCharacterLipSyncClip,
+} from '../utils/audioLipSync';
 import type { PropSocketId } from '../types/rigStandard';
 import { buildCharacterRigProfile } from '../rig/rigProfiles';
 import {
@@ -1778,31 +1783,31 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 {scene.audioClips.some((c) => Boolean(c.audioUrl)) && (
                   <div className="space-y-1 pt-1 border-t border-slate-100">
                     <span className="text-[10px] font-bold text-slate-600 block">
-                      Sahnedeki Sese Senkronla
+                      Sahnedeki Sese Senkronla (Çoklu Seçilebilir)
                     </span>
                     <div className="flex flex-wrap gap-1">
                       {scene.audioClips
                         .filter((c) => Boolean(c.audioUrl))
                         .map((clip) => {
-                          const isLinked =
-                            resolvedCharConfig.lipSyncEnabled &&
-                            resolvedCharConfig.lipSyncAudioUrl === clip.audioUrl;
+                          const isLinked = isSceneClipLinkedToCharacter(
+                            resolvedCharConfig,
+                            clip
+                          );
                           return (
                             <button
                               key={clip.id}
                               type="button"
+                              aria-pressed={isLinked}
                               onClick={() => {
-                                if (clip.audioUrl) {
+                                if (!isLinked && clip.audioUrl) {
                                   ensureAudioLipSyncAnalyzed(clip.audioUrl);
                                 }
                                 onUpdateObject(selectedObject.id, {
-                                  characterConfig: {
-                                    ...resolvedCharConfig,
-                                    lipSyncEnabled: true,
-                                    lipSyncAudioUrl: clip.audioUrl,
-                                    lipSyncAudioName: clip.name,
-                                    lipSyncAudioStartTime: clip.startTime,
-                                  },
+                                  characterConfig: toggleCharacterLipSyncClip(
+                                    resolvedCharConfig,
+                                    clip,
+                                    scene.audioClips
+                                  ),
                                 });
                               }}
                               className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-colors cursor-pointer truncate max-w-full ${isLinked
@@ -1810,7 +1815,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                                 : 'bg-slate-50 hover:bg-indigo-50 text-slate-700 border-slate-200'
                                 }`}
                             >
-                              🎙️ {clip.name}
+                              {isLinked ? '✓ ' : ''}🎙️ {clip.name} ({clip.startTime.toFixed(1)}s)
                             </button>
                           );
                         })}
@@ -1830,8 +1835,10 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                             characterConfig: {
                               ...resolvedCharConfig,
                               lipSyncEnabled: false,
+                              lipSyncAudioClips: undefined,
                               lipSyncAudioUrl: undefined,
                               lipSyncAudioName: undefined,
+                              lipSyncAudioStartTime: undefined,
                             },
                           })
                         }

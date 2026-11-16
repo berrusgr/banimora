@@ -1,4 +1,9 @@
-import type { AudioClip, CanvasObject, CharacterConfig } from '../types/studio';
+import type {
+  AudioClip,
+  CanvasObject,
+  CharacterConfig,
+  LipSyncAudioClipRef,
+} from '../types/studio';
 
 export type AudioVisemeType =
   | 'closed'
@@ -168,28 +173,216 @@ export function resolveVisemeFromAudio(
   return zcr > 0.28 ? 'consonant_sz' : 'narrow_i';
 }
 
+interface ResolvedLipSyncClip {
+  clipId?: string;
+  audioUrl: string;
+  audioName?: string;
+  startTime: number;
+  duration?: number;
+}
+
+function getCharacterLipSyncRefs(cfg: CharacterConfig): LipSyncAudioClipRef[] {
+  if (Array.isArray(cfg.lipSyncAudioClips) && cfg.lipSyncAudioClips.length > 0) {
+    return cfg.lipSyncAudioClips;
+  }
+  if (cfg.lipSyncAudioUrl) {
+    return [
+      {
+        audioUrl: cfg.lipSyncAudioUrl,
+        audioName: cfg.lipSyncAudioName,
+        startTime: cfg.lipSyncAudioStartTime,
+      },
+    ];
+  }
+  return [];
+}
+
+function resolveLipSyncRefAgainstScene(
+  ref: LipSyncAudioClipRef,
+  objStartTime: number,
+  sceneAudioClips: Pick<AudioClip, 'id' | 'audioUrl' | 'name' | 'startTime' | 'duration'>[],
+  isLegacySingle: boolean
+): ResolvedLipSyncClip | null {
+  const matchedById = ref.clipId
+    ? sceneAudioClips.find((c) => c.id === ref.clipId)
+    : undefined;
+  const matchedByUrl =
+    !ref.clipId && ref.audioUrl
+      ? sceneAudioClips.find((c) => Boolean(c.audioUrl) && c.audioUrl === ref.audioUrl)
+      : undefined;
+  const sceneClip = matchedById ?? matchedByUrl;
+
+  const audioUrl = sceneClip?.audioUrl ?? ref.audioUrl;
+  if (!audioUrl) return null;
+
+  const startTime = sceneClip
+    ? sceneClip.startTime
+    : isLegacySingle
+      ? (ref.startTime ?? objStartTime)
+      : (ref.startTime ?? objStartTime);
+
+  return {
+    clipId: sceneClip?.id ?? ref.clipId,
+    audioUrl,
+    audioName: sceneClip?.name ?? ref.audioName,
+    startTime,
+    duration: sceneClip?.duration,
+  };
+}
+
+export function isSceneClipLinkedToCharacter(
+  cfg: CharacterConfig | undefined,
+  clip: Pick<AudioClip, 'id' | 'audioUrl'>
+): boolean {
+  if (!cfg || !cfg.lipSyncEnabled) return false;
+  if (Array.isArray(cfg.lipSyncAudioClips) && cfg.lipSyncAudioClips.length > 0) {
+    return cfg.lipSyncAudioClips.some((ref) =>
+      ref.clipId
+        ? ref.clipId === clip.id
+        : Boolean(clip.audioUrl && ref.audioUrl === clip.audioUrl)
+    );
+  }
+  return Boolean(clip.audioUrl && cfg.lipSyncAudioUrl === clip.audioUrl);
+}
+
+export function toggleCharacterLipSyncClip(
+  cfg: CharacterConfig,
+  clip: Pick<AudioClip, 'id' | 'audioUrl' | 'name' | 'startTime'>,
+  sceneAudioClips: Pick<AudioClip, 'id' | 'audioUrl' | 'name' | 'startTime'>[] = []
+): CharacterConfig {
+  const existingRefs: LipSyncAudioClipRef[] =
+    cfg.lipSyncEnabled && Array.isArray(cfg.lipSyncAudioClips) && cfg.lipSyncAudioClips.length > 0
+      ? cfg.lipSyncAudioClips.map((r) => ({ ...r }))
+      : cfg.lipSyncEnabled && cfg.lipSyncAudioUrl
+        ? (() => {
+            const legacySceneMatch = sceneAudioClips.find(
+              (c) => Boolean(c.audioUrl) && c.audioUrl === cfg.lipSyncAudioUrl
+            );
+            return [
+              {
+                clipId: legacySceneMatch?.id,
+                audioUrl: cfg.lipSyncAudioUrl,
+                audioName: cfg.lipSyncAudioName ?? legacySceneMatch?.name,
+                startTime: cfg.lipSyncAudioStartTime ?? legacySceneMatch?.startTime ?? 0,
+              },
+            ];
+          })()
+        : [];
+
+  const existingIdx = existingRefs.findIndex((ref) =>
+    ref.clipId
+      ? ref.clipId === clip.id
+      : Boolean(clip.audioUrl && ref.audioUrl === clip.audioUrl)
+  );
+
+  const nextRefs =
+    existingIdx >= 0
+      ? existingRefs.filter((_, idx) => idx !== existingIdx)
+      : [
+          ...existingRefs,
+          {
+            clipId: clip.id,
+            audioUrl: clip.audioUrl,
+            audioName: clip.name,
+            startTime: clip.startTime,
+          },
+        ];
+
+  if (nextRefs.length === 0) {
+    return {
+      ...cfg,
+      lipSyncEnabled: false,
+      lipSyncAudioClips: undefined,
+      lipSyncAudioUrl: undefined,
+      lipSyncAudioName: undefined,
+      lipSyncAudioStartTime: undefined,
+    };
+  }
+
+  return {
+    ...cfg,
+    lipSyncEnabled: true,
+    lipSyncAudioClips: nextRefs,
+    lipSyncAudioUrl: nextRefs[0].audioUrl,
+    lipSyncAudioName:
+      nextRefs.length === 1
+        ? nextRefs[0].audioName
+        : `${nextRefs.length} ses klibi bağlı`,
+    lipSyncAudioStartTime: nextRefs[0].startTime,
+  };
+}
+
 /**
- * Aligns lipSyncAudioStartTime to the exact scene timestamp where the audio actually starts playing:
- * - If linked to a scene audio track clip, uses the clip's startTime.
- * - If uploaded/attached directly to the character, playback begins at obj.startTime.
+ * Aligns lipSyncAudioStartTime (and active lipSyncAudioUrl for multi-clip characters)
+ * to the exact scene timestamp where the audio plays:
+ * - Matches linked scene clips by unique `clipId` first, falling back to `audioUrl` only
+ *   for legacy projects without `clipId`.
+ * - When `currentTimeSec` is provided, selects the active clip covering `currentTimeSec`
+ *   (or sets `lipSyncEnabled: false` during silent gaps between clips).
  */
 export function resolveEffectiveCharacterConfig(
   obj: Pick<CanvasObject, 'startTime' | 'characterConfig'>,
-  sceneAudioClips: Pick<AudioClip, 'audioUrl' | 'startTime'>[] = []
+  sceneAudioClips: Pick<AudioClip, 'id' | 'audioUrl' | 'name' | 'startTime' | 'duration'>[] = [],
+  currentTimeSec?: number
 ): CharacterConfig | undefined {
   const cfg = obj.characterConfig;
-  if (!cfg || !cfg.lipSyncEnabled || !cfg.lipSyncAudioUrl) return cfg;
+  if (!cfg || !cfg.lipSyncEnabled) return cfg;
 
-  const matchingSceneClip = sceneAudioClips.find(
-    (c) => Boolean(c.audioUrl) && c.audioUrl === cfg.lipSyncAudioUrl
-  );
-  const effectiveStartTime = matchingSceneClip
-    ? (cfg.lipSyncAudioStartTime ?? matchingSceneClip.startTime)
-    : obj.startTime;
+  const refs = getCharacterLipSyncRefs(cfg);
+  if (refs.length === 0) return cfg;
 
-  if (cfg.lipSyncAudioStartTime === effectiveStartTime) return cfg;
+  const isLegacySingle = !cfg.lipSyncAudioClips?.length;
+  const resolvedClips = refs
+    .map((ref) => resolveLipSyncRefAgainstScene(ref, obj.startTime, sceneAudioClips, isLegacySingle))
+    .filter((c): c is ResolvedLipSyncClip => c !== null);
+
+  if (resolvedClips.length === 0) return cfg;
+
+  if (currentTimeSec !== undefined && Number.isFinite(currentTimeSec)) {
+    const activeClips = resolvedClips.filter((clip) => {
+      if (currentTimeSec < clip.startTime) return false;
+      if (clip.duration === undefined) return true;
+      return currentTimeSec <= clip.startTime + Math.max(0, clip.duration);
+    });
+
+    if (activeClips.length === 0) {
+      return {
+        ...cfg,
+        lipSyncEnabled: false,
+      };
+    }
+
+    // If overlapping clips exist, prefer the most recently started active clip
+    const chosen = activeClips.reduce((best, candidate) =>
+      candidate.startTime >= best.startTime ? candidate : best
+    );
+
+    if (
+      cfg.lipSyncAudioUrl === chosen.audioUrl &&
+      cfg.lipSyncAudioStartTime === chosen.startTime
+    ) {
+      return cfg;
+    }
+
+    return {
+      ...cfg,
+      lipSyncEnabled: true,
+      lipSyncAudioUrl: chosen.audioUrl,
+      lipSyncAudioName: chosen.audioName ?? cfg.lipSyncAudioName,
+      lipSyncAudioStartTime: chosen.startTime,
+    };
+  }
+
+  const first = resolvedClips[0];
+  if (
+    cfg.lipSyncAudioUrl === first.audioUrl &&
+    cfg.lipSyncAudioStartTime === first.startTime
+  ) {
+    return cfg;
+  }
   return {
     ...cfg,
-    lipSyncAudioStartTime: effectiveStartTime,
+    lipSyncAudioUrl: first.audioUrl,
+    lipSyncAudioStartTime: first.startTime,
   };
 }

@@ -67,7 +67,7 @@ export function resolveParentCharacterSocketTransform(
   }
 
   const effectiveCharConfig =
-    resolveEffectiveCharacterConfig(parentObj, scene.audioClips) ||
+    resolveEffectiveCharacterConfig(parentObj, scene.audioClips, currentTime) ||
     DEFAULT_CHARACTER_CONFIGS[parentObj.assetId] ||
     DEFAULT_CHARACTER_CONFIGS['char-pro-sinan'];
 

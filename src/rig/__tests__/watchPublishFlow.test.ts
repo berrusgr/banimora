@@ -26,6 +26,12 @@ import {
   resolveAppEntryState,
 } from '../../utils/entryRouting.ts';
 import {
+  createWatchAudioPort,
+  getActiveSceneAudioClipsAtTime,
+  packageHasAudio,
+  probeWatchAutoplay,
+} from '../../utils/watchAutoplay.ts';
+import {
   getProjectWatchStatus,
   loadPublishedWatchForViewer,
   publishProjectToWatch,
@@ -723,4 +729,119 @@ test('9. WatchPlayerPage and StudentPlayerView expose read-only playback without
   );
   assert.ok(studentViewSource.includes('showExitButton = true'));
   assert.ok(studentViewSource.includes('{showExitButton && ('));
+});
+
+test('10. WatchPlayerPage autoplay tries unmuted playback first, falls back to muted with Sesi Aç control when blocked, and restores audio on unmute', async () => {
+  // 1. No audio -> starts unmuted immediately
+  assert.deepEqual(
+    await probeWatchAutoplay({ hasAudio: false, createAudioContext: null }),
+    { mode: 'unmuted', audioBlocked: false }
+  );
+
+  // 2. Audio present + AudioContext resumes -> starts unmuted
+  const runningResult = await probeWatchAutoplay({
+    hasAudio: true,
+    createAudioContext: () => ({
+      state: 'running',
+      resume: async () => {},
+      close: async () => {},
+    }),
+  });
+  assert.deepEqual(runningResult, { mode: 'unmuted', audioBlocked: false });
+
+  // 3. Audio present + browser blocks autoplay (stays suspended) -> falls back to muted
+  const blockedResult = await probeWatchAutoplay({
+    hasAudio: true,
+    createAudioContext: () => ({
+      state: 'suspended',
+      resume: async () => {},
+      close: async () => {},
+    }),
+  });
+  assert.deepEqual(blockedResult, { mode: 'muted', audioBlocked: true });
+
+  // 4. WatchAudioPort blocks soundEngine.playClip while muted, allows after unmute
+  const played: Array<{ id: string; offsetSec?: number }> = [];
+  const isMutedRef = { current: true };
+  const port = createWatchAudioPort(
+    {
+      playClip: (clip, offsetSec) => played.push({ id: clip.id, offsetSec }),
+      stopAll: () => {},
+    },
+    isMutedRef
+  );
+  port.playClip({ id: 'c-1', duration: 5, freqPattern: [440] }, 0);
+  assert.equal(played.length, 0);
+
+  isMutedRef.current = false;
+  const active = getActiveSceneAudioClipsAtTime(
+    {
+      id: 'scene-1',
+      name: 'S1',
+      duration: 8,
+      objects: [],
+      audioClips: [
+        {
+          id: 'c-1',
+          name: 'Ses 1',
+          type: 'sfx',
+          startTime: 1,
+          duration: 4,
+          color: '#000',
+          freqPattern: [440],
+        },
+      ],
+    } as unknown as Parameters<typeof getActiveSceneAudioClipsAtTime>[0],
+    2.5
+  );
+  assert.equal(active.length, 1);
+  assert.equal(active[0].offsetSec, 1.5);
+  port.playClip(active[0].clip, active[0].offsetSec);
+  assert.deepEqual(played, [{ id: 'c-1', offsetSec: 1.5 }]);
+
+  assert.equal(
+    packageHasAudio({
+      format: 'banimora-published-package',
+      manifest: {
+        packageId: 'p',
+        sourceProjectId: 'sp',
+        sourceRevision: 1,
+        schemaVersion: 1,
+        publishedAt: '2026-11-16T00:00:00Z',
+        title: 'T',
+        totalDurationSec: 5,
+        sceneCount: 1,
+        questionCount: 0,
+        hasAudio: true,
+        entryPoint: 'index.html',
+      },
+      assets: { version: 1, entries: {} },
+      scenes: [],
+      customCharacters: [],
+      uploadedObjects: [],
+      customBackgrounds: [],
+      customAudioClips: [],
+      interactions: [],
+      playerSettings: {
+        feedbackTiming: 'immediate',
+        maxWrongAttempts: 'unlimited',
+        allowSkipQuestion: true,
+        correctAnswerReveal: 'immediate',
+        showResultScreen: true,
+        passingThreshold: 70,
+      },
+      fps: 30,
+    }),
+    true
+  );
+
+  // 5. WatchPlayerPage wires autoplay effect and visible Sesi Aç button
+  const watchPageSource = fs.readFileSync(
+    path.join(ROOT_DIR, 'src/components/WatchPlayerPage.tsx'),
+    'utf8'
+  );
+  assert.ok(watchPageSource.includes('probeWatchAutoplay'));
+  assert.ok(watchPageSource.includes('createWatchAudioPort'));
+  assert.ok(watchPageSource.includes('data-testid="watch-unmute-btn"'));
+  assert.ok(watchPageSource.includes('Sesi Aç'));
 });

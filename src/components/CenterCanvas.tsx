@@ -1337,7 +1337,7 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
               const flipScaleX = (renderTransform.flipX ? -1 : 1) * renderTransform.scaleX;
               const rawCharConfig =
                 obj.category === 'characters'
-                  ? resolveEffectiveCharacterConfig(obj, scene.audioClips)
+                  ? resolveEffectiveCharacterConfig(obj, scene.audioClips, currentTime)
                   : undefined;
               const charBoundSockets =
                 obj.category === 'characters' ? boundSocketsByChar.get(obj.id) : undefined;

@@ -68,6 +68,78 @@ export interface DeleteCloudProjectResult {
   localProject: BanimoraProjectFileV2 | null;
 }
 
+export type CloudSaveStage =
+  | 'read_local_project'
+  | 'r2_upload'
+  | 'register_media_asset'
+  | 'save_project_with_revision'
+  | 'sync_project_asset_links'
+  | 'update_local_sync_meta';
+
+function sanitizeDiagnosticText(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  return trimmed
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [REDACTED]')
+    .replace(/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, '[REDACTED_JWT]')
+    .slice(0, 300);
+}
+
+function attachCloudSaveStage(
+  error: unknown,
+  stage: CloudSaveStage,
+  fallbackMessage: string
+): CloudRepositoryError {
+  const mapped = mapSupabaseErrorToCloudError(error, fallbackMessage);
+  if (mapped.details?.stage === stage) {
+    return mapped;
+  }
+  return new CloudRepositoryError(
+    mapped.code,
+    mapped.message,
+    { ...(mapped.details ?? {}), stage },
+    mapped.causeError ?? error
+  );
+}
+
+function logCloudSaveStageError(stage: CloudSaveStage, error: unknown): void {
+  try {
+    const cloudErr = error instanceof CloudRepositoryError ? error : null;
+    const cause = cloudErr?.causeError ?? (!cloudErr ? error : undefined);
+    const causeObj =
+      cause && typeof cause === 'object' ? (cause as Record<string, unknown>) : null;
+
+    console.error('[Banimora CloudSave]', {
+      stage,
+      errorClass: error instanceof Error ? error.name : typeof error,
+      code: cloudErr?.code ?? (typeof causeObj?.code === 'string' ? causeObj.code : undefined),
+      httpStatus:
+        typeof cloudErr?.details?.status === 'number'
+          ? cloudErr.details.status
+          : typeof causeObj?.status === 'number'
+            ? causeObj.status
+            : undefined,
+      pgCode:
+        typeof cloudErr?.details?.pgCode === 'string'
+          ? cloudErr.details.pgCode
+          : typeof causeObj?.code === 'string'
+            ? causeObj.code
+            : undefined,
+      pgDetails: sanitizeDiagnosticText(causeObj?.details),
+      pgHint: sanitizeDiagnosticText(causeObj?.hint),
+      message: sanitizeDiagnosticText(
+        error instanceof Error ? error.message : causeObj?.message
+      ),
+      causeClass: cause instanceof Error ? cause.name : cause ? typeof cause : undefined,
+      causeMessage:
+        cause instanceof Error ? sanitizeDiagnosticText(cause.message) : undefined,
+    });
+  } catch {
+    // Loglama hatası asıl hatayı maskelememelidir.
+  }
+}
+
 export interface ProjectSyncCoordinatorOptions {
   localRepo: LocalProjectRepository;
   cloudRepo: SupabaseProjectRepository;
@@ -94,8 +166,31 @@ export class ProjectSyncCoordinator {
     expectedCloudRevision: number
   ): Promise<CloudSaveProjectResult> {
     if (!this.r2Client) {
-      const hydratedForCloud = await this.localRepo.hydrateProjectMedia(localProject);
-      return this.cloudRepo.saveProject(hydratedForCloud, expectedCloudRevision);
+      let hydratedForCloud: BanimoraProjectFileV2;
+      try {
+        hydratedForCloud = await this.localRepo.hydrateProjectMedia(localProject);
+      } catch (error) {
+        const staged = attachCloudSaveStage(
+          error,
+          'read_local_project',
+          'Yerel proje medyası okunamadı.'
+        );
+        logCloudSaveStageError('read_local_project', staged);
+        throw staged;
+      }
+      try {
+        return await this.cloudRepo.saveProject(hydratedForCloud, expectedCloudRevision);
+      } catch (error) {
+        const staged = attachCloudSaveStage(
+          error,
+          'save_project_with_revision',
+          'Bulut projesi kaydedilemedi.'
+        );
+        if (staged.code !== 'REVISION_CONFLICT') {
+          logCloudSaveStageError('save_project_with_revision', staged);
+        }
+        throw staged;
+      }
     }
 
     const r2Client = this.r2Client;
@@ -113,12 +208,22 @@ export class ProjectSyncCoordinator {
 
       const hashMatch = entry.cloudObjectKey?.match(/^users\/[^/]+\/assets\/([a-f0-9]{64})$/);
       if (entry.storageType === 'cloud-r2' && hashMatch && entry.byteSize) {
-        const reg = await this.cloudRepo.registerMediaAsset({
-          sha256: hashMatch[1],
-          mimeType: entry.mimeType,
-          byteSize: entry.byteSize,
-        });
-        registeredRow = reg;
+        try {
+          const reg = await this.cloudRepo.registerMediaAsset({
+            sha256: hashMatch[1],
+            mimeType: entry.mimeType,
+            byteSize: entry.byteSize,
+          });
+          registeredRow = reg;
+        } catch (error) {
+          const staged = attachCloudSaveStage(
+            error,
+            'register_media_asset',
+            'Medya kaydı Supabase üzerinde doğrulanamadı.'
+          );
+          logCloudSaveStageError('register_media_asset', staged);
+          throw staged;
+        }
       } else if (entry.localBlobKey) {
         const cached = uploadedKeyByBlobKey.get(entry.localBlobKey);
         if (cached) {
@@ -129,16 +234,52 @@ export class ProjectSyncCoordinator {
             byte_size: cached.byteSize,
           };
         } else {
-          const blob = await this.localRepo.getAssetBlob(entry.localBlobKey);
+          let blob: Blob | null = null;
+          try {
+            blob = await this.localRepo.getAssetBlob(entry.localBlobKey);
+          } catch (error) {
+            const staged = attachCloudSaveStage(
+              error,
+              'read_local_project',
+              'Yerel medya verisi okunamadı.'
+            );
+            logCloudSaveStageError('read_local_project', staged);
+            throw staged;
+          }
+
           if (blob) {
-            const uploaded = await r2Client.uploadBlob(blob, {
-              mimeType: entry.mimeType,
-            });
-            const reg = await this.cloudRepo.registerMediaAsset({
-              sha256: uploaded.sha256,
-              mimeType: uploaded.mimeType,
-              byteSize: uploaded.sizeBytes,
-            });
+            let uploaded: Awaited<ReturnType<R2MediaClient['uploadBlob']>>;
+            try {
+              uploaded = await r2Client.uploadBlob(blob, {
+                mimeType: entry.mimeType,
+              });
+            } catch (error) {
+              const staged = attachCloudSaveStage(
+                error,
+                'r2_upload',
+                'Medya dosyası R2 deposuna yüklenemedi.'
+              );
+              logCloudSaveStageError('r2_upload', staged);
+              throw staged;
+            }
+
+            let reg: Awaited<ReturnType<SupabaseProjectRepository['registerMediaAsset']>>;
+            try {
+              reg = await this.cloudRepo.registerMediaAsset({
+                sha256: uploaded.sha256,
+                mimeType: uploaded.mimeType,
+                byteSize: uploaded.sizeBytes,
+              });
+            } catch (error) {
+              const staged = attachCloudSaveStage(
+                error,
+                'register_media_asset',
+                'Yüklenen medya kaydı Supabase üzerinde tamamlanamadı.'
+              );
+              logCloudSaveStageError('register_media_asset', staged);
+              throw staged;
+            }
+
             uploadedKeyByBlobKey.set(entry.localBlobKey, {
               assetId: reg.id,
               objectKey: reg.object_key,
@@ -163,15 +304,38 @@ export class ProjectSyncCoordinator {
       }
     }
 
-    const cloudSaved = await this.cloudRepo.saveProject(
-      cloudProject,
-      expectedCloudRevision
-    );
+    let cloudSaved: CloudSaveProjectResult;
+    try {
+      cloudSaved = await this.cloudRepo.saveProject(
+        cloudProject,
+        expectedCloudRevision
+      );
+    } catch (error) {
+      const staged = attachCloudSaveStage(
+        error,
+        'save_project_with_revision',
+        'Bulut projesi kaydedilemedi.'
+      );
+      if (staged.code !== 'REVISION_CONFLICT') {
+        logCloudSaveStageError('save_project_with_revision', staged);
+      }
+      throw staged;
+    }
 
-    await this.cloudRepo.syncProjectAssetLinks(
-      cloudSaved.project.projectId,
-      Array.from(registeredAssetIds)
-    );
+    try {
+      await this.cloudRepo.syncProjectAssetLinks(
+        cloudSaved.project.projectId,
+        Array.from(registeredAssetIds)
+      );
+    } catch (error) {
+      const staged = attachCloudSaveStage(
+        error,
+        'sync_project_asset_links',
+        'Proje medya bağlantıları güncellenemedi.'
+      );
+      logCloudSaveStageError('sync_project_asset_links', staged);
+      throw staged;
+    }
 
     return cloudSaved;
   }
@@ -182,14 +346,29 @@ export class ProjectSyncCoordinator {
    * Blob deposu, içerik ve `localRevision` korunur.
    */
   async saveToCloud(projectId: string): Promise<SaveToCloudResult> {
-    const localProject = await this.localRepo.loadProject(projectId);
-    const localRevision = await this.localRepo.getLocalRevision(projectId);
+    let localProject: BanimoraProjectFileV2 | null;
+    let localRevision: number | null;
+    try {
+      localProject = await this.localRepo.loadProject(projectId);
+      localRevision = await this.localRepo.getLocalRevision(projectId);
+    } catch (error) {
+      const staged = attachCloudSaveStage(
+        error,
+        'read_local_project',
+        'Yerel proje okunamadı.'
+      );
+      logCloudSaveStageError('read_local_project', staged);
+      throw staged;
+    }
 
     if (!localProject || localRevision === null) {
-      throw new CloudRepositoryError(
+      const notFound = new CloudRepositoryError(
         'NOT_FOUND',
-        'Buluta kaydedilecek yerel proje bulunamadı.'
+        'Buluta kaydedilecek yerel proje bulunamadı.',
+        { stage: 'read_local_project' }
       );
+      logCloudSaveStageError('read_local_project', notFound);
+      throw notFound;
     }
 
     const expectedCloudRevision =
@@ -203,16 +382,27 @@ export class ProjectSyncCoordinator {
         expectedCloudRevision
       );
 
-      const updatedLocal = await this.localRepo.updateCloudSyncMeta(
-        projectId,
-        {
-          ownerId: cloudSaved.project.cloudMeta?.ownerId,
-          revision: cloudSaved.cloudRevision,
-          lastSyncedAt: cloudSaved.savedAt,
-          syncState: 'synced',
-        },
-        localRevision
-      );
+      let updatedLocal: Awaited<ReturnType<LocalProjectRepository['updateCloudSyncMeta']>>;
+      try {
+        updatedLocal = await this.localRepo.updateCloudSyncMeta(
+          projectId,
+          {
+            ownerId: cloudSaved.project.cloudMeta?.ownerId,
+            revision: cloudSaved.cloudRevision,
+            lastSyncedAt: cloudSaved.savedAt,
+            syncState: 'synced',
+          },
+          localRevision
+        );
+      } catch (error) {
+        const staged = attachCloudSaveStage(
+          error,
+          'update_local_sync_meta',
+          'Yerel senkronizasyon meta verisi güncellenemedi.'
+        );
+        logCloudSaveStageError('update_local_sync_meta', staged);
+        throw staged;
+      }
 
       return {
         status: 'saved',
@@ -228,9 +418,6 @@ export class ProjectSyncCoordinator {
       );
 
       if (cloudError.code === 'REVISION_CONFLICT') {
-        // Eğer ilk bulut kaydında (expectedCloudRevision === 0) sunucuda aktif bir kayıt
-        // yoksa, aynı projectId daha önce soft-delete edilmiş (tombstone) demektir.
-        // Silinmiş kaydı diriltmeden ve aynı ID ile ikinci kayıt açmadan yeni UUID ile kaydet.
         if (expectedCloudRevision === 0) {
           const activeCloudRow = await this.cloudRepo.loadProject(projectId);
           if (activeCloudRow === null) {
@@ -252,6 +439,10 @@ export class ProjectSyncCoordinator {
           project: conflictMarked.project,
           error: cloudError,
         };
+      }
+
+      if (!cloudError.details?.stage) {
+        logCloudSaveStageError('save_project_with_revision', cloudError);
       }
 
       // Ağ, yetki veya payload hatasında yerel proje ve medyalar dokunulmadan korunur.

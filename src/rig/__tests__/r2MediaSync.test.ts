@@ -537,3 +537,69 @@ test('4. R2 upload failure preserves local IndexedDB project and Blob data untou
   const hydratedAfter = await localRepo.hydrateProjectMedia(localAfter);
   assert.equal(hydratedAfter.uploadedObjects[0]?.imageUrl, TINY_PNG_DATA_URL);
 });
+
+test('5. saveToCloud preserves failing stage, original code, and logs safe [Banimora CloudSave] diagnostics without leaking tokens', async () => {
+  const harness = createR2AndSupabaseHarness();
+  const cloudRepo = new SupabaseProjectRepository({ client: harness.supabaseClient });
+  const localRepo = new LocalProjectRepository({
+    client: new IndexedDbClient({ idbFactory: createMockIdbFactory() }),
+    broadcastChannelFactory: () => null,
+  });
+  const coordinator = new ProjectSyncCoordinator({
+    localRepo,
+    cloudRepo,
+    r2Client: harness.r2Client,
+  });
+
+  const projectId = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
+  await localRepo.saveProject(makeV2Project(projectId, 'Teşhis Test Projesi'));
+
+  const loggedCalls: unknown[][] = [];
+  const origConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    loggedCalls.push(args);
+  };
+
+  try {
+    // 1. r2_upload stage failure
+    harness.setWorkerOffline(true);
+    await assert.rejects(
+      () => coordinator.saveToCloud(projectId),
+      (err: unknown) =>
+        err instanceof CloudRepositoryError &&
+        err.code === 'NETWORK_ERROR' &&
+        err.details?.stage === 'r2_upload'
+    );
+    harness.setWorkerOffline(false);
+
+    // 2. sync_project_asset_links stage failure with JWT-like text in error message (must be redacted)
+    const origSyncLinks = cloudRepo.syncProjectAssetLinks.bind(cloudRepo);
+    cloudRepo.syncProjectAssetLinks = async () => {
+      throw new CloudRepositoryError(
+        'UNKNOWN',
+        'RPC failed with Bearer eyJhbGciOiJIUzI1NiJ9.payload123.sig456',
+        { pgCode: 'PGRST202', status: 404 }
+      );
+    };
+    await assert.rejects(
+      () => coordinator.saveToCloud(projectId),
+      (err: unknown) =>
+        err instanceof CloudRepositoryError &&
+        err.code === 'UNKNOWN' &&
+        err.details?.stage === 'sync_project_asset_links' &&
+        err.details?.pgCode === 'PGRST202'
+    );
+    cloudRepo.syncProjectAssetLinks = origSyncLinks;
+  } finally {
+    console.error = origConsoleError;
+  }
+
+  const cloudSaveLogs = loggedCalls.filter((args) => args[0] === '[Banimora CloudSave]');
+  assert.equal(cloudSaveLogs.length, 2);
+  assert.equal((cloudSaveLogs[0][1] as { stage?: string }).stage, 'r2_upload');
+  const secondPayload = cloudSaveLogs[1][1] as { stage?: string; message?: string; pgCode?: string };
+  assert.equal(secondPayload.stage, 'sync_project_asset_links');
+  assert.equal(secondPayload.pgCode, 'PGRST202');
+  assert.ok(!secondPayload.message?.includes('eyJhbGciOiJIUzI1NiJ9'));
+  assert.ok(secondPayload.message?.includes('[REDACTED]'));
+});

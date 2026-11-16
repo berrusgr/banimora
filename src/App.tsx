@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AddieProjectData,
   AddieStage,
@@ -30,7 +30,8 @@ import { CenterCanvas } from './components/CenterCanvas';
 import { RightInspector } from './components/RightInspector';
 import { BottomTimeline } from './components/BottomTimeline';
 import { ExportModal } from './components/ExportModal';
-import { AuthModal } from './components/AuthModal';
+import { AuthModal, type AuthModalTab } from './components/AuthModal';
+import { LandingPage } from './components/LandingPage';
 import { ProjectsModal } from './components/ProjectsModal';
 import { ProjectConflictDialog } from './components/ProjectConflictDialog';
 import { useAuth } from './contexts/AuthContext';
@@ -81,6 +82,13 @@ import {
   type CombinedProjectEntry,
   type CombinedSyncStatus,
 } from './utils/projectSyncCoordinator';
+import {
+  buildUrlForEntryIntent,
+  parseEntryRouteIntent,
+  resolveAppEntryState,
+  type EntryRouteIntent,
+} from './utils/entryRouting';
+import { createDemoProjectSnapshot } from './utils/demoProject';
 import {
   evaluateProjectSwitchConfirmation,
   formatCloudRepositoryErrorMessage,
@@ -200,7 +208,40 @@ export function App() {
   const [projectFps, setProjectFps] = useState<24 | 30 | 60>(30);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { user: authUser, isAuthenticated, isLoading: isAuthLoading, signOut } = useAuth();
+  const [authModalTab, setAuthModalTab] = useState<AuthModalTab>('signin');
+  const {
+    user: authUser,
+    isAuthenticated,
+    isLoading: isAuthLoading,
+    isRecoveryMode,
+    signOut,
+  } = useAuth();
+  const [routeIntent, setRouteIntent] = useState<EntryRouteIntent>(() =>
+    parseEntryRouteIntent(
+      window.location.pathname,
+      window.location.search,
+      window.location.hash
+    )
+  );
+  const entryState = useMemo(
+    () =>
+      resolveAppEntryState({
+        intent: routeIntent,
+        isAuthenticated,
+        isAuthLoading,
+        isRecoveryMode,
+      }),
+    [routeIntent, isAuthenticated, isAuthLoading, isRecoveryMode]
+  );
+  const isDemoMode = entryState.isDemoMode;
+  const navigateEntryIntent = useCallback((nextIntent: EntryRouteIntent) => {
+    setRouteIntent(nextIntent);
+    const nextUrl = buildUrlForEntryIntent(nextIntent);
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
+    if (currentUrl !== nextUrl) {
+      window.history.pushState({}, '', nextUrl);
+    }
+  }, []);
   const [recoveredAutoSave, setRecoveredAutoSave] = useState<BanimoraProjectFile | null>(null);
   const [educationalMetadata, setEducationalMetadata] =
     useState<ProjectEducationalMetadata>({ mode: 'classic' });
@@ -1526,7 +1567,21 @@ export function App() {
     setSelectedCameraMovementId(null);
   };
 
+  const showProjectNotice = useCallback((type: 'success' | 'error', text: string) => {
+    setProjectNotice({ type, text });
+    window.setTimeout(() => {
+      setProjectNotice((prev) => (prev?.text === text ? null : prev));
+    }, 4500);
+  }, []);
+
   const handleSaveProjectJson = useCallback(() => {
+    if (isDemoMode) {
+      showProjectNotice(
+        'error',
+        'Demo modunda proje indirilemez. Kendi projelerinizi kaydetmek için giriş yapın.'
+      );
+      return;
+    }
     downloadProjectJson({
       projectName,
       activeSceneId,
@@ -1581,6 +1636,87 @@ export function App() {
     },
     []
   );
+
+  useEffect(() => {
+    const onPopState = () => {
+      setRouteIntent(
+        parseEntryRouteIntent(
+          window.location.pathname,
+          window.location.search,
+          window.location.hash
+        )
+      );
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  useEffect(() => {
+    if (entryState.authModalTab) {
+      setAuthModalTab(entryState.authModalTab);
+      setIsAuthModalOpen(true);
+    }
+  }, [entryState.authModalTab]);
+
+  const demoInitializedRef = useRef(false);
+  useEffect(() => {
+    if (isDemoMode) {
+      if (!demoInitializedRef.current) {
+        demoInitializedRef.current = true;
+        const demo = createDemoProjectSnapshot();
+        setIsPlaying(false);
+        setCurrentTime(0);
+        setProjectName(demo.projectName);
+        setHistory([demo.scenes]);
+        setHistoryIndex(0);
+        setActiveSceneId(demo.activeSceneId);
+        setSelectedObjectId(null);
+        setSelectedObjectIds([]);
+        setSelectedPartId(null);
+        setIsCameraSelected(false);
+        setSelectedCameraMovementId(null);
+        setCustomCharacters([]);
+        setUploadedObjects([]);
+        setCustomBackgrounds([]);
+        setCustomAudioClips([]);
+        setEducationalMetadata(demo.educationalMetadata);
+        setIsModeSelectorOpen(false);
+        setRecoveredAutoSave(null);
+        setIsProjectsModalOpen(false);
+        setIsExportOpen(false);
+        currentProjectIdRef.current = null;
+        currentProjectRevisionRef.current = undefined;
+        currentProjectCreatedAtRef.current = undefined;
+        currentAssetManifestRef.current = undefined;
+        setActiveProjectId(null);
+        setActiveSyncState('local-only');
+        hasUnsavedChangesRef.current = false;
+      }
+    } else {
+      demoInitializedRef.current = false;
+    }
+  }, [isDemoMode]);
+
+  const prevAuthRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (isAuthLoading) return;
+    const prev = prevAuthRef.current;
+    prevAuthRef.current = isAuthenticated;
+
+    if (prev === false && isAuthenticated) {
+      // Başarılı giriş veya kayıt sonrası demo/landing verisini temizleyip üretim türü seçimine geç
+      setIsAuthModalOpen(false);
+      navigateEntryIntent('studio');
+      resetToFreshProject('Yeni Proje', { mode: 'classic' });
+      setModeSelectorCanDismiss(false);
+      setIsModeSelectorOpen(true);
+    } else if (prev === true && !isAuthenticated) {
+      // Çıkış yapıldığında karşılama ekranına dön
+      setIsProjectsModalOpen(false);
+      setConflictDialogState(null);
+      navigateEntryIntent('landing');
+    }
+  }, [isAuthLoading, isAuthenticated, navigateEntryIntent, resetToFreshProject]);
 
   const handleOpenNewProjectSelector = useCallback(() => {
     setModeSelectorCanDismiss(true);
@@ -1772,6 +1908,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (isDemoMode || !entryState.canAccessStudio) return;
     const repo = getProjectRepository();
     if (repo.isAvailable()) {
       void migrateLocalStorageToIndexedDb(repo).then((migration) => {
@@ -1803,13 +1940,14 @@ export function App() {
       repo.close();
       projectRepoRef.current = null;
     };
-  }, [getProjectRepository]);
+  }, [entryState.canAccessStudio, getProjectRepository, isDemoMode]);
 
   useEffect(() => {
     if (isInitialAutoSaveMountRef.current) {
       isInitialAutoSaveMountRef.current = false;
       return;
     }
+    if (isDemoMode || !entryState.canAccessStudio) return;
     hasUnsavedChangesRef.current = true;
     setActiveSyncState((prev) => (prev === 'synced' ? 'dirty' : prev));
     // Keep existing recovery snapshot intact until user either restores or discards it.
@@ -1906,6 +2044,13 @@ export function App() {
   ]);
 
   const handleLoadProjectJson = useCallback(async (file: File): Promise<boolean> => {
+    if (isDemoMode) {
+      showProjectNotice(
+        'error',
+        'Demo modunda dışarıdan proje yüklenemez. Kendi projelerinizi açmak için giriş yapın.'
+      );
+      return false;
+    }
     try {
       const loaded = await parseProjectJsonFile(file);
       currentProjectIdRef.current = generateNewProjectId();
@@ -1925,14 +2070,11 @@ export function App() {
     }
   }, [applyLoadedProject]);
 
-  const showProjectNotice = useCallback((type: 'success' | 'error', text: string) => {
-    setProjectNotice({ type, text });
-    window.setTimeout(() => {
-      setProjectNotice((prev) => (prev?.text === text ? null : prev));
-    }, 4500);
-  }, []);
-
   const refreshCombinedProjects = useCallback(async () => {
+    if (isDemoMode) {
+      setCombinedProjects([]);
+      return;
+    }
     setIsProjectsLoading(true);
     setProjectModalError(null);
     try {
@@ -1987,6 +2129,9 @@ export function App() {
   );
 
   const ensureActiveProjectSavedLocally = useCallback(async (): Promise<string> => {
+    if (isDemoMode) {
+      throw new Error('Demo modunda proje kaydedilemez.');
+    }
     const repo = getProjectRepository();
     if (!currentProjectIdRef.current) {
       currentProjectIdRef.current = generateNewProjectId();
@@ -2045,12 +2190,26 @@ export function App() {
   ]);
 
   const handleOpenProjectsModal = useCallback(() => {
+    if (isDemoMode) {
+      showProjectNotice(
+        'error',
+        'Demo modunda projelerim listesi kapalıdır. Kendi projelerinize erişmek için giriş yapın.'
+      );
+      return;
+    }
     setIsProjectsModalOpen(true);
     void refreshCombinedProjects();
-  }, [refreshCombinedProjects]);
+  }, [isDemoMode, refreshCombinedProjects, showProjectNotice]);
 
   const handleSaveEntryToCloud = useCallback(
     async (projectId: string, entryName?: string) => {
+      if (isDemoMode) {
+        showProjectNotice(
+          'error',
+          'Demo modunda buluta kayıt yapılamaz. Kendi projelerinizi kaydetmek için giriş yapın.'
+        );
+        return;
+      }
       if (busyProjectId || isHeaderCloudSaving) return;
       setBusyProjectId(projectId);
       setIsHeaderCloudSaving(true);
@@ -2119,6 +2278,13 @@ export function App() {
   );
 
   const handleSaveActiveToCloud = useCallback(async () => {
+    if (isDemoMode) {
+      showProjectNotice(
+        'error',
+        'Demo modunda buluta kayıt yapılamaz. Kendi projelerinizi kaydetmek için giriş yapın.'
+      );
+      return;
+    }
     if (!isAuthenticated) {
       setIsAuthModalOpen(true);
       return;
@@ -2569,6 +2735,48 @@ export function App() {
       ? studentReviewQueue[studentReviewIndex]
       : null;
 
+  if (entryState.view === 'loading') {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 text-slate-200 gap-3">
+        <div className="h-8 w-8 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
+        <p className="text-xs font-medium text-slate-400">Banimora yükleniyor...</p>
+      </div>
+    );
+  }
+
+  if (entryState.view === 'landing') {
+    return (
+      <>
+        <LandingPage
+          onSignUp={() => {
+            setAuthModalTab('signup');
+            setIsAuthModalOpen(true);
+            navigateEntryIntent('signup');
+          }}
+          onSignIn={() => {
+            setAuthModalTab('signin');
+            setIsAuthModalOpen(true);
+            navigateEntryIntent('signin');
+          }}
+          onOpenDemo={() => {
+            setIsAuthModalOpen(false);
+            navigateEntryIntent('demo');
+          }}
+        />
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          initialTab={authModalTab}
+          onClose={() => {
+            setIsAuthModalOpen(false);
+            if (!isAuthenticated) {
+              navigateEntryIntent('landing');
+            }
+          }}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col select-none bg-slate-100 text-slate-900">
       {viewMode === 'student' ? (
@@ -2767,6 +2975,50 @@ export function App() {
         </StudentPlayerView>
       ) : (
       <>
+      {isDemoMode && (
+        <div
+          data-testid="demo-mode-banner"
+          className="flex flex-wrap items-center justify-between gap-2 bg-indigo-950 text-indigo-100 border-b border-indigo-500/30 px-4 py-1.5 text-xs shrink-0"
+        >
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-indigo-500/25 border border-indigo-400/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-200">
+              Demo Modu
+            </span>
+            <span className="text-indigo-200/90">
+              Örnek proje önizlemesi — Değişiklikler kaydedilmez, bulut ve paylaşım kapalıdır.
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigateEntryIntent('landing')}
+              className="rounded-md border border-indigo-400/30 bg-indigo-900/50 px-2.5 py-1 text-[11px] font-medium text-indigo-100 hover:bg-indigo-800/70 transition cursor-pointer"
+            >
+              Ana Sayfa
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthModalTab('signin');
+                setIsAuthModalOpen(true);
+              }}
+              className="rounded-md border border-indigo-400/40 bg-indigo-900/60 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-indigo-800 transition cursor-pointer"
+            >
+              Giriş Yap
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthModalTab('signup');
+                setIsAuthModalOpen(true);
+              }}
+              className="rounded-md bg-indigo-500 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-indigo-400 transition cursor-pointer"
+            >
+              Kayıt Ol
+            </button>
+          </div>
+        </div>
+      )}
       {/* 1. TOP HEADER BAR (Light Theme, Camera Tool, Scene Bar moved to Timeline) */}
       <TopHeader
         projectName={projectName}
@@ -2785,6 +3037,13 @@ export function App() {
           setIsPlaying((p) => !p);
         }}
         onOpenExport={() => {
+          if (isDemoMode) {
+            showProjectNotice(
+              'error',
+              'Demo modunda dışa aktarma kapalıdır. Kendi projelerinizi dışa aktarmak için giriş yapın.'
+            );
+            return;
+          }
           setIsPlaying(false);
           setIsExportOpen(true);
         }}
@@ -2793,17 +3052,17 @@ export function App() {
         projectMode={educationalMetadata.mode}
         onChangeProjectMode={handleChangeProjectMode}
         onNewProject={handleOpenNewProjectSelector}
-        onOpenProjects={handleOpenProjectsModal}
+        onOpenProjects={isDemoMode ? undefined : handleOpenProjectsModal}
         activeSyncState={activeSyncState}
-        isAuthenticated={isAuthenticated}
+        isAuthenticated={isDemoMode ? false : isAuthenticated}
         isCloudSaving={isHeaderCloudSaving}
-        onSaveActiveToCloud={handleSaveActiveToCloud}
+        onSaveActiveToCloud={isDemoMode ? undefined : handleSaveActiveToCloud}
         onOpenAddieInfo={handleOpenAddieInfo}
         onOpenInteractionEditor={() => handleOpenInteractionEditor(null)}
         onOpenStudentPlayer={handleEnterStudentPlayer}
         onOpenPlayerSettings={() => setIsPlayerSettingsOpen(true)}
         authSlot={
-          isAuthLoading ? null : isAuthenticated && authUser ? (
+          isDemoMode ? null : isAuthLoading ? null : isAuthenticated && authUser ? (
             <div className="flex items-center gap-1.5 pl-1">
               <span
                 className="hidden lg:inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[11px] font-medium text-slate-700 max-w-[140px] truncate"
@@ -3340,6 +3599,7 @@ export function App() {
 
       <AuthModal
         isOpen={isAuthModalOpen}
+        initialTab={authModalTab}
         onClose={() => {
           setIsAuthModalOpen(false);
           if (isProjectsModalOpen) {

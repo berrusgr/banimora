@@ -23,6 +23,8 @@ export interface StudentPlayerViewProps {
   onSeekToTime: (timeSec: number) => void;
   onRestart: () => void;
   onExitStudentMode: () => void;
+  showExitButton?: boolean;
+  subtitleText?: string;
   children?: React.ReactNode;
 }
 
@@ -45,6 +47,8 @@ export const StudentPlayerView: React.FC<StudentPlayerViewProps> = ({
   onSeekToTime,
   onRestart,
   onExitStudentMode,
+  showExitButton = true,
+  subtitleText = 'Öğrenci Oynatıcısı',
   children,
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -88,15 +92,17 @@ export const StudentPlayerView: React.FC<StudentPlayerViewProps> = ({
       {/* Top Student Bar */}
       <header className="h-14 px-4 sm:px-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
-            data-testid="exit-student-player-btn"
-            onClick={onExitStudentMode}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 text-xs font-semibold transition-colors cursor-pointer shrink-0"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Öğretmen Görünümüne Dön</span>
-          </button>
+          {showExitButton && (
+            <button
+              type="button"
+              data-testid="exit-student-player-btn"
+              onClick={onExitStudentMode}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 text-xs font-semibold transition-colors cursor-pointer shrink-0"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Öğretmen Görünümüne Dön</span>
+            </button>
+          )}
           <div className="flex items-center gap-2 min-w-0">
             <span className="w-7 h-7 rounded-lg bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 flex items-center justify-center shrink-0">
               <GraduationCap className="w-4 h-4" />
@@ -104,7 +110,7 @@ export const StudentPlayerView: React.FC<StudentPlayerViewProps> = ({
             <div className="min-w-0">
               <div className="text-sm font-bold text-white truncate">{projectName}</div>
               <div className="text-[11px] text-slate-400">
-                Öğrenci Oynatıcısı • Sahne {activeSceneIdx + 1}/{scenes.length}
+                {subtitleText} • Sahne {activeSceneIdx + 1}/{scenes.length}
               </div>
             </div>
           </div>

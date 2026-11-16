@@ -34,6 +34,7 @@ import { AuthModal, type AuthModalTab } from './components/AuthModal';
 import { LandingPage } from './components/LandingPage';
 import { ProjectsModal } from './components/ProjectsModal';
 import { ProjectConflictDialog } from './components/ProjectConflictDialog';
+import { WatchShareModal } from './components/WatchShareModal';
 import { useAuth } from './contexts/AuthContext';
 import { CharacterStudioModal } from './components/CharacterStudioModal';
 import {
@@ -90,6 +91,13 @@ import {
   type EntryRouteIntent,
 } from './utils/entryRouting';
 import { createDemoProjectSnapshot } from './utils/demoProject';
+import {
+  formatWatchPublishError,
+  getProjectWatchStatus,
+  publishProjectToWatch,
+  unpublishProjectWatch,
+  type WatchPublishStatus,
+} from './utils/watchPublishService';
 import {
   evaluateProjectSwitchConfirmation,
   formatCloudRepositoryErrorMessage,
@@ -310,6 +318,11 @@ export function App() {
     isSubmitting: boolean;
     errorMessage: string | null;
   } | null>(null);
+  const [isWatchShareModalOpen, setIsWatchShareModalOpen] = useState(false);
+  const [watchShareStatus, setWatchShareStatus] = useState<WatchPublishStatus | null>(null);
+  const [isWatchShareLoading, setIsWatchShareLoading] = useState(false);
+  const [isWatchShareSubmitting, setIsWatchShareSubmitting] = useState(false);
+  const [watchShareError, setWatchShareError] = useState<string | null>(null);
 
   const getProjectRepository = useCallback((): LocalProjectRepository => {
     if (!projectRepoRef.current) {
@@ -2303,10 +2316,95 @@ export function App() {
     ensureActiveProjectSavedLocally,
     handleSaveEntryToCloud,
     isAuthenticated,
+    isDemoMode,
     isHeaderCloudSaving,
     projectName,
     showProjectNotice,
   ]);
+
+  const handleOpenWatchShare = useCallback(async () => {
+    if (isDemoMode) {
+      showProjectNotice(
+        'error',
+        'Demo modunda izleme bağlantısı oluşturulamaz. Kendi projelerinizi paylaşmak için giriş yapın.'
+      );
+      return;
+    }
+    if (!isAuthenticated) {
+      setAuthModalTab('signin');
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setIsPlaying(false);
+    setWatchShareError(null);
+    setWatchShareStatus(null);
+    setIsWatchShareModalOpen(true);
+
+    const pid = currentProjectIdRef.current;
+    if (!pid) return;
+
+    setIsWatchShareLoading(true);
+    try {
+      const status = await getProjectWatchStatus(pid);
+      setWatchShareStatus(status);
+    } catch (err) {
+      setWatchShareError(formatWatchPublishError(err));
+    } finally {
+      setIsWatchShareLoading(false);
+    }
+  }, [isAuthenticated, isDemoMode, showProjectNotice]);
+
+  const handlePublishActiveWatch = useCallback(async () => {
+    if (isDemoMode || isWatchShareSubmitting) return;
+    setIsWatchShareSubmitting(true);
+    setWatchShareError(null);
+    try {
+      const id = await ensureActiveProjectSavedLocally();
+      const status = await publishProjectToWatch({
+        projectId: id,
+        syncCoordinator: getSyncCoordinator(),
+        cloudRepo: getCloudRepository(),
+      });
+      const repo = getProjectRepository();
+      currentProjectIdRef.current = status.projectId;
+      currentProjectRevisionRef.current =
+        (await repo.getLocalRevision(status.projectId)) ??
+        currentProjectRevisionRef.current;
+      setActiveProjectId(status.projectId);
+      setActiveSyncState('synced');
+      setWatchShareStatus(status);
+      showProjectNotice('success', 'İzleme bağlantısı güncellendi.');
+    } catch (err) {
+      setWatchShareError(formatWatchPublishError(err));
+    } finally {
+      setIsWatchShareSubmitting(false);
+    }
+  }, [
+    ensureActiveProjectSavedLocally,
+    getCloudRepository,
+    getProjectRepository,
+    getSyncCoordinator,
+    isDemoMode,
+    isWatchShareSubmitting,
+    showProjectNotice,
+  ]);
+
+  const handleUnpublishActiveWatch = useCallback(async () => {
+    if (isDemoMode || isWatchShareSubmitting) return;
+    const pid = watchShareStatus?.projectId ?? currentProjectIdRef.current;
+    if (!pid) return;
+    setIsWatchShareSubmitting(true);
+    setWatchShareError(null);
+    try {
+      const updated = await unpublishProjectWatch(pid);
+      setWatchShareStatus(updated);
+      showProjectNotice('success', 'İzleme bağlantısı kapatıldı.');
+    } catch (err) {
+      setWatchShareError(formatWatchPublishError(err));
+    } finally {
+      setIsWatchShareSubmitting(false);
+    }
+  }, [isDemoMode, isWatchShareSubmitting, showProjectNotice, watchShareStatus?.projectId]);
 
   const handleOpenProjectFromModal = useCallback(
     async (entry: CombinedProjectEntry) => {
@@ -2765,7 +2863,27 @@ export function App() {
             navigateEntryIntent('demo');
           }}
         />
-        <AuthModal
+        <WatchShareModal
+        isOpen={isWatchShareModalOpen}
+        projectName={projectName}
+        watchStatus={watchShareStatus}
+        isLoading={isWatchShareLoading}
+        isSubmitting={isWatchShareSubmitting}
+        errorMessage={watchShareError}
+        onClose={() => {
+          if (!isWatchShareSubmitting) {
+            setIsWatchShareModalOpen(false);
+          }
+        }}
+        onPublish={() => {
+          void handlePublishActiveWatch();
+        }}
+        onUnpublish={() => {
+          void handleUnpublishActiveWatch();
+        }}
+      />
+
+      <AuthModal
           isOpen={isAuthModalOpen}
           initialTab={authModalTab}
           onClose={() => {
@@ -3049,6 +3167,7 @@ export function App() {
           setIsPlaying(false);
           setIsExportOpen(true);
         }}
+        onOpenWatchShare={isDemoMode ? undefined : handleOpenWatchShare}
         onSaveProjectJson={handleSaveProjectJson}
         onLoadProjectJson={handleLoadProjectJson}
         projectMode={educationalMetadata.mode}
@@ -3597,6 +3716,26 @@ export function App() {
         onKeepCloud={handleConflictKeepCloud}
         onKeepLocal={handleConflictKeepLocal}
         onSaveAsCopy={handleConflictSaveAsCopy}
+      />
+
+      <WatchShareModal
+        isOpen={isWatchShareModalOpen}
+        projectName={projectName}
+        watchStatus={watchShareStatus}
+        isLoading={isWatchShareLoading}
+        isSubmitting={isWatchShareSubmitting}
+        errorMessage={watchShareError}
+        onClose={() => {
+          if (!isWatchShareSubmitting) {
+            setIsWatchShareModalOpen(false);
+          }
+        }}
+        onPublish={() => {
+          void handlePublishActiveWatch();
+        }}
+        onUnpublish={() => {
+          void handleUnpublishActiveWatch();
+        }}
       />
 
       <AuthModal

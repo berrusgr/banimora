@@ -346,3 +346,105 @@ test('12. CORS allows only configured Banimora origins and rejects unknown prefl
   assert.equal(disallowedPreflight.status, 403);
   assert.equal(disallowedPreflight.headers.get('Access-Control-Allow-Origin'), null);
 });
+
+test('13. POST /assets/sign-watch signs only active published watch cloud-r2 keys and ignores arbitrary client keys', async () => {
+  const bucket = new InMemoryR2Bucket();
+  const hashA = 'a'.repeat(64);
+  const keyA = `users/user-1111/assets/${hashA}`;
+  const keyOther = `users/user-2222/assets/${'b'.repeat(64)}`;
+  await bucket.put(keyA, SAMPLE_PNG_BYTES, { httpMetadata: { contentType: 'image/png' } });
+  await bucket.put(keyOther, SAMPLE_PNG_BYTES, { httpMetadata: { contentType: 'image/png' } });
+
+  const activeShareId = 'sharetoken0000000000000000000001';
+  const mockFetch: FetchLike = async (input, init) => {
+    const url = String(input);
+    if (url.endsWith('/rest/v1/rpc/get_published_watch_package')) {
+      const payload = JSON.parse(String(init?.body)) as { p_share_id: string };
+      if (payload.p_share_id === activeShareId) {
+        return new Response(
+          JSON.stringify([
+            {
+              share_id: activeShareId,
+              package_data: {
+                assets: {
+                  version: 1,
+                  entries: {
+                    'img-1': { storageType: 'cloud-r2', cloudObjectKey: keyA },
+                  },
+                },
+              },
+            },
+          ]),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(null, { status: 404 });
+  };
+
+  const env: WorkerEnv = {
+    MEDIA_BUCKET: bucket,
+    SUPABASE_URL: 'https://example.supabase.co',
+    SUPABASE_ANON_KEY: 'public-anon-key',
+    MEDIA_SIGNING_SECRET: 'test-hmac-secret-32-bytes-minimum!!',
+    ALLOWED_ORIGINS: 'https://banimora.com',
+  };
+  const handler = createMediaWorkerHandler({
+    fetchFn: mockFetch,
+    nowSec: () => 1_700_000_000,
+  });
+
+  // Invalid shareId -> 400
+  const badIdRes = await handler(
+    new Request('https://media.banimora.com/assets/sign-watch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shareId: 'short' }),
+    }),
+    env
+  );
+  assert.equal(badIdRes.status, 400);
+
+  // Missing/unpublished shareId -> 404
+  const notFoundRes = await handler(
+    new Request('https://media.banimora.com/assets/sign-watch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shareId: 'sharetoken0000000000000000000999' }),
+    }),
+    env
+  );
+  assert.equal(notFoundRes.status, 404);
+
+  // Valid shareId signs only keyA (ignores client-injected objectKeys)
+  const okRes = await handler(
+    new Request('https://media.banimora.com/assets/sign-watch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: 'https://banimora.com' },
+      body: JSON.stringify({
+        shareId: activeShareId,
+        objectKeys: [keyOther],
+      }),
+    }),
+    env
+  );
+  assert.equal(okRes.status, 200);
+  const okBody = (await okRes.json()) as {
+    ok: boolean;
+    signedUrls: Record<string, string>;
+  };
+  assert.equal(okBody.ok, true);
+  assert.ok(okBody.signedUrls[keyA]);
+  assert.equal(okBody.signedUrls[keyOther], undefined);
+
+  // Viewer can fetch keyA with the signed URL without any user JWT
+  const mediaRes = await handler(
+    new Request(okBody.signedUrls[keyA], { method: 'GET' }),
+    env
+  );
+  assert.equal(mediaRes.status, 200);
+});

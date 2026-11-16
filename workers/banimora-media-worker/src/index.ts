@@ -211,6 +211,120 @@ export function createMediaWorkerHandler(deps: MediaWorkerDependencies = {}) {
         );
       }
 
+      // 2b. POST /assets/sign-watch (oturumsuz izleyici için yalnızca aktif yayındaki medyaları imzala)
+      if (request.method === 'POST' && pathname === '/assets/sign-watch') {
+        const signingSecret = env.MEDIA_SIGNING_SECRET?.trim();
+        const supabaseUrl = env.SUPABASE_URL?.trim().replace(/\/+$/, '');
+        const anonKey = env.SUPABASE_ANON_KEY?.trim();
+        if (!signingSecret || !supabaseUrl || !anonKey) {
+          throw new WorkerHttpError(
+            500,
+            'SERVER_CONFIG_ERROR',
+            'İzleme imzalama servisi yapılandırılmamış.'
+          );
+        }
+
+        let body: { shareId?: unknown; ttlSeconds?: unknown };
+        try {
+          body = (await request.json()) as { shareId?: unknown; ttlSeconds?: unknown };
+        } catch {
+          throw new WorkerHttpError(400, 'INVALID_JSON', 'Geçersiz istek gövdesi.');
+        }
+
+        const shareId = typeof body.shareId === 'string' ? body.shareId.trim() : '';
+        if (shareId.length < 24 || !/^[A-Za-z0-9_-]+$/.test(shareId)) {
+          throw new WorkerHttpError(400, 'INVALID_SHARE_ID', 'Geçersiz paylaşım kimliği.');
+        }
+
+        let rpcResponse: Response;
+        try {
+          rpcResponse = await fetchFn(
+            `${supabaseUrl}/rest/v1/rpc/get_published_watch_package`,
+            {
+              method: 'POST',
+              headers: {
+                apikey: anonKey,
+                Authorization: `Bearer ${anonKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ p_share_id: shareId }),
+            }
+          );
+        } catch {
+          throw new WorkerHttpError(
+            502,
+            'WATCH_LOOKUP_ERROR',
+            'Yayın bilgisi doğrulanamadı.'
+          );
+        }
+
+        if (!rpcResponse.ok) {
+          throw new WorkerHttpError(
+            502,
+            'WATCH_LOOKUP_ERROR',
+            'Yayın bilgisi alınamadı.'
+          );
+        }
+
+        const rpcRows = (await rpcResponse.json().catch(() => null)) as Array<{
+          share_id?: string;
+          package_data?: {
+            assets?: {
+              entries?: Record<string, { storageType?: string; cloudObjectKey?: string }>;
+            };
+          };
+        }> | null;
+
+        const watchRow = Array.isArray(rpcRows) ? rpcRows[0] : null;
+        if (!watchRow || !watchRow.package_data) {
+          throw new WorkerHttpError(
+            404,
+            'WATCH_NOT_FOUND',
+            'Paylaşım bağlantısı geçersiz veya yayından kaldırılmış.'
+          );
+        }
+
+        const entries = watchRow.package_data.assets?.entries ?? {};
+        const keySet = new Set<string>();
+        for (const entry of Object.values(entries)) {
+          if (
+            entry?.storageType === 'cloud-r2' &&
+            typeof entry.cloudObjectKey === 'string'
+          ) {
+            const k = entry.cloudObjectKey.trim();
+            if (/^users\/[^/]+\/assets\/[a-f0-9]{64}$/.test(k)) {
+              keySet.add(k);
+            }
+          }
+        }
+
+        const ttlSeconds = resolveSignedTtlSeconds(env.SIGNED_URL_TTL_SECONDS, body.ttlSeconds);
+        const expiresAtUnixSec = nowSecFn() + ttlSeconds;
+        const signedUrls: Record<string, string> = {};
+
+        for (const objectKey of keySet) {
+          const signature = await signReadTarget(objectKey, expiresAtUnixSec, signingSecret);
+          signedUrls[objectKey] = buildSignedReadUrl(
+            request.url,
+            objectKey,
+            expiresAtUnixSec,
+            signature
+          );
+        }
+
+        return jsonResponse(
+          200,
+          {
+            ok: true,
+            shareId,
+            expiresAt: new Date(expiresAtUnixSec * 1000).toISOString(),
+            ttlSeconds,
+            signedUrls,
+          },
+          cors.headers
+        );
+      }
+
       // 3. GET /assets/r/:key
       if (request.method === 'GET' && pathname.startsWith('/assets/r/')) {
         const signingSecret = env.MEDIA_SIGNING_SECRET?.trim();

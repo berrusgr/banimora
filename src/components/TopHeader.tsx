@@ -42,6 +42,7 @@ interface TopHeaderProps {
   isPlaying: boolean;
   onTogglePlay: () => void;
   onOpenExport: () => void;
+  onOpenWatchShare?: () => void;
   onSaveProjectJson: () => void;
   onLoadProjectJson: (file: File) => Promise<boolean> | boolean;
   projectMode?: ProjectMode;
@@ -72,6 +73,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   isPlaying,
   onTogglePlay,
   onOpenExport,
+  onOpenWatchShare,
   onSaveProjectJson,
   onLoadProjectJson,
   projectMode = 'classic',
@@ -500,17 +502,27 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
               <button
                 type="button"
                 role="menuitem"
-                disabled
-                aria-disabled="true"
+                disabled={!onOpenWatchShare}
+                aria-disabled={!onOpenWatchShare}
                 data-testid="export-menu-watch-link"
-                className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium text-slate-400 cursor-not-allowed"
+                onClick={() => {
+                  if (!onOpenWatchShare) return;
+                  setIsExportMenuOpen(false);
+                  onOpenWatchShare();
+                }}
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs transition-colors ${
+                  onOpenWatchShare
+                    ? 'font-semibold text-slate-800 hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer'
+                    : 'font-medium text-slate-400 cursor-not-allowed'
+                }`}
               >
                 <span className="flex items-center gap-2">
-                  <Link2 className="w-3.5 h-3.5 shrink-0" />
+                  <Link2
+                    className={`w-3.5 h-3.5 shrink-0 ${
+                      onOpenWatchShare ? 'text-indigo-600' : ''
+                    }`}
+                  />
                   <span>İzleme bağlantısı oluştur</span>
-                </span>
-                <span className="rounded-full bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 shrink-0">
-                  Yakında
                 </span>
               </button>
 

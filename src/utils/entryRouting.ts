@@ -1,8 +1,8 @@
 import type { AuthModalTab } from '../components/AuthModal.tsx';
 
-export type EntryRouteIntent = 'landing' | 'signin' | 'signup' | 'demo' | 'studio';
+export type EntryRouteIntent = 'landing' | 'signin' | 'signup' | 'demo' | 'studio' | 'watch';
 
-export type ResolvedAppView = 'loading' | 'landing' | 'demo' | 'studio';
+export type ResolvedAppView = 'loading' | 'landing' | 'demo' | 'studio' | 'watch';
 
 export interface EntryRouteResolution {
   view: ResolvedAppView;
@@ -15,6 +15,32 @@ function normalizeSegment(raw: string): string {
   return raw.trim().toLowerCase().replace(/^\/+|\/+$/g, '');
 }
 
+export function parseWatchShareId(
+  pathname: string,
+  search = '',
+  hash = ''
+): string | null {
+  const params = new URLSearchParams(search);
+  const queryWatch = params.get('watch')?.trim();
+  if (queryWatch && /^[A-Za-z0-9_-]{24,}$/.test(queryWatch)) {
+    return queryWatch;
+  }
+
+  const hashClean = normalizeSegment(hash.replace(/^#/, ''));
+  if (hashClean.startsWith('watch/')) {
+    const id = hashClean.slice('watch/'.length).trim();
+    if (/^[A-Za-z0-9_-]{24,}$/.test(id)) return id;
+  }
+
+  const pathClean = normalizeSegment(pathname);
+  if (pathClean.startsWith('watch/')) {
+    const id = pathClean.slice('watch/'.length).trim();
+    if (/^[A-Za-z0-9_-]{24,}$/.test(id)) return id;
+  }
+
+  return null;
+}
+
 /**
  * URL pathname, query (?mode=..., ?auth=...) ve hash bilgisinden
  * kullanıcının hedef giriş niyetini çözer.
@@ -24,6 +50,10 @@ export function parseEntryRouteIntent(
   search = '',
   hash = ''
 ): EntryRouteIntent {
+  if (parseWatchShareId(pathname, search, hash)) {
+    return 'watch';
+  }
+
   const params = new URLSearchParams(search);
   const queryMode = params.get('mode')?.trim().toLowerCase();
   const queryAuth = params.get('auth')?.trim().toLowerCase();
@@ -82,6 +112,15 @@ export function resolveAppEntryState(input: {
   isAuthLoading: boolean;
   isRecoveryMode?: boolean;
 }): EntryRouteResolution {
+  if (input.intent === 'watch') {
+    return {
+      view: 'watch',
+      authModalTab: null,
+      isDemoMode: false,
+      canAccessStudio: false,
+    };
+  }
+
   if (input.isRecoveryMode) {
     return {
       view: input.isAuthenticated ? 'studio' : 'landing',

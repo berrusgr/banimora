@@ -477,7 +477,368 @@ export const DEFAULT_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
     secondaryTopColor: '#ffffff',
     bottomColor: '#1e293b',
     shoeColor: '#475569',
-    pose: 'wave',
+    pose: 'idle',
+  },
+  // ==================== 15 HAZIR MESLEK KARAKTERİ (KLASİK ŞABLON) ====================
+  // 1. Doktor
+  'char-prof-doctor': {
+    bodyStyle: 'classic',
+    genderAge: 'male',
+    skinTone: '#f3d8b6',
+    faceShape: 'oval',
+    hairStyle: 'executive-side',
+    hairColor: '#475569',
+    eyeStyle: 'normal',
+    eyeColor: '#2b6cb0',
+    eyebrowStyle: 'natural',
+    noseStyle: 'straight',
+    mouthStyle: 'smile',
+    lipColor: '#b94a5e',
+    accessory: 'stethoscope',
+    outfitStyle: 'lab-coat',
+    topColor: '#38bdf8',
+    secondaryTopColor: '#f8fafc',
+    bottomColor: '#1e293b',
+    bottomStyle: 'trousers',
+    shoeColor: '#334155',
+    shoeStyle: 'dress',
+    pose: 'idle',
+  },
+  // 2. Hemşire
+  'char-prof-nurse': {
+    bodyStyle: 'classic',
+    genderAge: 'female',
+    skinTone: '#f4d3c8',
+    faceShape: 'oval',
+    hairStyle: 'bun-ponytail',
+    hairColor: '#6b442a',
+    eyeStyle: 'lashed',
+    eyeColor: '#0284c7',
+    eyebrowStyle: 'soft-thin',
+    noseStyle: 'button',
+    mouthStyle: 'smile',
+    lipColor: '#e11d48',
+    accessory: 'nurse-cap',
+    outfitStyle: 'uniform-belted',
+    topColor: '#e0f2fe',
+    secondaryTopColor: '#0284c7',
+    bottomColor: '#0369a1',
+    bottomStyle: 'trousers',
+    shoeColor: '#f8fafc',
+    shoeStyle: 'sneakers',
+    pose: 'idle',
+  },
+  // 3. Öğretmen
+  'char-prof-teacher': {
+    bodyStyle: 'classic',
+    genderAge: 'female',
+    skinTone: '#f1cfc4',
+    faceShape: 'oval',
+    hairStyle: 'long-wavy',
+    hairColor: '#5c3a21',
+    eyeStyle: 'lashed',
+    eyeColor: '#2f855a',
+    eyebrowStyle: 'natural',
+    noseStyle: 'button',
+    mouthStyle: 'smile',
+    lipColor: '#b85d56',
+    accessory: 'wire-glasses',
+    outfitStyle: 'formal-suit',
+    topColor: '#4f46e5',
+    secondaryTopColor: '#f8fafc',
+    bottomColor: '#1e293b',
+    bottomStyle: 'trousers',
+    shoeColor: '#475569',
+    shoeStyle: 'loafers',
+    pose: 'idle',
+  },
+  // 4. Polis
+  'char-prof-police': {
+    bodyStyle: 'classic',
+    genderAge: 'male',
+    skinTone: '#e8c49b',
+    faceShape: 'square',
+    hairStyle: 'short-modern',
+    hairColor: '#1e293b',
+    eyeStyle: 'normal',
+    eyeColor: '#1e293b',
+    eyebrowStyle: 'thick',
+    noseStyle: 'straight',
+    mouthStyle: 'gentle-smirk',
+    lipColor: '#88392d',
+    accessory: 'police-cap',
+    outfitStyle: 'uniform-belted',
+    topColor: '#1d4ed8',
+    secondaryTopColor: '#fbbf24',
+    bottomColor: '#172554',
+    bottomStyle: 'trousers',
+    shoeColor: '#0f172a',
+    shoeStyle: 'boots',
+    pose: 'idle',
+  },
+  // 5. İtfaiyeci
+  'char-prof-firefighter': {
+    bodyStyle: 'classic',
+    genderAge: 'male',
+    skinTone: '#f3d8b6',
+    faceShape: 'square',
+    hairStyle: 'short-modern',
+    hairColor: '#7c2d12',
+    eyeStyle: 'normal',
+    eyeColor: '#334155',
+    eyebrowStyle: 'thick',
+    noseStyle: 'wide',
+    mouthStyle: 'smile',
+    lipColor: '#9f1239',
+    accessory: 'fire-helmet',
+    outfitStyle: 'uniform-belted',
+    topColor: '#dc2626',
+    secondaryTopColor: '#facc15',
+    bottomColor: '#991b1b',
+    bottomStyle: 'trousers',
+    shoeColor: '#1e293b',
+    shoeStyle: 'boots',
+    pose: 'idle',
+  },
+  // 6. Aşçı
+  'char-prof-chef': {
+    bodyStyle: 'classic',
+    genderAge: 'male',
+    skinTone: '#f4d3c3',
+    faceShape: 'round',
+    hairStyle: 'executive-side',
+    hairColor: '#3f2e26',
+    eyeStyle: 'normal',
+    eyeColor: '#5c4028',
+    eyebrowStyle: 'natural',
+    noseStyle: 'button',
+    mouthStyle: 'full-beard',
+    lipColor: '#6d4b20',
+    accessory: 'chef-hat',
+    outfitStyle: 'chef-apron',
+    topColor: '#f8fafc',
+    secondaryTopColor: '#ef4444',
+    bottomColor: '#334155',
+    bottomStyle: 'trousers',
+    shoeColor: '#1e293b',
+    shoeStyle: 'loafers',
+    pose: 'idle',
+  },
+  // 7. Bilim İnsanı
+  'char-prof-scientist': {
+    bodyStyle: 'classic',
+    genderAge: 'senior',
+    skinTone: '#f4d3c8',
+    faceShape: 'oval',
+    hairStyle: 'senior-silver',
+    hairColor: '#cbd5e1',
+    eyeStyle: 'relaxed',
+    eyeColor: '#0284c7',
+    eyebrowStyle: 'thick',
+    noseStyle: 'straight',
+    mouthStyle: 'smile',
+    lipColor: '#88392d',
+    accessory: 'science-goggles',
+    outfitStyle: 'lab-coat',
+    topColor: '#0ea5e9',
+    secondaryTopColor: '#f8fafc',
+    bottomColor: '#334155',
+    bottomStyle: 'trousers',
+    shoeColor: '#475569',
+    shoeStyle: 'dress',
+    pose: 'idle',
+  },
+  // 8. Ressam
+  'char-prof-artist': {
+    bodyStyle: 'classic',
+    genderAge: 'female',
+    skinTone: '#dfaa84',
+    faceShape: 'oval',
+    hairStyle: 'voluminous-curls',
+    hairColor: '#2a1b16',
+    eyeStyle: 'lashed',
+    eyeColor: '#6b4423',
+    eyebrowStyle: 'natural',
+    noseStyle: 'straight',
+    mouthStyle: 'full-lips',
+    lipColor: '#c96d63',
+    accessory: 'artist-beret',
+    outfitStyle: 'painter-apron',
+    topColor: '#ec4899',
+    secondaryTopColor: '#fef3c7',
+    bottomColor: '#1e3a5f',
+    bottomStyle: 'jeans',
+    shoeColor: '#f8fafc',
+    shoeStyle: 'sneakers',
+    pose: 'idle',
+  },
+  // 9. Çiftçi
+  'char-prof-farmer': {
+    bodyStyle: 'classic',
+    genderAge: 'male',
+    skinTone: '#e8c49b',
+    faceShape: 'square',
+    hairStyle: 'short-modern',
+    hairColor: '#6b442a',
+    eyeStyle: 'normal',
+    eyeColor: '#4b5563',
+    eyebrowStyle: 'thick',
+    noseStyle: 'wide',
+    mouthStyle: 'smile',
+    lipColor: '#88392d',
+    accessory: 'straw-hat',
+    outfitStyle: 'overalls',
+    topColor: '#ef4444',
+    secondaryTopColor: '#1d4ed8',
+    bottomColor: '#1d4ed8',
+    bottomStyle: 'jeans',
+    shoeColor: '#78350f',
+    shoeStyle: 'boots',
+    pose: 'idle',
+  },
+  // 10. İnşaat İşçisi
+  'char-prof-builder': {
+    bodyStyle: 'classic',
+    genderAge: 'male',
+    skinTone: '#f1cfc4',
+    faceShape: 'square',
+    hairStyle: 'short-modern',
+    hairColor: '#3f2e26',
+    eyeStyle: 'normal',
+    eyeColor: '#334155',
+    eyebrowStyle: 'thick',
+    noseStyle: 'wide',
+    mouthStyle: 'gentle-smirk',
+    lipColor: '#88392d',
+    accessory: 'hard-hat',
+    outfitStyle: 'engineer-vest',
+    topColor: '#0284c7',
+    secondaryTopColor: '#facc15',
+    bottomColor: '#1e293b',
+    bottomStyle: 'jeans',
+    shoeColor: '#92400e',
+    shoeStyle: 'boots',
+    pose: 'idle',
+  },
+  // 11. Astronot
+  'char-prof-astronaut': {
+    bodyStyle: 'classic',
+    genderAge: 'male',
+    skinTone: '#f3d8b6',
+    faceShape: 'oval',
+    hairStyle: 'short-modern',
+    hairColor: '#334155',
+    eyeStyle: 'normal',
+    eyeColor: '#0284c7',
+    eyebrowStyle: 'natural',
+    noseStyle: 'straight',
+    mouthStyle: 'smile',
+    lipColor: '#88392d',
+    accessory: 'astronaut-helmet',
+    outfitStyle: 'space-suit',
+    topColor: '#f1f5f9',
+    secondaryTopColor: '#38bdf8',
+    bottomColor: '#e2e8f0',
+    bottomStyle: 'trousers',
+    shoeColor: '#475569',
+    shoeStyle: 'boots',
+    pose: 'idle',
+  },
+  // 12. Pilot
+  'char-prof-pilot': {
+    bodyStyle: 'classic',
+    genderAge: 'male',
+    skinTone: '#f4d3c3',
+    faceShape: 'oval',
+    hairStyle: 'executive-side',
+    hairColor: '#1e293b',
+    eyeStyle: 'normal',
+    eyeColor: '#1d4ed8',
+    eyebrowStyle: 'natural',
+    noseStyle: 'straight',
+    mouthStyle: 'gentle-smirk',
+    lipColor: '#88392d',
+    accessory: 'pilot-cap',
+    outfitStyle: 'uniform-belted',
+    topColor: '#0f172a',
+    secondaryTopColor: '#fbbf24',
+    bottomColor: '#0f172a',
+    bottomStyle: 'trousers',
+    shoeColor: '#020617',
+    shoeStyle: 'dress',
+    pose: 'idle',
+  },
+  // 13. Tamirci
+  'char-prof-mechanic': {
+    bodyStyle: 'classic',
+    genderAge: 'male',
+    skinTone: '#e8c49b',
+    faceShape: 'square',
+    hairStyle: 'spiky-youth',
+    hairColor: '#27272a',
+    eyeStyle: 'normal',
+    eyeColor: '#3f3f46',
+    eyebrowStyle: 'thick',
+    noseStyle: 'wide',
+    mouthStyle: 'smile',
+    lipColor: '#88392d',
+    accessory: 'cap-hat',
+    outfitStyle: 'overalls',
+    topColor: '#f59e0b',
+    secondaryTopColor: '#334155',
+    bottomColor: '#334155',
+    bottomStyle: 'jeans',
+    shoeColor: '#1e293b',
+    shoeStyle: 'boots',
+    pose: 'idle',
+  },
+  // 14. Diş Hekimi
+  'char-prof-dentist': {
+    bodyStyle: 'classic',
+    genderAge: 'female',
+    skinTone: '#f4d3c8',
+    faceShape: 'oval',
+    hairStyle: 'bun-ponytail',
+    hairColor: '#3b2f2f',
+    eyeStyle: 'lashed',
+    eyeColor: '#0ea5e9',
+    eyebrowStyle: 'soft-thin',
+    noseStyle: 'button',
+    mouthStyle: 'smile',
+    lipColor: '#e11d48',
+    accessory: 'medical-mask',
+    outfitStyle: 'lab-coat',
+    topColor: '#14b8a6',
+    secondaryTopColor: '#f8fafc',
+    bottomColor: '#0f766e',
+    bottomStyle: 'trousers',
+    shoeColor: '#f8fafc',
+    shoeStyle: 'sneakers',
+    pose: 'idle',
+  },
+  // 15. Veteriner
+  'char-prof-vet': {
+    bodyStyle: 'classic',
+    genderAge: 'female',
+    skinTone: '#f1cfc4',
+    faceShape: 'oval',
+    hairStyle: 'long-wavy',
+    hairColor: '#7c473b',
+    eyeStyle: 'lashed',
+    eyeColor: '#16a34a',
+    eyebrowStyle: 'natural',
+    noseStyle: 'button',
+    mouthStyle: 'smile',
+    lipColor: '#be123c',
+    accessory: 'stethoscope',
+    outfitStyle: 'uniform-belted',
+    topColor: '#10b981',
+    secondaryTopColor: '#fef3c7',
+    bottomColor: '#065f46',
+    bottomStyle: 'trousers',
+    shoeColor: '#f8fafc',
+    shoeStyle: 'sneakers',
+    pose: 'idle',
   },
 };
 
@@ -3427,6 +3788,85 @@ export function renderAccessory(
             fill="#facc15"
             strokeLinejoin="round"
           />
+        );
+      case 'nurse-cap':
+        return (
+          <g>
+            <path d="M84 42 L90 22 H130 L136 42 Z" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1.6" />
+            <rect x="107" y="26" width="6" height="12" rx="1" fill="#ef4444" />
+            <rect x="104" y="29" width="12" height="6" rx="1" fill="#ef4444" />
+          </g>
+        );
+      case 'police-cap':
+        return (
+          <g>
+            <path d="M76 42 C78 24 142 24 144 42 Z" fill="#1e3a8a" />
+            <rect x="78" y="38" width="64" height="7" rx="2" fill="#0f172a" />
+            <polygon points="110,25 116,31 110,37 104,31" fill="#fbbf24" />
+          </g>
+        );
+      case 'fire-helmet':
+        return (
+          <g>
+            <path d="M74 44 C76 18 144 18 146 44 L154 48 H66 Z" fill="#dc2626" stroke="#991b1b" strokeWidth="1.5" />
+            <rect x="102" y="24" width="16" height="12" rx="2" fill="#facc15" />
+          </g>
+        );
+      case 'chef-hat':
+        return (
+          <g>
+            <circle cx="94" cy="24" r="14" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1.4" />
+            <circle cx="110" cy="18" r="16" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1.4" />
+            <circle cx="126" cy="24" r="14" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1.4" />
+            <rect x="84" y="30" width="52" height="14" rx="2" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1.4" />
+          </g>
+        );
+      case 'artist-beret':
+        return (
+          <g>
+            <ellipse cx="112" cy="34" rx="34" ry="11" transform="rotate(-10 112 34)" fill="#e11d48" />
+            <line x1="112" y1="20" x2="115" y2="25" stroke="#9f1239" strokeWidth="3" strokeLinecap="round" />
+          </g>
+        );
+      case 'straw-hat':
+        return (
+          <g>
+            <ellipse cx="110" cy="40" rx="44" ry="7" fill="#fde047" stroke="#ca8a04" strokeWidth="1.5" />
+            <path d="M84 38 C86 20 134 20 136 38 Z" fill="#facc15" stroke="#ca8a04" strokeWidth="1.5" />
+            <rect x="84" y="34" width="52" height="4" fill="#dc2626" />
+          </g>
+        );
+      case 'hard-hat':
+        return (
+          <g>
+            <path d="M76 42 C78 18 142 18 144 42 Z" fill="#facc15" stroke="#ca8a04" strokeWidth="1.6" />
+            <rect x="72" y="40" width="76" height="5" rx="2.5" fill="#eab308" />
+            <rect x="106" y="20" width="8" height="18" rx="2" fill="#fde047" />
+          </g>
+        );
+      case 'astronaut-helmet':
+        return (
+          <g>
+            <circle cx="110" cy="68" r="46" fill="rgba(186,230,253,0.22)" stroke="#e2e8f0" strokeWidth="4.5" />
+            <path d="M76 52 Q92 38 110 40" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" opacity="0.65" />
+          </g>
+        );
+      case 'pilot-cap':
+        return (
+          <g>
+            <path d="M76 42 C78 24 142 24 144 42 Z" fill="#0f172a" />
+            <rect x="76" y="39" width="68" height="6" rx="2" fill="#020617" />
+            <path d="M98 31 H122 L118 35 H102 Z" fill="#fbbf24" />
+          </g>
+        );
+      case 'medical-mask':
+        return (
+          <g>
+            <rect x="92" y="80" width="36" height="20" rx="6" fill="#38bdf8" stroke="#0284c7" strokeWidth="1.4" />
+            <line x1="84" y1="84" x2="92" y2="86" stroke="#bae6fd" strokeWidth="1.6" />
+            <line x1="128" y1="86" x2="136" y2="84" stroke="#bae6fd" strokeWidth="1.6" />
+            <circle cx="110" cy="40" r="6" fill="#e2e8f0" stroke="#64748b" strokeWidth="1.6" />
+          </g>
         );
       case 'cap-hat':
         return (
@@ -6788,6 +7228,48 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                         <path d="M96 128 Q110 136 124 128" fill="none" stroke="#eab308" strokeWidth="2" />
                         {/* Waist sash */}
                         <rect x="82" y="182" width="56" height="10" rx="2" fill={secondaryTop} />
+                      </g>
+                    )}
+
+                    {/* 15. Uniform Belted (Polis, İtfaiyeci, Hemşire, Pilot, Veteriner) */}
+                    {config.outfitStyle === 'uniform-belted' && (
+                      <g>
+                        <polygon points="96,116 124,116 110,136" fill={secondaryTop} opacity="0.35" />
+                        <rect x="82" y="180" width="56" height="8" rx="1.5" fill="#1e293b" />
+                        <rect x="105" y="179" width="10" height="10" rx="1.5" fill={secondaryTop} />
+                        <rect x="118" y="132" width="12" height="10" rx="2" fill={secondaryTop} />
+                      </g>
+                    )}
+
+                    {/* 16. Chef Apron */}
+                    {config.outfitStyle === 'chef-apron' && (
+                      <g>
+                        <polygon points="104,120 116,120 110,132" fill={secondaryTop} />
+                        <rect x="86" y="138" width="48" height="60" rx="4" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1.2" />
+                        <circle cx="102" cy="132" r="2.2" fill="#334155" />
+                        <circle cx="118" cy="132" r="2.2" fill="#334155" />
+                      </g>
+                    )}
+
+                    {/* 17. Painter Apron */}
+                    {config.outfitStyle === 'painter-apron' && (
+                      <g>
+                        <rect x="86" y="132" width="48" height="66" rx="4" fill={secondaryTop} />
+                        <circle cx="98" cy="154" r="4.5" fill="#3b82f6" />
+                        <circle cx="116" cy="166" r="5" fill="#eab308" />
+                        <circle cx="104" cy="176" r="3.8" fill="#ef4444" />
+                      </g>
+                    )}
+
+                    {/* 18. Overalls (Çiftçi / Tamirci) */}
+                    {config.outfitStyle === 'overalls' && (
+                      <g>
+                        <rect x="90" y="118" width="8" height="30" fill={secondaryTop} />
+                        <rect x="122" y="118" width="8" height="30" fill={secondaryTop} />
+                        <rect x="84" y="144" width="52" height="54" rx="4" fill={secondaryTop} />
+                        <rect x="98" y="156" width="24" height="18" rx="3" fill={shadeColor(secondaryTop, -18)} />
+                        <circle cx="94" cy="148" r="2.5" fill="#fbbf24" />
+                        <circle cx="126" cy="148" r="2.5" fill="#fbbf24" />
                       </g>
                     )}
 

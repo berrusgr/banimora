@@ -229,7 +229,17 @@ export type AccessoryType =
   | 'vr-headset'
   | 'ar-glasses'
   | 'bluetooth-earpiece'
-  | 'smart-pin';
+  | 'smart-pin'
+  | 'nurse-cap'
+  | 'police-cap'
+  | 'fire-helmet'
+  | 'chef-hat'
+  | 'artist-beret'
+  | 'straw-hat'
+  | 'hard-hat'
+  | 'astronaut-helmet'
+  | 'pilot-cap'
+  | 'medical-mask';
 
 export type HandPropType =
   | 'none'
@@ -272,7 +282,11 @@ export type OutfitStyleType =
   | 'engineer-vest'
   | 'school-uniform'
   | 'tracksuit-zip'
-  | 'historical-cloak';
+  | 'historical-cloak'
+  | 'uniform-belted'
+  | 'chef-apron'
+  | 'painter-apron'
+  | 'overalls';
 
 export type OutfitPatternType =
   | 'solid'
@@ -556,6 +570,21 @@ export type VectorAssetId =
   | 'char-kid-can'
   | 'char-teen-ege'
   | 'char-exec-kemal'
+  | 'char-prof-doctor'
+  | 'char-prof-nurse'
+  | 'char-prof-teacher'
+  | 'char-prof-police'
+  | 'char-prof-firefighter'
+  | 'char-prof-chef'
+  | 'char-prof-scientist'
+  | 'char-prof-artist'
+  | 'char-prof-farmer'
+  | 'char-prof-builder'
+  | 'char-prof-astronaut'
+  | 'char-prof-pilot'
+  | 'char-prof-mechanic'
+  | 'char-prof-dentist'
+  | 'char-prof-vet'
   | 'char-custom'
   // Uploaded Image Object
   | 'obj-uploaded-image'
@@ -1187,7 +1216,7 @@ export interface LibraryAssetItem {
   id: VectorAssetId;
   customKey?: string;
   name: string;
-  topic?: MathTopicCategory;
+  topic?: MathTopicCategory | 'Meslekler';
   subtitle: string;
   category: 'characters' | 'objects' | 'text';
   assetClass?: MathAssetClass;

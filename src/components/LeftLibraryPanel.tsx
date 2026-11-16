@@ -114,6 +114,7 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
   const [activeMathTopic, setActiveMathTopic] = useState<MathTopicCategory>('all');
   const [activeElementGroup, setActiveElementGroup] = useState<ElementSubCategory>('all');
   const [activeChartGroup, setActiveChartGroup] = useState<ChartTableGroup>('all');
+  const [characterGroup, setCharacterGroup] = useState<'all' | 'professions'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [libraryFilter, setLibraryFilter] = useState<'all' | 'favorites' | 'used'>('all');
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
@@ -344,11 +345,21 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
             activeCategory !== 'objects' ||
             activeMathTopic === 'all' ||
             item.topic === activeMathTopic;
+          const matchesCharacterGroup =
+            activeCategory !== 'characters' ||
+            characterGroup === 'all' ||
+            item.topic === 'Meslekler';
           const matchesSearch =
             searchQuery.trim() === '' ||
             item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.subtitle.toLowerCase().includes(searchQuery.toLowerCase());
-          return matchesCategory && matchesMathClass && matchesMathTopic && matchesSearch;
+          return (
+            matchesCategory &&
+            matchesMathClass &&
+            matchesMathTopic &&
+            matchesCharacterGroup &&
+            matchesSearch
+          );
         });
 
   const filteredItems = baseFilteredItems.filter((item) => {
@@ -683,16 +694,42 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
                     key={f.id}
                     type="button"
                     onClick={() => setLibraryFilter(f.id)}
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold transition-colors cursor-pointer border whitespace-nowrap ${
+                    className={`flex-1 py-1 rounded-md text-[10px] font-semibold border transition-colors cursor-pointer ${
                       libraryFilter === f.id
-                        ? 'bg-indigo-50 text-indigo-700 border-indigo-300'
-                        : 'bg-white text-slate-500 border-slate-200 hover:text-slate-800'
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                     }`}
                   >
                     {f.label}
                   </button>
                 ))}
               </div>
+              {activeCategory === 'characters' && (
+                <div className="flex items-center gap-1 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setCharacterGroup('all')}
+                    className={`flex-1 py-1 rounded-md text-[10px] font-semibold border transition-colors cursor-pointer ${
+                      characterGroup === 'all'
+                        ? 'bg-slate-800 text-white border-slate-800'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    Tümü
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCharacterGroup('professions')}
+                    className={`flex-1 py-1 rounded-md text-[10px] font-semibold border transition-colors cursor-pointer ${
+                      characterGroup === 'professions'
+                        ? 'bg-slate-800 text-white border-slate-800'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    Meslekler (15)
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

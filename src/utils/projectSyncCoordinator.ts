@@ -1,11 +1,13 @@
-import type { BanimoraProjectFileV2 } from '../types/publishing.ts';
+import type { AssetManifestEntry, BanimoraProjectFileV2 } from '../types/publishing.ts';
 import {
   CloudRepositoryError,
   mapSupabaseErrorToCloudError,
 } from './cloudRepositoryError.ts';
-import type { LocalProjectRepository } from './localProjectRepository.ts';
+import { blobToDataUrl, type LocalProjectRepository } from './localProjectRepository.ts';
+import type { R2MediaClient } from './r2MediaClient.ts';
 import type {
   CloudProjectMode,
+  CloudSaveProjectResult,
   SupabaseProjectRepository,
 } from './supabaseProjectRepository.ts';
 
@@ -69,6 +71,7 @@ export interface DeleteCloudProjectResult {
 export interface ProjectSyncCoordinatorOptions {
   localRepo: LocalProjectRepository;
   cloudRepo: SupabaseProjectRepository;
+  r2Client?: R2MediaClient | null;
 }
 
 /**
@@ -78,10 +81,99 @@ export interface ProjectSyncCoordinatorOptions {
 export class ProjectSyncCoordinator {
   private readonly localRepo: LocalProjectRepository;
   private readonly cloudRepo: SupabaseProjectRepository;
+  private readonly r2Client: R2MediaClient | null;
 
   constructor(options: ProjectSyncCoordinatorOptions) {
     this.localRepo = options.localRepo;
     this.cloudRepo = options.cloudRepo;
+    this.r2Client = options.r2Client ?? null;
+  }
+
+  private async saveProjectPayloadToCloud(
+    localProject: BanimoraProjectFileV2,
+    expectedCloudRevision: number
+  ): Promise<CloudSaveProjectResult> {
+    if (!this.r2Client) {
+      const hydratedForCloud = await this.localRepo.hydrateProjectMedia(localProject);
+      return this.cloudRepo.saveProject(hydratedForCloud, expectedCloudRevision);
+    }
+
+    const r2Client = this.r2Client;
+    const cloudProject = structuredClone(localProject);
+    const entries = cloudProject.assetManifest?.entries ?? {};
+    const registeredAssetIds = new Set<string>();
+    const uploadedKeyByBlobKey = new Map<
+      string,
+      { assetId: string; objectKey: string; mimeType: string; byteSize: number }
+    >();
+
+    for (const [assetKey, entry] of Object.entries(entries)) {
+      let registeredRow: { id: string; object_key: string; mime_type: string; byte_size: number } | null =
+        null;
+
+      const hashMatch = entry.cloudObjectKey?.match(/^users\/[^/]+\/assets\/([a-f0-9]{64})$/);
+      if (entry.storageType === 'cloud-r2' && hashMatch && entry.byteSize) {
+        const reg = await this.cloudRepo.registerMediaAsset({
+          sha256: hashMatch[1],
+          mimeType: entry.mimeType,
+          byteSize: entry.byteSize,
+        });
+        registeredRow = reg;
+      } else if (entry.localBlobKey) {
+        const cached = uploadedKeyByBlobKey.get(entry.localBlobKey);
+        if (cached) {
+          registeredRow = {
+            id: cached.assetId,
+            object_key: cached.objectKey,
+            mime_type: cached.mimeType,
+            byte_size: cached.byteSize,
+          };
+        } else {
+          const blob = await this.localRepo.getAssetBlob(entry.localBlobKey);
+          if (blob) {
+            const uploaded = await r2Client.uploadBlob(blob, {
+              mimeType: entry.mimeType,
+            });
+            const reg = await this.cloudRepo.registerMediaAsset({
+              sha256: uploaded.sha256,
+              mimeType: uploaded.mimeType,
+              byteSize: uploaded.sizeBytes,
+            });
+            uploadedKeyByBlobKey.set(entry.localBlobKey, {
+              assetId: reg.id,
+              objectKey: reg.object_key,
+              mimeType: reg.mime_type,
+              byteSize: reg.byte_size,
+            });
+            registeredRow = reg;
+          }
+        }
+      }
+
+      if (registeredRow) {
+        registeredAssetIds.add(registeredRow.id);
+        const nextEntry: AssetManifestEntry = {
+          ...entry,
+          mimeType: registeredRow.mime_type,
+          byteSize: registeredRow.byte_size,
+          storageType: 'cloud-r2',
+          cloudObjectKey: registeredRow.object_key,
+        };
+        entries[assetKey] = nextEntry;
+      }
+    }
+
+    const cloudSaved = await this.cloudRepo.saveProject(
+      cloudProject,
+      expectedCloudRevision
+    );
+
+    await this.cloudRepo.syncProjectAssetLinks(
+      cloudSaved.project.projectId,
+      Array.from(registeredAssetIds)
+    );
+
+    return cloudSaved;
   }
 
   /**
@@ -104,11 +196,10 @@ export class ProjectSyncCoordinator {
       localProject.cloudMeta?.syncState === 'local-only'
         ? 0
         : (localProject.cloudMeta?.revision ?? 0);
-    const hydratedForCloud = await this.localRepo.hydrateProjectMedia(localProject);
 
     try {
-      const cloudSaved = await this.cloudRepo.saveProject(
-        hydratedForCloud,
+      const cloudSaved = await this.saveProjectPayloadToCloud(
+        localProject,
         expectedCloudRevision
       );
 
@@ -411,10 +502,9 @@ export class ProjectSyncCoordinator {
 
     const latestCloud = await this.cloudRepo.loadProject(projectId);
     const latestCloudRevision = latestCloud?.cloudMeta?.revision ?? 0;
-    const hydratedForCloud = await this.localRepo.hydrateProjectMedia(localProject);
 
-    const cloudSaved = await this.cloudRepo.saveProject(
-      hydratedForCloud,
+    const cloudSaved = await this.saveProjectPayloadToCloud(
+      localProject,
       latestCloudRevision
     );
 
@@ -460,8 +550,7 @@ export class ProjectSyncCoordinator {
       (await this.localRepo.getLocalRevision(copiedLocal.projectId)) ?? 1;
 
     try {
-      const hydratedCopy = await this.localRepo.hydrateProjectMedia(copiedLocal);
-      const cloudSaved = await this.cloudRepo.saveProject(hydratedCopy, 0);
+      const cloudSaved = await this.saveProjectPayloadToCloud(copiedLocal, 0);
 
       const updatedCopy = await this.localRepo.updateCloudSyncMeta(
         copiedLocal.projectId,
@@ -504,8 +593,7 @@ export class ProjectSyncCoordinator {
       (await this.localRepo.getLocalRevision(rekeyedLocal.projectId)) ?? 1;
 
     try {
-      const hydrated = await this.localRepo.hydrateProjectMedia(rekeyedLocal);
-      const cloudSaved = await this.cloudRepo.saveProject(hydrated, 0);
+      const cloudSaved = await this.saveProjectPayloadToCloud(rekeyedLocal, 0);
 
       const updatedRekeyed = await this.localRepo.updateCloudSyncMeta(
         rekeyedLocal.projectId,
@@ -538,13 +626,82 @@ export class ProjectSyncCoordinator {
     }
   }
 
+  private async hydrateR2AssetsForLocalSave(
+    cloudProject: BanimoraProjectFileV2
+  ): Promise<BanimoraProjectFileV2> {
+    if (!this.r2Client) return cloudProject;
+    const entries = cloudProject.assetManifest?.entries;
+    if (!entries) return cloudProject;
+
+    const r2DataUrls = new Map<string, string>();
+    for (const [assetId, entry] of Object.entries(entries)) {
+      if (entry.storageType === 'cloud-r2' && entry.cloudObjectKey) {
+        const blob = await this.r2Client.fetchObjectBlob(entry.cloudObjectKey);
+        const dataUrl = await blobToDataUrl(blob);
+        r2DataUrls.set(`banimora-asset://${assetId}`, dataUrl);
+      }
+    }
+
+    if (r2DataUrls.size === 0) return cloudProject;
+
+    const replaceUri = (val: string | undefined): string | undefined =>
+      val && r2DataUrls.has(val) ? r2DataUrls.get(val) : val;
+
+    const hydrated = structuredClone(cloudProject);
+    for (const item of hydrated.uploadedObjects ?? []) {
+      item.imageUrl = replaceUri(item.imageUrl) ?? item.imageUrl;
+    }
+    for (const charItem of hydrated.customCharacters ?? []) {
+      if (charItem.imageUrl) charItem.imageUrl = replaceUri(charItem.imageUrl);
+      if (charItem.characterConfig?.photoAvatarUrl) {
+        charItem.characterConfig.photoAvatarUrl = replaceUri(
+          charItem.characterConfig.photoAvatarUrl
+        );
+      }
+      if (charItem.characterConfig?.lipSyncAudioUrl) {
+        charItem.characterConfig.lipSyncAudioUrl = replaceUri(
+          charItem.characterConfig.lipSyncAudioUrl
+        );
+      }
+    }
+    for (const bg of hydrated.customBackgrounds ?? []) {
+      bg.imageUrl = replaceUri(bg.imageUrl) ?? bg.imageUrl;
+    }
+    for (const clip of hydrated.customAudioClips ?? []) {
+      clip.audioUrl = replaceUri(clip.audioUrl) ?? clip.audioUrl;
+    }
+    for (const scene of hydrated.scenes ?? []) {
+      if (scene.background?.imageUrl) {
+        scene.background.imageUrl = replaceUri(scene.background.imageUrl);
+      }
+      for (const clip of scene.audioClips ?? []) {
+        clip.audioUrl = replaceUri(clip.audioUrl) ?? clip.audioUrl;
+      }
+      for (const obj of scene.objects ?? []) {
+        if (obj.imageUrl) obj.imageUrl = replaceUri(obj.imageUrl);
+        if (obj.characterConfig?.photoAvatarUrl) {
+          obj.characterConfig.photoAvatarUrl = replaceUri(
+            obj.characterConfig.photoAvatarUrl
+          );
+        }
+        if (obj.characterConfig?.lipSyncAudioUrl) {
+          obj.characterConfig.lipSyncAudioUrl = replaceUri(
+            obj.characterConfig.lipSyncAudioUrl
+          );
+        }
+      }
+    }
+    return hydrated;
+  }
+
   private async persistCloudProjectToLocal(
     cloudProject: BanimoraProjectFileV2,
     expectedLocalRevision: number
   ): Promise<BanimoraProjectFileV2> {
+    const projectToPersist = await this.hydrateR2AssetsForLocalSave(cloudProject);
     // saveProject() DataURL medyaları IndexedDB Blob deposuna externalize eder.
     const savedLocal = await this.localRepo.saveProject(
-      cloudProject,
+      projectToPersist,
       expectedLocalRevision
     );
 

@@ -1,0 +1,20 @@
+name = "banimora-media-worker"
+main = "src/index.ts"
+compatibility_date = "2025-05-01"
+
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "banimora-media"
+
+[vars]
+# Varsayılan tek dosya yükleme sınırı: 15 MB (15 * 1024 * 1024)
+MAX_UPLOAD_BYTES = "15728640"
+# Varsayılan imzalı okuma URL geçerlilik süresi: 1 saat (3600 saniye)
+SIGNED_URL_TTL_SECONDS = "3600"
+# İzin verilen Banimora origin'leri (virgülle ayrılmış)
+ALLOWED_ORIGINS = "https://banimora.com,https://www.banimora.com,http://localhost:5173"
+
+# Gizli değişkenler Wrangler CLI veya Cloudflare Dashboard üzerinden Secret olarak eklenir:
+# - SUPABASE_URL
+# - SUPABASE_ANON_KEY
+# - MEDIA_SIGNING_SECRET

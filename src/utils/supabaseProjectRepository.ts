@@ -49,6 +49,17 @@ export interface SupabaseProjectRow {
   updated_at: string;
 }
 
+export interface SupabaseMediaAssetRow {
+  id: string;
+  owner_id: string;
+  sha256: string;
+  object_key: string;
+  mime_type: string;
+  byte_size: number;
+  orphaned_at: string | null;
+  created_at: string;
+}
+
 /**
  * SupabaseProjectRepository tarafından kullanılan salt-okunur SELECT + RPC istemci arayüzü.
  * Doğrudan tablo yazma metotları (insert/update/delete/upsert) sözleşmeye dahil edilmez.
@@ -521,5 +532,91 @@ export class SupabaseProjectRepository implements ProjectRepository {
         'Bulut projesi silinemedi.'
       );
     }
+  }
+
+  /**
+   * Worker'ın başarılı POST /assets/upload yanıtından dönen
+   * sha256, mime_type ve byte_size değerleriyle `register_media_asset` RPC'sini çağırır.
+   */
+  async registerMediaAsset(params: {
+    sha256: string;
+    mimeType: string;
+    byteSize: number;
+  }): Promise<SupabaseMediaAssetRow> {
+    const { client } = await this.requireUserId();
+
+    let rpcResult: { data: unknown; error: unknown };
+    try {
+      rpcResult = await client.rpc('register_media_asset', {
+        p_sha256: params.sha256,
+        p_mime_type: params.mimeType,
+        p_byte_size: params.byteSize,
+      });
+    } catch (error) {
+      throw mapSupabaseErrorToCloudError(
+        error,
+        'Medya metadata kaydı oluşturulamadı.'
+      );
+    }
+
+    if (rpcResult.error) {
+      throw mapSupabaseErrorToCloudError(
+        rpcResult.error,
+        'Medya metadata kaydı oluşturulamadı.'
+      );
+    }
+
+    const row = Array.isArray(rpcResult.data)
+      ? (rpcResult.data[0] as SupabaseMediaAssetRow | undefined)
+      : (rpcResult.data as SupabaseMediaAssetRow | undefined);
+
+    if (!row || !row.id) {
+      throw new CloudRepositoryError(
+        'UNKNOWN',
+        'register_media_asset RPC geçersiz kayıt döndürdü.'
+      );
+    }
+
+    return row;
+  }
+
+  /**
+   * Projenin aktif medya bağlantılarını atomik olarak `sync_project_asset_links`
+   * RPC'si üzerinden senkronize eder.
+   */
+  async syncProjectAssetLinks(
+    projectId: string,
+    assetIds: string[]
+  ): Promise<number> {
+    const { client } = await this.requireUserId();
+    const trimmedId = projectId.trim();
+    if (!trimmedId) {
+      throw new CloudRepositoryError(
+        'VALIDATION_ERROR',
+        'Geçerli proje kimliği zorunludur.'
+      );
+    }
+
+    let rpcResult: { data: unknown; error: unknown };
+    try {
+      rpcResult = await client.rpc('sync_project_asset_links', {
+        p_project_id: trimmedId,
+        p_asset_ids: assetIds,
+      });
+    } catch (error) {
+      throw mapSupabaseErrorToCloudError(
+        error,
+        'Proje medya bağlantıları senkronize edilemedi.'
+      );
+    }
+
+    if (rpcResult.error) {
+      throw mapSupabaseErrorToCloudError(
+        rpcResult.error,
+        'Proje medya bağlantıları senkronize edilemedi.'
+      );
+    }
+
+    return typeof rpcResult.data === 'number' ? rpcResult.data : assetIds.length;
   }
 }

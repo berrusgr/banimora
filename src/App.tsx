@@ -77,6 +77,7 @@ import {
   migrateLocalStorageToIndexedDb,
 } from './utils/localProjectRepository';
 import { SupabaseProjectRepository } from './utils/supabaseProjectRepository';
+import { createDefaultR2MediaClient } from './utils/r2MediaClient';
 import {
   ProjectSyncCoordinator,
   type CombinedProjectEntry,
@@ -333,6 +334,7 @@ export function App() {
       syncCoordinatorRef.current = new ProjectSyncCoordinator({
         localRepo: getProjectRepository(),
         cloudRepo: getCloudRepository(),
+        r2Client: createDefaultR2MediaClient(),
       });
     }
     return syncCoordinatorRef.current;

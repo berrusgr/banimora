@@ -46,6 +46,8 @@ import {
 } from '../utils/animationEngine';
 import { computeLocalOffsetFromAttachedStagePoint } from '../rig/rigKinematics';
 import {
+  applyBoundHandHoldGesture,
+  buildBoundHandSocketsMap,
   resolveParentCharacterSocketTransform,
   resolveSceneObjectRenderTransform,
 } from '../utils/sceneAttachmentResolver';
@@ -1303,21 +1305,7 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
               })}
 
             {(() => {
-              const boundSocketsByChar = new Map<string, { left: boolean; right: boolean }>();
-              for (const sceneObj of scene.objects) {
-                if (!sceneObj.hidden && sceneObj.attachment?.parentObjectId) {
-                  const socket = sceneObj.attachment.socketId;
-                  if (socket === 'leftPropSocket' || socket === 'rightPropSocket') {
-                    const entry = boundSocketsByChar.get(sceneObj.attachment.parentObjectId) ?? {
-                      left: false,
-                      right: false,
-                    };
-                    if (socket === 'leftPropSocket') entry.left = true;
-                    if (socket === 'rightPropSocket') entry.right = true;
-                    boundSocketsByChar.set(sceneObj.attachment.parentObjectId, entry);
-                  }
-                }
-              }
+              const boundSocketsByChar = buildBoundHandSocketsMap(scene.objects);
 
               return scene.objects.map((obj, index) => {
               const isSelected = !playerMode && activeSelectedIds.includes(obj.id) && !isPlaying;
@@ -1341,24 +1329,10 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                   : undefined;
               const charBoundSockets =
                 obj.category === 'characters' ? boundSocketsByChar.get(obj.id) : undefined;
-              const effectiveCharConfig =
-                rawCharConfig && charBoundSockets
-                  ? {
-                      ...rawCharConfig,
-                      leftHandGesture:
-                        charBoundSockets.left &&
-                        (!rawCharConfig.leftHandGesture ||
-                          rawCharConfig.leftHandGesture === 'open')
-                          ? ('hold' as const)
-                          : rawCharConfig.leftHandGesture,
-                      rightHandGesture:
-                        charBoundSockets.right &&
-                        (!rawCharConfig.rightHandGesture ||
-                          rawCharConfig.rightHandGesture === 'open')
-                          ? ('hold' as const)
-                          : rawCharConfig.rightHandGesture,
-                    }
-                  : rawCharConfig;
+              const effectiveCharConfig = applyBoundHandHoldGesture(
+                rawCharConfig,
+                charBoundSockets
+              );
               const previewPreset =
                 !isPlaying &&
                 stageMotionPreview &&

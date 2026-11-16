@@ -29,7 +29,11 @@ import {
   findSupportedAudioEncoderConfig,
   renderScenesAudioTrack,
 } from '../utils/exportAudioMixer';
-import { resolveSceneObjectRenderTransform } from '../utils/sceneAttachmentResolver';
+import {
+  applyBoundHandHoldGesture,
+  buildBoundHandSocketsMap,
+  resolveSceneObjectRenderTransform,
+} from '../utils/sceneAttachmentResolver';
 import { DEFAULT_CHARACTER_CONFIGS } from './ArticulatedCharacterRig';
 import { buildCharacterRigProfile } from '../rig/rigProfiles';
 import { evaluateCharacterTimelineForRig } from '../utils/timelineRigBridge';
@@ -190,6 +194,7 @@ async function prepareSceneDynamicRasters(
   cache: RasterizedCache
 ): Promise<void> {
   const tasks: Promise<void>[] = [];
+  const boundSocketsByChar = buildBoundHandSocketsMap(scene.objects);
 
   for (const obj of scene.objects) {
     if (obj.imageUrl) continue;
@@ -204,6 +209,13 @@ async function prepareSceneDynamicRasters(
     const anim = computeObjectAnimation(obj, localTime, true);
     if (!anim.isVisible || anim.opacity <= 0.01) continue;
 
+    const rawCharConfig = isCharacter
+      ? resolveEffectiveCharacterConfig(obj, scene.audioClips, localTime)
+      : undefined;
+    const effectiveCharConfig = isCharacter
+      ? applyBoundHandHoldGesture(rawCharConfig, boundSocketsByChar.get(obj.id))
+      : undefined;
+
     tasks.push(
       (async () => {
         const markup = renderToStaticMarkup(
@@ -211,7 +223,7 @@ async function prepareSceneDynamicRasters(
             assetId={obj.assetId}
             color={obj.color}
             secondaryColor={obj.secondaryColor}
-            characterConfig={resolveEffectiveCharacterConfig(obj, scene.audioClips, localTime)}
+            characterConfig={effectiveCharConfig}
             timelineRig={
               obj.category === 'characters' &&
               (obj.timelineData || (obj.motionPath?.enabled && obj.motionPath.walkAlongPath))
@@ -219,7 +231,7 @@ async function prepareSceneDynamicRasters(
                     obj,
                     localTime,
                     buildCharacterRigProfile(
-                      resolveEffectiveCharacterConfig(obj, scene.audioClips, localTime) ||
+                      effectiveCharConfig ||
                         DEFAULT_CHARACTER_CONFIGS[obj.assetId] ||
                         DEFAULT_CHARACTER_CONFIGS['char-pro-sinan'],
                       obj.assetId

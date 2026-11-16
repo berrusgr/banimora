@@ -188,15 +188,26 @@ export function continueCharacterToScenes(
 
   const sharedContinuityId = getCharacterContinuityId(sourceObj);
   const targetSet = new Set(targetSceneIds.filter((id) => id !== sourceSceneId));
+  const attachedProps = sourceScene.objects.filter(
+    (o) => o.id !== sourceObjectId && o.attachment?.parentObjectId === sourceObjectId
+  );
 
   return scenes.map((scene, idx) => {
     if (scene.id === sourceSceneId) {
-      if (sourceObj.continuityId === sharedContinuityId) return scene;
+      const needsCharId = sourceObj.continuityId !== sharedContinuityId;
+      const needsPropIds = attachedProps.some((p) => !p.continuityId);
+      if (!needsCharId && !needsPropIds) return scene;
       return {
         ...scene,
-        objects: scene.objects.map((o) =>
-          o.id === sourceObjectId ? { ...o, continuityId: sharedContinuityId } : o
-        ),
+        objects: scene.objects.map((o) => {
+          if (o.id === sourceObjectId && needsCharId) {
+            return { ...o, continuityId: sharedContinuityId };
+          }
+          if (o.attachment?.parentObjectId === sourceObjectId && !o.continuityId) {
+            return { ...o, continuityId: getCharacterContinuityId(o) };
+          }
+          return o;
+        }),
       };
     }
 
@@ -204,27 +215,70 @@ export function continueCharacterToScenes(
       return scene;
     }
 
-    const alreadyPresent = scene.objects.some(
+    const existingChar = scene.objects.find(
       (o) => o.category === 'characters' && getCharacterContinuityId(o) === sharedContinuityId
     );
-    if (alreadyPresent) {
-      return scene;
-    }
-
-    const nextObjectId =
+    const nextCharId =
+      existingChar?.id ??
       options?.idFactory?.(scene, idx) ??
       `obj-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`;
 
-    const continuedObj = createContinuedCharacterObject(sourceObj, scene.duration, {
-      nextObjectId,
-      continuityId: sharedContinuityId,
-      evolvePose: false,
-      sourceSceneDuration: sourceScene.duration,
+    const appendedObjects: CanvasObject[] = [];
+    if (!existingChar) {
+      appendedObjects.push(
+        createContinuedCharacterObject(sourceObj, scene.duration, {
+          nextObjectId: nextCharId,
+          continuityId: sharedContinuityId,
+          evolvePose: false,
+          sourceSceneDuration: sourceScene.duration,
+        })
+      );
+    }
+
+    attachedProps.forEach((prop, propIdx) => {
+      const propContinuityId = getCharacterContinuityId(prop);
+      const alreadyAttached = scene.objects.some(
+        (o) =>
+          o.attachment?.parentObjectId === nextCharId &&
+          (getCharacterContinuityId(o) === propContinuityId ||
+            (o.attachment?.socketId === prop.attachment?.socketId &&
+              o.assetId === prop.assetId &&
+              o.name === prop.name))
+      );
+      if (alreadyAttached) return;
+
+      const nextPropId = options?.idFactory
+        ? `${nextCharId}-prop-${propIdx}`
+        : `obj-${Date.now()}-${idx}-p${propIdx}-${Math.random().toString(36).slice(2, 6)}`;
+
+      appendedObjects.push({
+        ...structuredClone(prop),
+        id: nextPropId,
+        continuityId: propContinuityId,
+        attachment: prop.attachment
+          ? {
+              ...structuredClone(prop.attachment),
+              parentObjectId: nextCharId,
+            }
+          : undefined,
+        startTime: 0,
+        duration: Math.max(0.5, scene.duration),
+        timelineData: undefined,
+        motionPath: undefined,
+        animations: {
+          ...prop.animations,
+          enter: { ...prop.animations.enter, type: 'none' },
+        },
+      });
     });
+
+    if (appendedObjects.length === 0) {
+      return scene;
+    }
 
     return {
       ...scene,
-      objects: [...scene.objects, continuedObj],
+      objects: [...scene.objects, ...appendedObjects],
     };
   });
 }

@@ -7,12 +7,15 @@ import {
 } from '../components/ArticulatedCharacterRig';
 import { buildCharacterRigProfile } from '../rig/rigProfiles';
 import {
+  applyBoundHandHoldGesture,
+  buildBoundHandSocketsMap,
   computePropSocketWorldTransform,
   resolveAttachedObjectStageTransform,
   resolveObjectStageTransform,
   validateObjectAttachment,
   type ObjectStageAnimInput,
 } from '../rig/rigKinematics';
+export { applyBoundHandHoldGesture, buildBoundHandSocketsMap };
 import { resolveEffectiveCharacterConfig } from './audioLipSync';
 import { computeObjectAnimation } from './animationEngine';
 import { resolveDynamicSocketState } from '../rig/socketTimelineResolver';

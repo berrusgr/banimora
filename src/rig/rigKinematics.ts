@@ -2692,6 +2692,57 @@ export function resolveObjectStageTransform(
   };
 }
 
+export function buildBoundHandSocketsMap(
+  objects: readonly CanvasObject[]
+): Map<string, { left: boolean; right: boolean }> {
+  const boundSocketsByChar = new Map<string, { left: boolean; right: boolean }>();
+  for (const sceneObj of objects) {
+    if (!sceneObj.hidden && sceneObj.attachment?.parentObjectId) {
+      const socket = sceneObj.attachment.socketId;
+      if (socket === 'leftPropSocket' || socket === 'rightPropSocket') {
+        const entry = boundSocketsByChar.get(sceneObj.attachment.parentObjectId) ?? {
+          left: false,
+          right: false,
+        };
+        if (socket === 'leftPropSocket') entry.left = true;
+        if (socket === 'rightPropSocket') entry.right = true;
+        boundSocketsByChar.set(sceneObj.attachment.parentObjectId, entry);
+      }
+    }
+  }
+  return boundSocketsByChar;
+}
+
+export function applyBoundHandHoldGesture(
+  rawCharConfig: CharacterConfig | undefined,
+  boundSockets: { left: boolean; right: boolean } | undefined
+): CharacterConfig | undefined {
+  if (!rawCharConfig || !boundSockets) return rawCharConfig;
+  const nextLeft =
+    boundSockets.left &&
+    (!rawCharConfig.leftHandGesture || rawCharConfig.leftHandGesture === 'open')
+      ? ('hold' as const)
+      : rawCharConfig.leftHandGesture;
+  const nextRight =
+    boundSockets.right &&
+    (!rawCharConfig.rightHandGesture || rawCharConfig.rightHandGesture === 'open')
+      ? ('hold' as const)
+      : rawCharConfig.rightHandGesture;
+
+  if (
+    nextLeft === rawCharConfig.leftHandGesture &&
+    nextRight === rawCharConfig.rightHandGesture
+  ) {
+    return rawCharConfig;
+  }
+
+  return {
+    ...rawCharConfig,
+    leftHandGesture: nextLeft,
+    rightHandGesture: nextRight,
+  };
+}
+
 /**
  * Bir karakter rig profilinin belirtilen prop soketi için bağlı olduğu kanonik kemiği
  * ve ham gövde SVG uzayındaki dayanak noktasını döndürür.

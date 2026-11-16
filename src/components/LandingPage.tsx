@@ -121,35 +121,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </p>
 
             {/* Öncelikli 3 Eylem */}
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-nowrap sm:items-center">
               <button
                 type="button"
                 onClick={onSignUp}
                 data-testid="landing-signup-btn"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
               >
-                <PlusCircle className="h-4 w-4" />
-                Yeni Animasyon İçin Kayıt Ol
-                <ArrowRight className="h-4 w-4" />
+                <PlusCircle className="h-4 w-4 shrink-0" />
+                Kayıt Ol
+                <ArrowRight className="h-4 w-4 shrink-0" />
               </button>
 
               <button
                 type="button"
                 onClick={onSignIn}
                 data-testid="landing-signin-btn"
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white/95 px-5 py-3.5 text-sm font-semibold text-slate-800 transition hover:border-slate-400 hover:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 bg-white/95 px-5 py-3 text-sm font-semibold text-slate-800 transition hover:border-slate-400 hover:bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2"
               >
-                <FolderOpen className="h-4 w-4 text-slate-600" />
-                Projelerime Giriş Yap
+                <FolderOpen className="h-4 w-4 shrink-0 text-slate-600" />
+                Giriş Yap
               </button>
 
               <button
                 type="button"
                 onClick={onOpenDemo}
                 data-testid="landing-demo-btn"
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/90 px-5 py-3.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-indigo-200 bg-indigo-50/90 px-5 py-3 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2"
               >
-                <Play className="h-4 w-4 fill-indigo-600 text-indigo-600" />
+                <Play className="h-4 w-4 shrink-0 fill-indigo-600 text-indigo-600" />
                 Demo Görüntüle
               </button>
             </div>

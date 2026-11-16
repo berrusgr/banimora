@@ -117,7 +117,10 @@ type DesignSectionKey =
   | 'palette'
   | 'timing'
   | 'motionpath'
-  | 'continuity';
+  | 'continuity'
+  | 'animEnter'
+  | 'animEmphasis'
+  | 'animExit';
 
 const DesignAccordionSection: React.FC<{
   isOpen: boolean;
@@ -533,7 +536,11 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
   }, [selectedMotionClipId]);
   const [collapsedSections, setCollapsedSections] = useState<
     Partial<Record<DesignSectionKey, boolean>>
-  >({});
+  >({
+    animEnter: true,
+    animEmphasis: true,
+    animExit: true,
+  });
   const isSectionOpen = (key: DesignSectionKey) => !collapsedSections[key];
   const toggleSection = (key: DesignSectionKey) =>
     setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -3850,15 +3857,20 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
           </div>
 
           {/* 1. ENTER ANIMATION (GİRİŞ) */}
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
-                1. Giriş (Enter)
-              </span>
+          <DesignAccordionSection
+            isOpen={isSectionOpen('animEnter')}
+            onToggle={() => toggleSection('animEnter')}
+            containerClassName="p-3 rounded-xl bg-slate-50 border border-slate-200"
+            titleClassName="text-xs font-bold text-emerald-700 uppercase tracking-wider"
+            title="1. Giriş (Enter)"
+            headerExtra={
               <span className="text-[10px] font-mono text-slate-500">
-                {animations.enter.duration.toFixed(1)}s
+                {animations.enter.type !== 'none'
+                  ? `${animations.enter.duration.toFixed(1)}s`
+                  : 'Yok'}
               </span>
-            </div>
+            }
+          >
 
             <div className="grid grid-cols-2 gap-1.5">
               {ENTER_OPTIONS.map((opt) => {
@@ -3940,18 +3952,23 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 </div>
               </div>
             )}
-          </div>
+          </DesignAccordionSection>
 
           {/* 2. EMPHASIS / LOOP ANIMATION (VURGU) */}
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-violet-700 uppercase tracking-wider">
-                2. Vurgu (Loop / Emphasis)
-              </span>
+          <DesignAccordionSection
+            isOpen={isSectionOpen('animEmphasis')}
+            onToggle={() => toggleSection('animEmphasis')}
+            containerClassName="p-3 rounded-xl bg-slate-50 border border-slate-200"
+            titleClassName="text-xs font-bold text-violet-700 uppercase tracking-wider"
+            title="2. Vurgu (Loop / Emphasis)"
+            headerExtra={
               <span className="text-[10px] font-mono text-slate-500">
-                {animations.emphasis.duration.toFixed(1)}s döngü
+                {animations.emphasis.type !== 'none'
+                  ? `${animations.emphasis.duration.toFixed(1)}s döngü`
+                  : 'Yok'}
               </span>
-            </div>
+            }
+          >
 
             <div className="grid grid-cols-2 gap-1.5">
               {EMPHASIS_OPTIONS.map((opt) => {
@@ -4014,18 +4031,23 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 </div>
               </div>
             )}
-          </div>
+          </DesignAccordionSection>
 
           {/* 3. EXIT ANIMATION (ÇIKIŞ) */}
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-rose-700 uppercase tracking-wider">
-                3. Çıkış (Exit)
-              </span>
+          <DesignAccordionSection
+            isOpen={isSectionOpen('animExit')}
+            onToggle={() => toggleSection('animExit')}
+            containerClassName="p-3 rounded-xl bg-slate-50 border border-slate-200"
+            titleClassName="text-xs font-bold text-rose-700 uppercase tracking-wider"
+            title="3. Çıkış (Exit)"
+            headerExtra={
               <span className="text-[10px] font-mono text-slate-500">
-                {animations.exit.duration.toFixed(1)}s
+                {animations.exit.type !== 'none'
+                  ? `${animations.exit.duration.toFixed(1)}s`
+                  : 'Yok'}
               </span>
-            </div>
+            }
+          >
 
             <div className="grid grid-cols-1 gap-1.5">
               {EXIT_OPTIONS.map((opt) => {
@@ -4068,7 +4090,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 </div>
               </div>
             )}
-          </div>
+          </DesignAccordionSection>
         </div>
       )}
     </aside>

@@ -893,14 +893,9 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
   return (
     <div className="rounded-xl border border-indigo-200 bg-gradient-to-b from-indigo-50/70 to-white p-2.5 space-y-2.5">
       {/* Başlık */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
-          <Sparkles className="w-4 h-4 text-indigo-600" />
-          <span className="text-xs font-bold text-slate-800">Hareket Kütüphanesi</span>
-        </div>
-        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
-          Hazır Eylemler
-        </span>
+      <div className="flex items-center gap-1.5">
+        <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
+        <span className="text-xs font-bold text-slate-800">Hareket Kütüphanesi</span>
       </div>
 
       {/* 4 Seviyeli Mod Sekmeleri */}
@@ -925,7 +920,7 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Pozlar ({BUILT_IN_POSES.length + userPoses.length})
+          Pozlar
         </button>
         <button
           type="button"
@@ -995,9 +990,6 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
           >
             {isLibraryOpen ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
             <span>{isLibraryOpen ? 'Hareket Kütüphanesini Gizle' : 'Animasyon Ekle'}</span>
-            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-white/20">
-              {MOTION_PRESETS.length}
-            </span>
           </button>
 
           {/* BÜTÜNLEŞİK SAĞ PANEL İÇİ ANİMASYON KÜTÜPHANESİ (Sahneyi Kapatmaz) */}
@@ -1332,10 +1324,8 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
             )}
 
             {motionClips.length === 0 ? (
-              <div className="rounded-lg bg-slate-50 border border-dashed border-slate-200 p-2.5 text-[11px] text-slate-500 leading-relaxed">
-                Karaktere henüz hareket eklenmedi. Yukarıdaki{' '}
-                <strong className="text-slate-700">+ Animasyon Ekle</strong> butonuna tıklayarak
-                hazır hareketleri karakter üzerinde canlı deneyip tek tıkla ekleyebilirsiniz.
+              <div className="rounded-lg bg-slate-50 border border-dashed border-slate-200 p-2.5 text-[11px] text-slate-500">
+                Karaktere henüz hareket eklenmedi.
               </div>
             ) : (
               <div className="space-y-1.5 max-h-60 overflow-y-auto pr-0.5">

@@ -437,6 +437,18 @@ export function applySmartActionToScene(
           secondaryColor: '#94a3b8',
         };
 
+        const actionEnd =
+          createdClips.length > 0
+            ? Math.max(...createdClips.map((c) => c.startTime + c.duration))
+            : Math.min(scene.duration, startTime + 3.0);
+        const isHeldProp = req.role === 'held';
+        const objStartTime = isHeldProp
+          ? Math.max(targetChar.startTime, startTime)
+          : targetChar.startTime;
+        const objDuration = isHeldProp
+          ? Math.max(0.5, Number((actionEnd - objStartTime).toFixed(2)))
+          : targetChar.duration;
+
         const isCompanionChar = req.objectCategory === 'characters';
         const baseNewObj: CanvasObject = {
           id: newId,
@@ -452,8 +464,8 @@ export function applySmartActionToScene(
           color: palette.color,
           secondaryColor: palette.secondaryColor,
           trackColor: palette.color,
-          startTime: targetChar.startTime,
-          duration: targetChar.duration,
+          startTime: objStartTime,
+          duration: objDuration,
           animations: { ...DEFAULT_STATIC_ANIMATIONS },
         };
         const newObj: CanvasObject = isCompanionChar

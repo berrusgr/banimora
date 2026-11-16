@@ -575,19 +575,39 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => handleDropPresetOnChannel(e, charObj, ch.id)}
                     >
-                      {/* Socket bağlantı özeti */}
-                      {ch.id === 'socketAttachments' && attachedObjects.length > 0 && (
-                        <div className="absolute inset-y-1 left-2 flex items-center gap-1 pointer-events-none">
-                          {attachedObjects.map((att) => (
-                            <span
+                      {/* Socket bağlantı klipleri */}
+                      {ch.id === 'socketAttachments' &&
+                        attachedObjects.map((att) => {
+                          const attLeftPx = timeToPixelX(att.startTime, scrollTime, zoomPxPerSec);
+                          const attWidthPx = Math.max(24, att.duration * zoomPxPerSec);
+                          if (attLeftPx + attWidthPx < 0 || attLeftPx > viewportWidthPx) return null;
+                          const socketLabel =
+                            att.attachment?.socketId === 'rightPropSocket'
+                              ? 'Sağ El'
+                              : att.attachment?.socketId === 'leftPropSocket'
+                                ? 'Sol El'
+                                : 'Sırt';
+                          return (
+                            <button
                               key={att.id}
-                              className="px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 text-[9px] font-semibold"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectObject(att.id);
+                              }}
+                              style={{
+                                transform: `translate3d(${attLeftPx}px, 0, 0)`,
+                                width: `${attWidthPx}px`,
+                              }}
+                              className="absolute top-1 bottom-1 rounded bg-teal-600/90 hover:bg-teal-600 px-1.5 flex items-center text-[9px] font-semibold text-white truncate cursor-pointer shadow-xs"
+                              title={`${att.name} (${socketLabel}) • ${att.startTime.toFixed(1)}s - ${(att.startTime + att.duration).toFixed(1)}s`}
                             >
-                              {att.name} ({att.attachment?.socketId === 'rightPropSocket' ? 'Sağ El' : att.attachment?.socketId === 'leftPropSocket' ? 'Sol El' : 'Sırt'})
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                              <span className="truncate">
+                                {att.name} ({socketLabel})
+                              </span>
+                            </button>
+                          );
+                        })}
 
                       {/* Hareket Klipleri */}
                       {channelClips.map((clip) => {

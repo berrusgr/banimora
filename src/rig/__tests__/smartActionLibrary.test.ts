@@ -148,7 +148,7 @@ test('Priority 1: Bilgisayar Kullanma prepares desk, chair, PC, keyboard, mouse 
   assert.ok(assets.has('el-tech-mouse'));
 
   const updatedChar = res.scene.objects.find((o) => o.id === char.id)!;
-  assert.equal(updatedChar.characterConfig?.pose, 'typing');
+  assert.equal(updatedChar.characterConfig?.pose, 'sit');
   assert.equal(updatedChar.characterConfig?.headDirection, 'right');
   // Independent expression preserved
   assert.equal(updatedChar.characterConfig?.expression, 'sad');

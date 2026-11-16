@@ -132,7 +132,7 @@ export const FEATURED_SMART_ACTION_PACKAGES: SmartActionPackage[] = [
     categories: ['office-work', 'tech-digital', 'daily-life'],
     tags: ['bilgisayar', 'pc', 'masa', 'sandalye', 'klavye', 'fare', 'yazma', 'ofis'],
     isFeatured: true,
-    pose: 'typing',
+    pose: 'sit',
     headDirection: 'right',
     characterSetup: { minX: 120, maxX: 520 },
     clips: [
@@ -326,7 +326,7 @@ export const FEATURED_SMART_ACTION_PACKAGES: SmartActionPackage[] = [
     categories: ['office-work', 'tech-digital', 'social', 'daily-life'],
     tags: ['telefon', 'arama', 'konuşma', 'iletişim', 'çağrı'],
     isFeatured: true,
-    pose: 'phone-call',
+    pose: 'idle',
     headDirection: 'center',
     clips: [
       {

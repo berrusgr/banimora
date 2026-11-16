@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, Play, Search, Sparkles, Star, Wrench, AlertTriangle, X } from 'lucide-react';
+import { Check, Play, Search, Sparkles, Star, AlertTriangle, X } from 'lucide-react';
 import type { CanvasObject, CharacterConfig } from '../types/studio';
 import {
   ALL_SMART_ACTION_PACKAGES,
@@ -341,14 +341,6 @@ export const SmartActionLibrarySection: React.FC<SmartActionLibrarySectionProps>
                 <span>Sahnede Dene</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => handleApply('motion-only')}
-              className="w-full py-1 px-2.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-[10.5px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-            >
-              <Wrench className="w-3 h-3 text-slate-500" />
-              <span>Yalnızca Hareketi Ekle</span>
-            </button>
           </div>
 
           {feedbackMsg && (

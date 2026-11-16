@@ -321,12 +321,30 @@ export function toggleCharacterLipSyncClip(
  *   (or sets `lipSyncEnabled: false` during silent gaps between clips).
  */
 export function resolveEffectiveCharacterConfig(
-  obj: Pick<CanvasObject, 'startTime' | 'characterConfig'>,
+  obj: Pick<CanvasObject, 'startTime' | 'characterConfig'> &
+    Partial<Pick<CanvasObject, 'motionPath'>>,
   sceneAudioClips: Pick<AudioClip, 'id' | 'audioUrl' | 'name' | 'startTime' | 'duration'>[] = [],
   currentTimeSec?: number
 ): CharacterConfig | undefined {
-  const cfg = obj.characterConfig;
-  if (!cfg || !cfg.lipSyncEnabled) return cfg;
+  let cfg = obj.characterConfig;
+  if (!cfg) return cfg;
+
+  // Motion Path üzerinde walkAlongPath aktifse, yol dışında pose:'walk' yerinde yürümeyi durdur
+  if (
+    cfg.pose === 'walk' &&
+    obj.motionPath?.enabled &&
+    obj.motionPath.walkAlongPath &&
+    currentTimeSec !== undefined &&
+    Number.isFinite(currentTimeSec)
+  ) {
+    const mpStart = (obj.startTime ?? 0) + Math.max(0, obj.motionPath.startTime || 0);
+    const mpEnd = mpStart + Math.max(0.2, obj.motionPath.duration || 3.0);
+    if (currentTimeSec < mpStart || currentTimeSec > mpEnd) {
+      cfg = { ...cfg, pose: 'idle' };
+    }
+  }
+
+  if (!cfg.lipSyncEnabled) return cfg;
 
   const refs = getCharacterLipSyncRefs(cfg);
   if (refs.length === 0) return cfg;

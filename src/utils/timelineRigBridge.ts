@@ -17,7 +17,12 @@ import type {
   TwoBoneArmIKSolution,
 } from '../types/rigStandard.ts';
 import { getMotionPresetById } from '../data/motionPresets.ts';
-import { mirrorMask, retargetMotionSample } from '../rig/motionRetarget.ts';
+import {
+  detectMotionClipConflicts,
+  mirrorMask,
+  retargetMotionSample,
+  type MotionConflictInfo,
+} from '../rig/motionRetarget.ts';
 import { solveTwoBoneArmIK } from '../rig/rigKinematics.ts';
 import { evaluateCharacterRigForRenderer } from '../rig/rigEvaluator.ts';
 
@@ -309,18 +314,119 @@ const BONE_CHANNELS: readonly CharacterChannelId[] = [
   'rightLeg',
 ];
 
+export function computeMotionPathWalkSpeed(
+  obj: Pick<CanvasObject, 'x' | 'y' | 'motionPath' | 'characterConfig'>
+): number {
+  const userSpeed = Math.max(0.25, obj.characterConfig?.actionSpeed ?? 1.0);
+  const mp = obj.motionPath;
+  if (!mp || !mp.enabled) return userSpeed;
+
+  const mpDur = Math.max(0.2, mp.duration || 3.0);
+  const dx = mp.endX - obj.x;
+  const dy = mp.endY - obj.y;
+  const distPx = Math.hypot(dx, dy);
+  if (distPx <= 1) return userSpeed;
+
+  const nominalPxPerSec = 80;
+  const pathRatio = Math.max(0.45, Math.min(2.2, distPx / mpDur / nominalPxPerSec));
+  return Math.max(0.4, Math.min(2.5, userSpeed * (0.4 + 0.6 * pathRatio)));
+}
+
+export function buildMotionPathWalkClip(
+  obj: Partial<Pick<CanvasObject, 'x' | 'y' | 'startTime' | 'motionPath' | 'characterConfig' | 'category'>>
+): CharacterMotionClip | null {
+  if (obj.category && obj.category !== 'characters') return null;
+  const mp = obj.motionPath;
+  if (!mp || !mp.enabled || !mp.walkAlongPath) return null;
+
+  const objStart = obj.startTime ?? 0;
+  const mpStart = objStart + Math.max(0, mp.startTime || 0);
+  const mpDur = Math.max(0.2, mp.duration || 3.0);
+  const blend = Math.min(0.2, mpDur * 0.15);
+
+  return {
+    id: 'motion-path-walk',
+    presetId: 'walk',
+    name: 'Yol Boyunca Yürüme',
+    channelId: 'torso',
+    mask: 'full',
+    stage: 'L1_LOCOMOTION',
+    startTime: mpStart,
+    duration: mpDur,
+    speed: computeMotionPathWalkSpeed({
+      x: obj.x ?? 0,
+      y: obj.y ?? 0,
+      motionPath: mp,
+      characterConfig: obj.characterConfig,
+    }),
+    intensity: obj.characterConfig?.actionIntensity ?? 1,
+    weight: 1,
+    priority: 8,
+    blendInSec: blend,
+    blendOutSec: blend,
+    repeatMode: 'loop',
+    enabled: true,
+  };
+}
+
+/**
+ * Karakterin `motionClips` listesiyle birlikte `walkAlongPath` aktifse sanal
+ * `motion-path-walk` L1 klibini de çakışma analizine dahil eder.
+ * Farklı kemik gruplarında (ör. sağ/sol kol, üst gövde, baş) yürüyüşle birlikte
+ * çalışabilen L2/L3 hareketleri gereksiz yere çakışma olarak bildirilmez.
+ */
+export function detectObjectMotionConflicts(
+  obj: Partial<
+    Pick<
+      CanvasObject,
+      'timelineData' | 'x' | 'y' | 'startTime' | 'motionPath' | 'characterConfig' | 'category'
+    >
+  >,
+  profile: CharacterRigProfile,
+  atTime?: number
+): MotionConflictInfo[] {
+  const userClips = obj.timelineData?.motionClips ?? [];
+  const pathWalkClip = buildMotionPathWalkClip(obj);
+  if (!pathWalkClip) {
+    return detectMotionClipConflicts(userClips, profile, atTime);
+  }
+
+  const allClips = [...userClips, pathWalkClip];
+  const allConflicts = detectMotionClipConflicts(allClips, profile, atTime);
+  const clipById = new Map<string, CharacterMotionClip>(allClips.map((c) => [c.id, c]));
+
+  return allConflicts.filter((cf) => {
+    const isVirtualPair = cf.clipAId === pathWalkClip.id || cf.clipBId === pathWalkClip.id;
+    if (!isVirtualPair) return true;
+
+    const otherId = cf.clipAId === pathWalkClip.id ? cf.clipBId : cf.clipAId;
+    const other = clipById.get(otherId);
+    if (!other) return true;
+    if (other.stage === 'L1_LOCOMOTION') return true;
+
+    return other.mask === 'full' || other.mask === 'lower-body';
+  });
+}
+
 /**
  * Bir `CanvasObject` içindeki `timelineData` (hareket klipleri + kanal keyframe'leri)
  * verisini mevcut L0–L5 Rig Evaluator (`evaluateCharacterRig`) ile tam uyumlu girdi
  * yapısına dönüştürür. Eski sahnelerde `timelineData` yoksa güvenli boş sonuç döner.
  */
 export function evaluateCharacterTimelineForRig(
-  obj: Pick<CanvasObject, 'timelineData'> | { timelineData?: CharacterTimelineData },
+  obj:
+    | (Pick<CanvasObject, 'timelineData'> &
+        Partial<Pick<CanvasObject, 'x' | 'y' | 'startTime' | 'motionPath' | 'characterConfig' | 'category'>>)
+    | { timelineData?: CharacterTimelineData },
   currentTime: number,
   profile: CharacterRigProfile
 ): TimelineRigBridgeResult {
   const td = obj.timelineData;
-  if (!td) {
+  const pathWalkClip = buildMotionPathWalkClip(
+    obj as Partial<Pick<CanvasObject, 'x' | 'y' | 'startTime' | 'motionPath' | 'characterConfig' | 'category'>>
+  );
+
+  if (!td && !pathWalkClip) {
     return {
       hasTimelineData: false,
       layers: [],
@@ -328,7 +434,11 @@ export function evaluateCharacterTimelineForRig(
     };
   }
 
-  const layers = evaluateMotionClipsToRigLayers(td.motionClips, currentTime, profile);
+  const combinedClips = pathWalkClip
+    ? [...(td?.motionClips ?? []), pathWalkClip]
+    : td?.motionClips;
+
+  const layers = evaluateMotionClipsToRigLayers(combinedClips, currentTime, profile);
   const userCanonicalBoneOverrides: Partial<Record<CanonicalBoneId, number>> = {};
   let userBodyBobYOverride: number | undefined;
   let rootTransformOverride: TimelineRootTransformOverride | undefined;
@@ -341,7 +451,7 @@ export function evaluateCharacterTimelineForRig(
   let rightArmIKWeight: number | undefined;
 
   // Aktif duygu/ifade ipucu olan kliplerden ifade override'ı (keyframe daha yüksek öncelikli)
-  if (td.motionClips) {
+  if (td?.motionClips) {
     const activeExprClip = td.motionClips.find((clip) => {
       if (clip.enabled === false) return false;
       const end = clip.startTime + Math.max(0, clip.duration);
@@ -354,7 +464,7 @@ export function evaluateCharacterTimelineForRig(
     }
   }
 
-  const kfMap = td.channelKeyframes;
+  const kfMap = td?.channelKeyframes;
   if (kfMap) {
     for (const channelId of BONE_CHANNELS) {
       const evaluated = evaluateChannelKeyframes(kfMap[channelId], currentTime);

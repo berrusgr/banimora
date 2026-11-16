@@ -845,3 +845,23 @@ test('10. WatchPlayerPage autoplay tries unmuted playback first, falls back to m
   assert.ok(watchPageSource.includes('data-testid="watch-unmute-btn"'));
   assert.ok(watchPageSource.includes('Sesi Aç'));
 });
+
+test('11. Studio, MP4 ExportModal, and WatchPlayerPage pre-analyze multi-clip lipSyncAudioClips and share rig/transform evaluation', () => {
+  const exportModalSrc = fs.readFileSync(
+    path.join(ROOT_DIR, 'src/components/ExportModal.tsx'),
+    'utf8'
+  );
+  const watchPageSrc = fs.readFileSync(
+    path.join(ROOT_DIR, 'src/components/WatchPlayerPage.tsx'),
+    'utf8'
+  );
+  const appSrc = fs.readFileSync(path.join(ROOT_DIR, 'src/App.tsx'), 'utf8');
+
+  for (const src of [exportModalSrc, watchPageSrc, appSrc]) {
+    assert.ok(src.includes('ensureAudioLipSyncAnalyzed'));
+    assert.ok(src.includes('lipSyncAudioClips'));
+  }
+
+  assert.ok(exportModalSrc.includes('resolveEffectiveCharacterConfig(obj, scene.audioClips, localTime)'));
+  assert.ok(exportModalSrc.includes('evaluateCharacterTimelineForRig('));
+});

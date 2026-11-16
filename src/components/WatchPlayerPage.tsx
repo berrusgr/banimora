@@ -4,6 +4,7 @@ import { usePlayerRuntime } from '../runtime/usePlayerRuntime';
 import type { PublishedContentPackage } from '../types/publishing';
 import type { InteractionQuestion, LearningSession, Scene } from '../types/studio';
 import { soundEngine } from '../utils/soundEffects';
+import { ensureAudioLipSyncAnalyzed } from '../utils/audioLipSync';
 import {
   createLearningSession,
   findBlockingQuestionBeforeSeek,
@@ -79,6 +80,24 @@ const WatchRuntimeStage: React.FC<{
     () => scenes.find((s) => s.id === activeSceneId) ?? scenes[0],
     [activeSceneId, scenes]
   );
+
+  useEffect(() => {
+    for (const s of scenes) {
+      for (const clip of s.audioClips ?? []) {
+        if (clip.audioUrl) void ensureAudioLipSyncAnalyzed(clip.audioUrl);
+      }
+      for (const obj of s.objects ?? []) {
+        if (obj.characterConfig?.lipSyncEnabled) {
+          if (obj.characterConfig.lipSyncAudioUrl) {
+            void ensureAudioLipSyncAnalyzed(obj.characterConfig.lipSyncAudioUrl);
+          }
+          for (const ref of obj.characterConfig.lipSyncAudioClips ?? []) {
+            if (ref.audioUrl) void ensureAudioLipSyncAnalyzed(ref.audioUrl);
+          }
+        }
+      }
+    }
+  }, [scenes]);
 
   useEffect(() => {
     let cancelled = false;

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Sliders,
   Sparkles,
@@ -82,6 +82,9 @@ import {
   MAX_TOTAL_PROJECT_DURATION,
 } from '../utils/animationEngine';
 import {
+  getCharacterContinuityId,
+} from '../utils/characterContinuity';
+import {
   ensureAudioLipSyncAnalyzed,
   isSceneClipLinkedToCharacter,
   resolveEffectiveCharacterConfig,
@@ -113,7 +116,8 @@ type DesignSectionKey =
   | 'table'
   | 'palette'
   | 'timing'
-  | 'motionpath';
+  | 'motionpath'
+  | 'continuity';
 
 const DesignAccordionSection: React.FC<{
   isOpen: boolean;
@@ -170,6 +174,14 @@ const DesignAccordionSection: React.FC<{
 
 interface RightInspectorProps {
   scene: Scene;
+  scenes?: Scene[];
+  onContinueCharacterToScenes?: (
+    sourceSceneId: string,
+    sourceObjectId: string,
+    targetSceneIds: string[]
+  ) => void;
+  onTerminateCharacterAfterScene?: (sourceSceneId: string, sourceObjectId: string) => void;
+  onSyncCharacterAppearance?: (sourceSceneId: string, sourceObjectId: string) => void;
   currentTime?: number;
   totalProjectDuration: number;
   maxAllowedSceneDuration: number;
@@ -451,6 +463,10 @@ const EASING_OPTIONS: { id: EasingType; label: string }[] = [
 
 export const RightInspector: React.FC<RightInspectorProps> = ({
   scene,
+  scenes = [],
+  onContinueCharacterToScenes,
+  onTerminateCharacterAfterScene,
+  onSyncCharacterAppearance,
   currentTime = 0,
   totalProjectDuration,
   maxAllowedSceneDuration,
@@ -498,6 +514,13 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
   const [attachParentId, setAttachParentId] = useState<string>('');
   const [attachSocketId, setAttachSocketId] = useState<PropSocketId>('rightPropSocket');
   const [attachError, setAttachError] = useState<string | null>(null);
+  const [selectedContinuitySceneIds, setSelectedContinuitySceneIds] = useState<string[]>([]);
+  const [continuityFeedback, setContinuityFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedContinuitySceneIds([]);
+    setContinuityFeedback(null);
+  }, [selectedObject?.id, scene.id]);
   const [collapsedSections, setCollapsedSections] = useState<
     Partial<Record<DesignSectionKey, boolean>>
   >({});
@@ -1860,6 +1883,188 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
             </div>
           )}
 
+          {selectedObject.category === 'characters' && scenes.length > 0 && (() => {
+            const sharedId = getCharacterContinuityId(selectedObject);
+            const currentSceneIdx = scenes.findIndex((s) => s.id === scene.id);
+            const presentSceneIds = new Set(
+              scenes
+                .filter((s) =>
+                  s.objects.some(
+                    (o) => o.category === 'characters' && getCharacterContinuityId(o) === sharedId
+                  )
+                )
+                .map((s) => s.id)
+            );
+            const subsequentScenes =
+              currentSceneIdx >= 0 ? scenes.slice(currentSceneIdx + 1) : [];
+            const hasLaterPresence = subsequentScenes.some((s) => presentSceneIds.has(s.id));
+            const hasOtherScenePresence =
+              presentSceneIds.size > (presentSceneIds.has(scene.id) ? 1 : 0);
+
+            return (
+              <DesignAccordionSection
+                isOpen={isSectionOpen('continuity')}
+                onToggle={() => toggleSection('continuity')}
+                title={
+                  <>
+                    <FastForward className="w-3.5 h-3.5 text-indigo-600" />
+                    Sahneler Arası Devamlılık
+                  </>
+                }
+                headerExtra={
+                  <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded">
+                    {presentSceneIds.size} sahne
+                  </span>
+                }
+              >
+                <div className="space-y-2 text-[10.5px]">
+                  <div className="flex flex-wrap gap-1">
+                    {scenes.map((s, idx) => {
+                      const isHere = presentSceneIds.has(s.id);
+                      return (
+                        <span
+                          key={s.id}
+                          className={`px-1.5 py-0.5 rounded border text-[9.5px] font-semibold ${
+                            isHere
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              : 'bg-white text-slate-400 border-slate-200'
+                          }`}
+                        >
+                          {idx + 1}. {s.name}
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  {subsequentScenes.length > 0 ? (
+                    <>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[10px] text-slate-600 font-semibold">
+                          <span>Sonraki Sahnelere Devam Ettir</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const missingIds = subsequentScenes
+                                .filter((s) => !presentSceneIds.has(s.id))
+                                .map((s) => s.id);
+                              setSelectedContinuitySceneIds(
+                                selectedContinuitySceneIds.length === missingIds.length
+                                  ? []
+                                  : missingIds
+                              );
+                            }}
+                            className="text-indigo-600 hover:underline cursor-pointer"
+                          >
+                            Tümünü Seç
+                          </button>
+                        </div>
+                        <div className="max-h-28 overflow-y-auto space-y-1 rounded border border-slate-200 bg-white p-1.5">
+                          {subsequentScenes.map((targetScene) => {
+                            const alreadyIn = presentSceneIds.has(targetScene.id);
+                            const checked =
+                              alreadyIn || selectedContinuitySceneIds.includes(targetScene.id);
+                            return (
+                              <label
+                                key={targetScene.id}
+                                className="flex items-center justify-between gap-2 text-[10px] text-slate-700 cursor-pointer"
+                              >
+                                <span className="flex items-center gap-1.5 truncate">
+                                  <input
+                                    type="checkbox"
+                                    disabled={alreadyIn}
+                                    checked={checked}
+                                    onChange={(e) => {
+                                      setSelectedContinuitySceneIds((prev) =>
+                                        e.target.checked
+                                          ? [...prev, targetScene.id]
+                                          : prev.filter((id) => id !== targetScene.id)
+                                      );
+                                    }}
+                                    className="accent-indigo-600 cursor-pointer"
+                                  />
+                                  <span className="truncate">{targetScene.name}</span>
+                                </span>
+                                {alreadyIn && (
+                                  <span className="text-[9px] text-emerald-700 font-semibold shrink-0">
+                                    Mevcut
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-1.5">
+                        <button
+                          type="button"
+                          disabled={selectedContinuitySceneIds.length === 0}
+                          onClick={() => {
+                            onContinueCharacterToScenes?.(
+                              scene.id,
+                              selectedObject.id,
+                              selectedContinuitySceneIds
+                            );
+                            const count = selectedContinuitySceneIds.length;
+                            setSelectedContinuitySceneIds([]);
+                            setContinuityFeedback(
+                              `Karakter ${count} sonraki sahneye devam ettirildi.`
+                            );
+                          }}
+                          className="w-full py-1.5 px-2 rounded-md bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-[10.5px] font-bold transition-colors cursor-pointer disabled:cursor-default"
+                        >
+                          Seçili sahnelere devam ettir
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={!hasLaterPresence}
+                          onClick={() => {
+                            onTerminateCharacterAfterScene?.(scene.id, selectedObject.id);
+                            setContinuityFeedback(
+                              'Karakterin devamlılığı bu sahneden sonra sonlandırıldı.'
+                            );
+                          }}
+                          className="w-full py-1.5 px-2 rounded-md border border-rose-200 bg-rose-50 hover:bg-rose-100 disabled:opacity-40 text-rose-700 text-[10.5px] font-semibold transition-colors cursor-pointer disabled:cursor-default"
+                        >
+                          Bu sahneden sonra sonlandır
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-[10px] text-slate-500">
+                      Bu karakterden sonra başka sahne bulunmuyor.
+                    </div>
+                  )}
+
+                  {hasOtherScenePresence && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSyncCharacterAppearance?.(scene.id, selectedObject.id);
+                        setContinuityFeedback(
+                          'Görünüm diğer sahnelerle eşitlendi (konum ve animasyonlar korundu).'
+                        );
+                      }}
+                      className="w-full py-1.5 px-2 rounded-md border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10.5px] font-semibold transition-colors cursor-pointer"
+                    >
+                      Görünümü diğer sahnelerle eşitle
+                    </button>
+                  )}
+
+                  {continuityFeedback && (
+                    <div
+                      data-testid="continuity-feedback"
+                      className="rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-800"
+                    >
+                      {continuityFeedback}
+                    </div>
+                  )}
+                </div>
+              </DesignAccordionSection>
+            );
+          })()}
+
           {/* Position & Dimensions Grid (X, Y, W, H, Rotation) */}
           <DesignAccordionSection
             isOpen={isSectionOpen('transform')}
@@ -3034,19 +3239,11 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                         selectedObject.motionPath?.duration ??
                         Math.max(1.5, scene.duration - 0.5),
                       curve: selectedObject.motionPath?.curve ?? 'linear',
-                      autoFlipX: selectedObject.motionPath?.autoFlipX ?? true,
+                      autoFlipX:
+                        selectedObject.motionPath?.autoFlipX ??
+                        (selectedObject.category === 'characters' ? false : true),
+                      walkAlongPath: selectedObject.motionPath?.walkAlongPath ?? false,
                     },
-                    ...(nextEnabled &&
-                      isArticulatedCharacter &&
-                      resolvedCharConfig &&
-                      resolvedCharConfig.pose === 'idle'
-                      ? {
-                        characterConfig: {
-                          ...resolvedCharConfig,
-                          pose: 'walk',
-                        },
-                      }
-                      : {}),
                   });
                 }}
                 className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${selectedObject.motionPath?.enabled
@@ -3450,19 +3647,11 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                         selectedObject.motionPath?.duration ??
                         Math.max(1.5, scene.duration - 0.5),
                       curve: selectedObject.motionPath?.curve ?? 'linear',
-                      autoFlipX: selectedObject.motionPath?.autoFlipX ?? true,
+                      autoFlipX:
+                        selectedObject.motionPath?.autoFlipX ??
+                        (selectedObject.category === 'characters' ? false : true),
+                      walkAlongPath: selectedObject.motionPath?.walkAlongPath ?? false,
                     },
-                    ...(nextEnabled &&
-                      isArticulatedCharacter &&
-                      resolvedCharConfig &&
-                      resolvedCharConfig.pose === 'idle'
-                      ? {
-                        characterConfig: {
-                          ...resolvedCharConfig,
-                          pose: 'walk',
-                        },
-                      }
-                      : {}),
                   });
                 }}
                 className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${selectedObject.motionPath?.enabled
@@ -3596,6 +3785,43 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                     className="w-full accent-amber-500 cursor-pointer"
                   />
                 </div>
+
+                {selectedObject.category === 'characters' && (
+                  <div className="pt-1.5 border-t border-amber-200/70 space-y-1.5">
+                    <label className="flex items-center justify-between gap-2 text-[10.5px] font-semibold text-amber-900 cursor-pointer">
+                      <span>Yol Boyunca Yürü (Otomatik Adım)</span>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(selectedObject.motionPath.walkAlongPath)}
+                        onChange={(e) =>
+                          onUpdateObject(selectedObject.id, {
+                            motionPath: {
+                              ...selectedObject.motionPath!,
+                              walkAlongPath: e.target.checked,
+                            },
+                          })
+                        }
+                        className="accent-amber-600 cursor-pointer"
+                      />
+                    </label>
+                    <label className="flex items-center justify-between gap-2 text-[10.5px] font-medium text-amber-800 cursor-pointer">
+                      <span>Sola Giderken Gövdeyi Aynala</span>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(selectedObject.motionPath.autoFlipX)}
+                        onChange={(e) =>
+                          onUpdateObject(selectedObject.id, {
+                            motionPath: {
+                              ...selectedObject.motionPath!,
+                              autoFlipX: e.target.checked,
+                            },
+                          })
+                        }
+                        className="accent-amber-600 cursor-pointer"
+                      />
+                    </label>
+                  </div>
+                )}
               </div>
             )}
 

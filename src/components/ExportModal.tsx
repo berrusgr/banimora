@@ -91,8 +91,18 @@ async function buildRasterCache(scenes: Scene[]): Promise<RasterizedCache> {
   const liveFrameImages = new Map<string, HTMLImageElement>();
 
   const lipSyncPromises: Promise<void>[] = [];
+  const queuedLipSyncUrls = new Set<string>();
+  const queueLipSyncUrl = (url: string | undefined) => {
+    if (!url || queuedLipSyncUrls.has(url)) return;
+    queuedLipSyncUrls.add(url);
+    lipSyncPromises.push(ensureAudioLipSyncAnalyzed(url));
+  };
 
   for (const s of scenes) {
+    for (const clip of s.audioClips ?? []) {
+      queueLipSyncUrl(clip.audioUrl);
+    }
+
     if (s.background.imageUrl && !bgImages.has(s.background.id)) {
       try {
         const img = await loadImage(s.background.imageUrl);
@@ -103,8 +113,11 @@ async function buildRasterCache(scenes: Scene[]): Promise<RasterizedCache> {
     }
 
     for (const obj of s.objects) {
-      if (obj.characterConfig?.lipSyncEnabled && obj.characterConfig?.lipSyncAudioUrl) {
-        lipSyncPromises.push(ensureAudioLipSyncAnalyzed(obj.characterConfig.lipSyncAudioUrl));
+      if (obj.characterConfig?.lipSyncEnabled) {
+        queueLipSyncUrl(obj.characterConfig.lipSyncAudioUrl);
+        for (const ref of obj.characterConfig.lipSyncAudioClips ?? []) {
+          queueLipSyncUrl(ref.audioUrl);
+        }
       }
 
       if (obj.imageUrl) {
@@ -200,7 +213,8 @@ async function prepareSceneDynamicRasters(
             secondaryColor={obj.secondaryColor}
             characterConfig={resolveEffectiveCharacterConfig(obj, scene.audioClips, localTime)}
             timelineRig={
-              obj.category === 'characters' && obj.timelineData
+              obj.category === 'characters' &&
+              (obj.timelineData || (obj.motionPath?.enabled && obj.motionPath.walkAlongPath))
                 ? evaluateCharacterTimelineForRig(
                     obj,
                     localTime,

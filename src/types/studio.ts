@@ -54,6 +54,8 @@ export interface MotionPathConfig {
   duration: number;  // duration in seconds
   curve: MotionPathCurveType;
   autoFlipX?: boolean;
+  /** Karakterlerde Motion Path süresi boyunca senkronize yürüme animasyonunu çalıştırır */
+  walkAlongPath?: boolean;
 }
 
 export type EasingType =
@@ -882,6 +884,8 @@ export interface TableDataConfig {
 
 export interface CanvasObject {
   id: string;
+  /** Sahneler arası aynı karakter kimliğini korumak için opsiyonel ortak kimlik */
+  continuityId?: string;
   name: string;
   assetId: VectorAssetId;
   category: 'characters' | 'objects' | 'text';

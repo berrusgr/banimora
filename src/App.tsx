@@ -23,6 +23,13 @@ import {
 import { INITIAL_SCENES, SCENE_BACKGROUNDS } from './data/libraryAssets';
 import { getMathAssetDefinition, createDefaultPartStates } from './data/mathAssetsRegistry';
 import { ensureAudioLipSyncAnalyzed } from './utils/audioLipSync';
+import {
+  continueCharacterToScenes,
+  createContinuedCharacterObject,
+  getCharacterContinuityId,
+  syncCharacterAppearanceAcrossScenes,
+  terminateCharacterInScenes,
+} from './utils/characterContinuity';
 import { DEFAULT_CHARACTER_CONFIGS } from './components/ArticulatedCharacterRig';
 import { TopHeader } from './components/TopHeader';
 import { LeftLibraryPanel } from './components/LeftLibraryPanel';
@@ -456,8 +463,13 @@ export function App() {
         if (clip.audioUrl) ensureAudioLipSyncAnalyzed(clip.audioUrl);
       });
       s.objects.forEach((obj) => {
-        if (obj.characterConfig?.lipSyncEnabled && obj.characterConfig?.lipSyncAudioUrl) {
-          ensureAudioLipSyncAnalyzed(obj.characterConfig.lipSyncAudioUrl);
+        if (obj.characterConfig?.lipSyncEnabled) {
+          if (obj.characterConfig.lipSyncAudioUrl) {
+            ensureAudioLipSyncAnalyzed(obj.characterConfig.lipSyncAudioUrl);
+          }
+          obj.characterConfig.lipSyncAudioClips?.forEach((ref) => {
+            if (ref.audioUrl) ensureAudioLipSyncAnalyzed(ref.audioUrl);
+          });
         }
       });
     });
@@ -612,22 +624,7 @@ export function App() {
     });
 
     const continuedObjects: CanvasObject[] = activeScene.objects.map((obj, idx) => {
-      const finalX = obj.motionPath?.enabled ? obj.motionPath.endX : obj.x;
-      const finalY = obj.motionPath?.enabled ? obj.motionPath.endY : obj.y;
-
-      let nextCharConfig = obj.characterConfig
-        ? { ...obj.characterConfig }
-        : undefined;
-
-      // Evolve pose naturally for Scene Continuity (e.g., sit -> stand-up -> walk)
-      if (nextCharConfig) {
-        if (nextCharConfig.pose === 'sit') {
-          nextCharConfig.pose = 'stand-up';
-        } else if (nextCharConfig.pose === 'stand-up') {
-          nextCharConfig.pose = 'walk';
-        }
-      }
-
+      const nextId = idMap.get(obj.id) ?? `obj-${idBatch}-${idx}`;
       const remappedAttachment = obj.attachment
         ? {
             ...obj.attachment,
@@ -635,9 +632,25 @@ export function App() {
           }
         : undefined;
 
+      if (obj.category === 'characters') {
+        const continuedChar = createContinuedCharacterObject(obj, newSceneDuration, {
+          nextObjectId: nextId,
+          continuityId: getCharacterContinuityId(obj),
+          evolvePose: true,
+          sourceSceneDuration: activeScene.duration,
+        });
+        return {
+          ...continuedChar,
+          attachment: remappedAttachment,
+        };
+      }
+
+      const finalX = obj.motionPath?.enabled ? obj.motionPath.endX : obj.x;
+      const finalY = obj.motionPath?.enabled ? obj.motionPath.endY : obj.y;
+
       return {
         ...obj,
-        id: idMap.get(obj.id) ?? `obj-${idBatch}-${idx}`,
+        id: nextId,
         attachment: remappedAttachment,
         x: finalX,
         y: finalY,
@@ -651,7 +664,6 @@ export function App() {
             endY: finalY,
           }
           : undefined,
-        characterConfig: nextCharConfig,
         animations: {
           ...obj.animations,
           // Keep object immediately present at start of continued scene without re-running entrance animation
@@ -3358,6 +3370,30 @@ export function App() {
         {/* 4. RIGHT INSPECTOR (Object Design/Animation OR Camera & Scene Transition Inspector) */}
         <RightInspector
           scene={activeScene}
+          scenes={scenes}
+          onContinueCharacterToScenes={(sourceSceneId, sourceObjectId, targetSceneIds) => {
+            updateScenesState((prev) =>
+              continueCharacterToScenes(prev, sourceSceneId, sourceObjectId, targetSceneIds)
+            );
+          }}
+          onTerminateCharacterAfterScene={(sourceSceneId, sourceObjectId) => {
+            updateScenesState((prev) => {
+              const sourceIdx = prev.findIndex((s) => s.id === sourceSceneId);
+              const sourceObj = prev[sourceIdx]?.objects.find((o) => o.id === sourceObjectId);
+              if (sourceIdx === -1 || !sourceObj) return prev;
+              const laterIds = prev.slice(sourceIdx + 1).map((s) => s.id);
+              return terminateCharacterInScenes(
+                prev,
+                getCharacterContinuityId(sourceObj),
+                laterIds
+              );
+            });
+          }}
+          onSyncCharacterAppearance={(sourceSceneId, sourceObjectId) => {
+            updateScenesState((prev) =>
+              syncCharacterAppearanceAcrossScenes(prev, sourceSceneId, sourceObjectId)
+            );
+          }}
           currentTime={currentTime}
           totalProjectDuration={totalProjectDuration}
           maxAllowedSceneDuration={maxAllowedSceneDuration}

@@ -22,6 +22,10 @@ import {
   X,
 } from 'lucide-react';
 import type {
+  RigBodyMaskId,
+  RigLayerStage,
+} from '../types/rigStandard';
+import type {
   CanvasObject,
   ChannelKeyframe,
   CharacterChannelId,
@@ -59,11 +63,19 @@ import {
 } from '../data/motionPresets';
 import {
   checkMotionMaskCompatibility,
-  detectMotionClipConflicts,
   MOTION_CATEGORY_LABELS,
 } from '../rig/motionRetarget';
 import { buildCharacterRigProfile } from '../rig/rigProfiles';
-import { evaluateMotionClipsToRigLayers } from '../utils/timelineRigBridge';
+import {
+  detectObjectMotionConflicts,
+  evaluateMotionClipsToRigLayers,
+} from '../utils/timelineRigBridge';
+import {
+  alignMotionClipToPreviousEnd,
+  cycleMotionClipRepeatMode,
+  moveMotionClip,
+  updateMotionClipTiming,
+} from '../utils/motionClipSequencing';
 import {
   buildSavedMotionPackageFromCharacter,
   instantiateMotionPackageClips,
@@ -105,6 +117,374 @@ const CHANNEL_LABELS: Record<CharacterChannelId, string> = {
   lipSync: 'Lip-Sync',
   ikTargets: 'IK Hedefleri',
   socketAttachments: 'Nesne Bağlantıları',
+};
+
+const RIG_MASK_LABELS: Record<RigBodyMaskId, string> = {
+  full: 'Tüm Vücut',
+  'lower-body': 'Alt Gövde (Bacaklar)',
+  'upper-body': 'Üst Gövde',
+  'torso-only': 'Yalnızca Gövde',
+  'both-arms': 'Her İki Kol',
+  'left-arm': 'Sol Kol',
+  'right-arm': 'Sağ Kol',
+  'head-only': 'Yalnızca Baş',
+};
+
+const RIG_STAGE_LABELS: Record<RigLayerStage, string> = {
+  L1_LOCOMOTION: 'L1: Temel / Yürüme',
+  L2_GESTURE_AND_IK: 'L2: Jest / El & Kol',
+  L3_PROCEDURAL: 'L3: İnce / Bakış',
+};
+
+interface MotionClipCardProps {
+  clip: CharacterMotionClip;
+  index: number;
+  totalCount: number;
+  sceneDuration: number;
+  motionPath?: CanvasObject['motionPath'];
+  onUpdate: (clipId: string, patch: Partial<CharacterMotionClip>) => void;
+  onUpdateTiming: (clipId: string, patch: { startTime?: number; duration?: number }) => void;
+  onMove: (clipId: string, direction: 'up' | 'down') => void;
+  onAlignToPrevious: (clipId: string) => void;
+  onRemove: (clipId: string) => void;
+}
+
+const MotionClipCard: React.FC<MotionClipCardProps> = ({
+  clip,
+  index,
+  totalCount,
+  sceneDuration,
+  motionPath,
+  onUpdate,
+  onUpdateTiming,
+  onMove,
+  onAlignToPrevious,
+  onRemove,
+}) => {
+  const [showDetails, setShowDetails] = useState(false);
+
+  return (
+    <div
+      className={`rounded-lg border p-2 space-y-1.5 ${
+        clip.enabled === false
+          ? 'bg-slate-50 border-slate-200 opacity-65'
+          : 'bg-white border-slate-200'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-1">
+        <label className="flex items-center gap-1.5 min-w-0 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={clip.enabled !== false}
+            onChange={(e) => onUpdate(clip.id, { enabled: e.target.checked })}
+            className="accent-indigo-600 shrink-0"
+            title="Klibi aktif/pasif yap"
+          />
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold text-slate-800 truncate">
+              {clip.name ?? clip.presetId}
+            </div>
+            <div className="text-[9.5px] text-slate-500 truncate">
+              {CHANNEL_LABELS[clip.channelId]} • {clip.startTime.toFixed(1)}s –{' '}
+              {(clip.startTime + clip.duration).toFixed(1)}s
+            </div>
+          </div>
+        </label>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            type="button"
+            disabled={index === 0}
+            onClick={() => onMove(clip.id, 'up')}
+            className="p-0.5 rounded text-slate-500 hover:bg-slate-200/70 disabled:opacity-30 cursor-pointer disabled:cursor-default"
+            title="Yukarı taşı"
+          >
+            <ChevronUp className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            disabled={index === totalCount - 1}
+            onClick={() => onMove(clip.id, 'down')}
+            className="p-0.5 rounded text-slate-500 hover:bg-slate-200/70 disabled:opacity-30 cursor-pointer disabled:cursor-default"
+            title="Aşağı taşı"
+          >
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onRemove(clip.id)}
+            className="p-1 rounded text-rose-500 hover:bg-rose-50 cursor-pointer"
+            title="Hareketi kaldır"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <button
+          type="button"
+          onClick={() => onUpdate(clip.id, { mirrored: !clip.mirrored })}
+          className={`px-1.5 py-0.5 rounded border text-[9.5px] font-medium flex items-center gap-1 cursor-pointer ${
+            clip.mirrored
+              ? 'bg-indigo-600 text-white border-indigo-600'
+              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+          }`}
+        >
+          <FlipHorizontal2 className="w-2.5 h-2.5" />
+          <span>Aynala</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const nextMode = cycleMotionClipRepeatMode(clip.repeatMode);
+            onUpdate(clip.id, {
+              repeatMode: nextMode,
+              repeatCount: nextMode === 'count' ? (clip.repeatCount ?? 2) : clip.repeatCount,
+            });
+          }}
+          className={`px-1.5 py-0.5 rounded border text-[9.5px] font-medium cursor-pointer ${
+            clip.repeatMode === 'loop'
+              ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+              : clip.repeatMode === 'count'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-white text-slate-600 border-slate-200'
+          }`}
+        >
+          {clip.repeatMode === 'loop'
+            ? 'Döngü Açık'
+            : clip.repeatMode === 'count'
+              ? `${clip.repeatCount ?? 2}x Tekrar`
+              : 'Tek Sefer'}
+        </button>
+        {clip.repeatMode === 'count' && (
+          <input
+            type="number"
+            min={1}
+            max={20}
+            step={1}
+            value={clip.repeatCount ?? 2}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!Number.isFinite(val)) return;
+              onUpdate(clip.id, { repeatCount: Math.max(1, Math.min(20, val)) });
+            }}
+            className="w-10 rounded border border-emerald-200 bg-white px-1 py-0.5 text-[9.5px] font-mono text-emerald-800 text-center"
+            title="Tekrar sayısı"
+          />
+        )}
+        {index > 0 && (
+          <button
+            type="button"
+            onClick={() => onAlignToPrevious(clip.id)}
+            className="px-1.5 py-0.5 rounded border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[9.5px] font-semibold cursor-pointer"
+            title="Başlangıcı önceki animasyonun bitişine hizala"
+          >
+            Öncekine Hizala
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 pt-0.5 border-t border-slate-200/70 flex-wrap">
+        <label className="text-[9.5px] text-slate-500 flex items-center gap-1">
+          <span>Başl. (sn):</span>
+          <input
+            type="number"
+            min={0}
+            max={Math.max(0, sceneDuration - 0.4)}
+            step={0.5}
+            value={Number(clip.startTime.toFixed(1))}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value);
+              if (!Number.isFinite(val)) return;
+              onUpdateTiming(clip.id, { startTime: val });
+            }}
+            className="w-12 rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] font-mono text-slate-800 text-center"
+          />
+        </label>
+        <label className="text-[9.5px] text-slate-500 flex items-center gap-1">
+          <span>Süre (sn):</span>
+          <input
+            type="number"
+            min={0.4}
+            max={Math.max(0.5, sceneDuration - clip.startTime)}
+            step={0.5}
+            value={Number(clip.duration.toFixed(1))}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value);
+              if (!Number.isFinite(val)) return;
+              onUpdateTiming(clip.id, { duration: val });
+            }}
+            className="w-12 rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] font-mono text-slate-800 text-center"
+          />
+        </label>
+        {motionPath?.enabled && (
+          <button
+            type="button"
+            onClick={() => {
+              const nextStart = Math.max(0, Math.min(sceneDuration - 0.4, motionPath.startTime));
+              const nextDur = Math.max(0.4, Math.min(sceneDuration - nextStart, motionPath.duration));
+              onUpdate(clip.id, {
+                startTime: nextStart,
+                duration: nextDur,
+                repeatMode: 'loop',
+              });
+            }}
+            className="px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[9.5px] font-semibold cursor-pointer"
+            title="Hareketin başlangıç ve süresini Hareket Yolu ile eşitle"
+          >
+            Yola Eşitle
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() =>
+            onUpdate(clip.id, {
+              startTime: 0,
+              duration: sceneDuration,
+              repeatMode: 'loop',
+            })
+          }
+          className="ml-auto px-1.5 py-0.5 rounded border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 text-[9.5px] font-semibold cursor-pointer"
+          title="Hareketi tüm sahne süresine yay"
+        >
+          Sahneye Yay
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-[9px] pt-0.5">
+        <label className="space-y-0.5">
+          <span className="text-slate-500">Hız: {(clip.speed ?? 1).toFixed(1)}x</span>
+          <input
+            type="range"
+            min={0.4}
+            max={2.2}
+            step={0.1}
+            value={clip.speed ?? 1}
+            onChange={(e) => onUpdate(clip.id, { speed: Number(e.target.value) })}
+            className="w-full accent-indigo-600 cursor-pointer"
+          />
+        </label>
+        <label className="space-y-0.5">
+          <span className="text-slate-500">
+            Ağırlık: {Math.round((clip.weight ?? 1) * 100)}%
+          </span>
+          <input
+            type="range"
+            min={0.1}
+            max={1}
+            step={0.05}
+            value={clip.weight ?? 1}
+            onChange={(e) => onUpdate(clip.id, { weight: Number(e.target.value) })}
+            className="w-full accent-indigo-600 cursor-pointer"
+          />
+        </label>
+      </div>
+
+      <div className="pt-0.5 border-t border-slate-100">
+        <button
+          type="button"
+          onClick={() => setShowDetails((v) => !v)}
+          className="text-[9.5px] font-semibold text-slate-500 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+        >
+          {showDetails ? (
+            <ChevronUp className="w-3 h-3" />
+          ) : (
+            <ChevronDown className="w-3 h-3" />
+          )}
+          <span>Ayrıntılar</span>
+        </button>
+
+        {showDetails && (
+          <div className="mt-1.5 space-y-1.5 rounded bg-slate-50 border border-slate-200/80 p-1.5 text-[9.5px]">
+            <div className="grid grid-cols-3 gap-1.5">
+              <label className="space-y-0.5">
+                <span className="text-slate-500 block">Giriş (sn)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={Number((clip.blendInSec ?? 0.1).toFixed(2))}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (!Number.isFinite(val)) return;
+                    onUpdate(clip.id, { blendInSec: Math.max(0, Math.min(1, val)) });
+                  }}
+                  className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[9.5px] font-mono text-slate-800 text-center"
+                />
+              </label>
+              <label className="space-y-0.5">
+                <span className="text-slate-500 block">Çıkış (sn)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={Number((clip.blendOutSec ?? 0.1).toFixed(2))}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (!Number.isFinite(val)) return;
+                    onUpdate(clip.id, { blendOutSec: Math.max(0, Math.min(1, val)) });
+                  }}
+                  className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[9.5px] font-mono text-slate-800 text-center"
+                />
+              </label>
+              <label className="space-y-0.5">
+                <span className="text-slate-500 block">Öncelik</span>
+                <input
+                  type="number"
+                  min={-50}
+                  max={100}
+                  step={1}
+                  value={clip.priority ?? 10}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!Number.isFinite(val)) return;
+                    onUpdate(clip.id, { priority: Math.max(-50, Math.min(100, val)) });
+                  }}
+                  className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[9.5px] font-mono text-slate-800 text-center"
+                />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <label className="space-y-0.5">
+                <span className="text-slate-500 block">Vücut Bölgesi</span>
+                <select
+                  value={clip.mask}
+                  onChange={(e) =>
+                    onUpdate(clip.id, { mask: e.target.value as RigBodyMaskId })
+                  }
+                  className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[9.5px] text-slate-800"
+                >
+                  {(Object.keys(RIG_MASK_LABELS) as RigBodyMaskId[]).map((m) => (
+                    <option key={m} value={m}>
+                      {RIG_MASK_LABELS[m]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-0.5">
+                <span className="text-slate-500 block">Katman</span>
+                <select
+                  value={clip.stage}
+                  onChange={(e) =>
+                    onUpdate(clip.id, { stage: e.target.value as RigLayerStage })
+                  }
+                  className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[9.5px] text-slate-800"
+                >
+                  {(Object.keys(RIG_STAGE_LABELS) as RigLayerStage[]).map((st) => (
+                    <option key={st} value={st}>
+                      {RIG_STAGE_LABELS[st]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
@@ -274,8 +654,8 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
 
   const motionClips = selectedObject.timelineData?.motionClips ?? [];
   const conflicts = useMemo(
-    () => detectMotionClipConflicts(motionClips, rigProfile),
-    [motionClips, rigProfile]
+    () => detectObjectMotionConflicts(selectedObject, rigProfile),
+    [selectedObject, rigProfile]
   );
 
   const updateTimelineData = (updater: (prev: CharacterTimelineData) => CharacterTimelineData) => {
@@ -348,6 +728,30 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
     updateTimelineData((prev) => ({
       ...prev,
       motionClips: (prev.motionClips ?? []).filter((c) => c.id !== clipId),
+    }));
+  };
+
+  const handleMoveClip = (clipId: string, direction: 'up' | 'down') => {
+    updateTimelineData((prev) => ({
+      ...prev,
+      motionClips: moveMotionClip(prev.motionClips ?? [], clipId, direction),
+    }));
+  };
+
+  const handleAlignClipToPrevious = (clipId: string) => {
+    updateTimelineData((prev) => ({
+      ...prev,
+      motionClips: alignMotionClipToPreviousEnd(prev.motionClips ?? [], clipId, sceneDuration),
+    }));
+  };
+
+  const handleUpdateClipTiming = (
+    clipId: string,
+    patch: { startTime?: number; duration?: number }
+  ) => {
+    updateTimelineData((prev) => ({
+      ...prev,
+      motionClips: updateMotionClipTiming(prev.motionClips ?? [], clipId, patch, sceneDuration),
     }));
   };
 
@@ -902,117 +1306,21 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
                 hazır hareketleri karakter üzerinde canlı deneyip tek tıkla ekleyebilirsiniz.
               </div>
             ) : (
-              <div className="space-y-1.5 max-h-52 overflow-y-auto pr-0.5">
-                {motionClips.map((clip) => (
-                  <div
+              <div className="space-y-1.5 max-h-60 overflow-y-auto pr-0.5">
+                {motionClips.map((clip, clipIdx) => (
+                  <MotionClipCard
                     key={clip.id}
-                    className="rounded-lg border border-slate-200 bg-slate-50/70 p-2 space-y-1.5"
-                  >
-                    <div className="flex items-center justify-between gap-1.5">
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-semibold text-slate-800 truncate">
-                          {clip.name ?? clip.presetId}
-                        </div>
-                        <div className="text-[9.5px] text-slate-500">
-                          {CHANNEL_LABELS[clip.channelId]} • {clip.startTime.toFixed(1)}s –{' '}
-                          {(clip.startTime + clip.duration).toFixed(1)}s
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveClip(clip.id)}
-                        className="p-1 rounded text-rose-500 hover:bg-rose-50"
-                        title="Hareketi kaldır"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateClip(clip.id, { mirrored: !clip.mirrored })}
-                        className={`px-1.5 py-0.5 rounded border text-[9.5px] font-medium flex items-center gap-1 ${
-                          clip.mirrored
-                            ? 'bg-indigo-600 text-white border-indigo-600'
-                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        <FlipHorizontal2 className="w-2.5 h-2.5" />
-                        <span>Aynala</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleUpdateClip(clip.id, {
-                            repeatMode: clip.repeatMode === 'loop' ? 'once' : 'loop',
-                          })
-                        }
-                        className={`px-1.5 py-0.5 rounded border text-[9.5px] font-medium ${
-                          clip.repeatMode === 'loop'
-                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                            : 'bg-white text-slate-600 border-slate-200'
-                        }`}
-                      >
-                        {clip.repeatMode === 'loop' ? 'Döngü Açık' : 'Tek Sefer'}
-                      </button>
-                      <span className="ml-auto text-[9.5px] text-slate-500">
-                        Hız {(clip.speed ?? 1).toFixed(1)}x
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 pt-0.5 border-t border-slate-200/70">
-                      <label className="text-[9.5px] text-slate-500 flex items-center gap-1">
-                        <span>Süre (sn):</span>
-                        <input
-                          type="number"
-                          min={0.4}
-                          max={Math.max(0.5, sceneDuration - clip.startTime)}
-                          step={0.5}
-                          value={Number(clip.duration.toFixed(1))}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value);
-                            if (!Number.isFinite(val)) return;
-                            handleUpdateClip(clip.id, {
-                              duration: Math.max(0.4, Math.min(sceneDuration - clip.startTime, val)),
-                            });
-                          }}
-                          className="w-12 rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] font-mono text-slate-800 text-center"
-                        />
-                      </label>
-                      {selectedObject.motionPath?.enabled && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const mp = selectedObject.motionPath!;
-                            const nextStart = Math.max(0, Math.min(sceneDuration - 0.4, mp.startTime));
-                            const nextDur = Math.max(0.4, Math.min(sceneDuration - nextStart, mp.duration));
-                            handleUpdateClip(clip.id, {
-                              startTime: nextStart,
-                              duration: nextDur,
-                              repeatMode: 'loop',
-                            });
-                          }}
-                          className="px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[9.5px] font-semibold cursor-pointer"
-                          title="Hareketin başlangıç ve süresini Hareket Yolu ile eşitle"
-                        >
-                          Yola Eşitle
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleUpdateClip(clip.id, {
-                            startTime: 0,
-                            duration: sceneDuration,
-                            repeatMode: 'loop',
-                          })
-                        }
-                        className="ml-auto px-1.5 py-0.5 rounded border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 text-[9.5px] font-semibold cursor-pointer"
-                        title="Hareketi tüm sahne süresine yay"
-                      >
-                        Sahneye Yay
-                      </button>
-                    </div>
-                  </div>
+                    clip={clip}
+                    index={clipIdx}
+                    totalCount={motionClips.length}
+                    sceneDuration={sceneDuration}
+                    motionPath={selectedObject.motionPath}
+                    onUpdate={handleUpdateClip}
+                    onUpdateTiming={handleUpdateClipTiming}
+                    onMove={handleMoveClip}
+                    onAlignToPrevious={handleAlignClipToPrevious}
+                    onRemove={handleRemoveClip}
+                  />
                 ))}
               </div>
             )}
@@ -1372,87 +1680,20 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
                 Bu karakterde henüz hareket klibi yok. &ldquo;Hazır Hareketler&rdquo; sekmesinden ekleyin.
               </div>
             ) : (
-              motionClips.map((clip) => (
-                <div
+              motionClips.map((clip, clipIdx) => (
+                <MotionClipCard
                   key={clip.id}
-                  className={`rounded-lg border p-2 space-y-1.5 ${
-                    clip.enabled === false
-                      ? 'bg-slate-50 border-slate-200 opacity-65'
-                      : 'bg-white border-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-1">
-                    <label className="flex items-center gap-1.5 min-w-0 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={clip.enabled !== false}
-                        onChange={(e) => handleUpdateClip(clip.id, { enabled: e.target.checked })}
-                        className="accent-indigo-600"
-                      />
-                      <span className="text-[11px] font-bold text-slate-800 truncate">
-                        {clip.name}
-                      </span>
-                    </label>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateClip(clip.id, { mirrored: !clip.mirrored })}
-                        className={`p-1 rounded ${
-                          clip.mirrored
-                            ? 'bg-indigo-100 text-indigo-700'
-                            : 'text-slate-400 hover:bg-slate-100'
-                        }`}
-                        title="Sağ/Sol Aynala"
-                      >
-                        <FlipHorizontal2 className="w-3 h-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveClip(clip.id)}
-                        className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                        title="Hareketi Kaldır"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="text-[9px] text-slate-500">
-                    {CHANNEL_LABELS[clip.channelId]} • {clip.startTime.toFixed(1)}s –{' '}
-                    {(clip.startTime + clip.duration).toFixed(1)}s
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-[9px]">
-                    <label className="space-y-0.5">
-                      <span className="text-slate-500">
-                        Ağırlık: {Math.round((clip.weight ?? 1) * 100)}%
-                      </span>
-                      <input
-                        type="range"
-                        min={0.1}
-                        max={1}
-                        step={0.05}
-                        value={clip.weight ?? 1}
-                        onChange={(e) =>
-                          handleUpdateClip(clip.id, { weight: Number(e.target.value) })
-                        }
-                        className="w-full accent-indigo-600"
-                      />
-                    </label>
-                    <label className="space-y-0.5">
-                      <span className="text-slate-500">Hız: {(clip.speed ?? 1).toFixed(2)}x</span>
-                      <input
-                        type="range"
-                        min={0.4}
-                        max={2.2}
-                        step={0.1}
-                        value={clip.speed ?? 1}
-                        onChange={(e) =>
-                          handleUpdateClip(clip.id, { speed: Number(e.target.value) })
-                        }
-                        className="w-full accent-indigo-600"
-                      />
-                    </label>
-                  </div>
-                </div>
+                  clip={clip}
+                  index={clipIdx}
+                  totalCount={motionClips.length}
+                  sceneDuration={sceneDuration}
+                  motionPath={selectedObject.motionPath}
+                  onUpdate={handleUpdateClip}
+                  onUpdateTiming={handleUpdateClipTiming}
+                  onMove={handleMoveClip}
+                  onAlignToPrevious={handleAlignClipToPrevious}
+                  onRemove={handleRemoveClip}
+                />
               ))
             )}
           </div>

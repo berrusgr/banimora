@@ -1400,7 +1400,8 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                         obj.assetId
                       )
                     )
-                  : obj.category === 'characters' && obj.timelineData
+                  : obj.category === 'characters' &&
+                      (obj.timelineData || (obj.motionPath?.enabled && obj.motionPath.walkAlongPath))
                     ? evaluateCharacterTimelineForRig(
                         obj,
                         currentTime,
@@ -2058,7 +2059,10 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                               startTime: obj.motionPath?.startTime ?? 0,
                               duration: obj.motionPath?.duration ?? Math.max(1.5, scene.duration - 0.5),
                               curve: obj.motionPath?.curve ?? 'linear',
-                              autoFlipX: obj.motionPath?.autoFlipX ?? true,
+                              autoFlipX:
+                                obj.motionPath?.autoFlipX ??
+                                (obj.category === 'characters' ? false : true),
+                              walkAlongPath: obj.motionPath?.walkAlongPath ?? false,
                             },
                           },
                           true

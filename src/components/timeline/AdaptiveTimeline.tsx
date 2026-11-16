@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronUp, Film, Pause, Play } from 'lucide-react';
 import { formatStudioTime } from '../../utils/animationEngine';
-import type { AudioClip, CanvasObject, Scene } from '../../types/studio';
+import type { AudioClip, CanvasObject, CharacterMotionClip, Scene } from '../../types/studio';
 import type {
+  MotionClipDragMode,
+  MotionClipDragPreview,
   TimelineClipKind,
   TimelineClipRef,
   TimelineClipboardItem,
@@ -12,9 +14,11 @@ import type {
 } from './timelineTypes';
 import {
   applyDragPreviewToScene,
+  applyMotionClipDragToScene,
   clampZoom,
   collectSnapTargets,
   computeFitZoom,
+  computeMotionClipDragTiming,
   computeSnapTime,
   computeZoomPreservingPlayhead,
   DEFAULT_TIMELINE_FPS,
@@ -46,6 +50,8 @@ export interface AdaptiveTimelineProps {
   scene: Scene;
   selectedObjectId: string | null;
   onSelectObject: (id: string | null) => void;
+  selectedMotionClipId?: string | null;
+  onSelectMotionClip?: (characterId: string, clipId: string | null) => void;
   selectedPartId?: string | null;
   onSelectPart?: (partId: string | null) => void;
   isCameraSelected: boolean;
@@ -100,6 +106,8 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
   scene,
   selectedObjectId,
   onSelectObject,
+  selectedMotionClipId,
+  onSelectMotionClip,
   selectedCameraMovementId,
   onSelectCamera,
   onAddOrSelectCamera,
@@ -144,6 +152,7 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
   const [selectedClips, setSelectedClips] = useState<TimelineClipRef[]>([]);
   const [clipboard, setClipboard] = useState<TimelineClipboardItem[]>([]);
   const [dragPreview, setDragPreview] = useState<TimelineDragPreview | null>(null);
+  const [motionDragPreview, setMotionDragPreview] = useState<MotionClipDragPreview | null>(null);
   const [marquee, setMarquee] = useState<TimelineMarqueeRect | null>(null);
   const [viewportWidthPx, setViewportWidthPx] = useState(800);
 
@@ -199,7 +208,8 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
           (prevObj.startTime !== nextObj.startTime ||
             prevObj.duration !== nextObj.duration ||
             prevObj.hidden !== nextObj.hidden ||
-            prevObj.locked !== nextObj.locked)
+            prevObj.locked !== nextObj.locked ||
+            prevObj.timelineData !== nextObj.timelineData)
         ) {
           onUpdateObject(
             nextObj.id,
@@ -208,6 +218,7 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
               duration: nextObj.duration,
               hidden: nextObj.hidden,
               locked: nextObj.locked,
+              timelineData: nextObj.timelineData,
             },
             commitHistory
           );
@@ -431,6 +442,96 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
       snapEnabled,
       zoomPxPerSec,
     ]
+  );
+
+  // Motion Clip sürükleme / kırpma (rAF toplu önizleme, pointerup'ta tek commit, iptal korumalı)
+  const handleStartMotionClipDrag = useCallback(
+    (
+      e: React.PointerEvent,
+      charObj: CanvasObject,
+      clip: CharacterMotionClip,
+      mode: MotionClipDragMode
+    ) => {
+      e.stopPropagation();
+      onSelectMotionClip?.(charObj.id, clip.id);
+      onSelectObject(charObj.id);
+      if (clip.locked || charObj.locked) return;
+
+      const startClientX = e.clientX;
+      const origStart = clip.startTime;
+      const origDur = clip.duration;
+      let latestPreview: MotionClipDragPreview | null = null;
+      let cancelled = false;
+
+      const cleanup = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onCancel);
+        window.removeEventListener('keydown', onKeyDown);
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
+      };
+
+      const onMove = (ev: PointerEvent) => {
+        if (cancelled) return;
+        const dt = (ev.clientX - startClientX) / Math.max(1, zoomPxPerSec);
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current);
+        }
+        rafRef.current = requestAnimationFrame(() => {
+          if (cancelled) return;
+          const next = computeMotionClipDragTiming(
+            origStart,
+            origDur,
+            dt,
+            mode,
+            scene.duration
+          );
+          latestPreview = {
+            characterId: charObj.id,
+            clipId: clip.id,
+            mode,
+            startTime: next.startTime,
+            duration: next.duration,
+          };
+          setMotionDragPreview(latestPreview);
+        });
+      };
+
+      const onCancel = () => {
+        cancelled = true;
+        latestPreview = null;
+        cleanup();
+        setMotionDragPreview(null);
+      };
+
+      const onKeyDown = (ev: KeyboardEvent) => {
+        if (ev.key === 'Escape') {
+          onCancel();
+        }
+      };
+
+      const onUp = () => {
+        cleanup();
+        if (
+          !cancelled &&
+          latestPreview &&
+          (Math.abs(latestPreview.startTime - origStart) > 1e-4 ||
+            Math.abs(latestPreview.duration - origDur) > 1e-4)
+        ) {
+          commitSceneUpdate((s) => applyMotionClipDragToScene(s, latestPreview!), true);
+        }
+        setMotionDragPreview(null);
+      };
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointercancel', onCancel);
+      window.addEventListener('keydown', onKeyDown);
+    },
+    [commitSceneUpdate, onSelectMotionClip, onSelectObject, scene.duration, zoomPxPerSec]
   );
 
   // Kesme (Split)
@@ -905,6 +1006,10 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
           <AdvancedCharacterTrackList
             scene={scene}
             selectedObjectId={selectedObjectId}
+            selectedMotionClipId={selectedMotionClipId}
+            onSelectMotionClip={onSelectMotionClip}
+            motionDragPreview={motionDragPreview}
+            onStartMotionClipDrag={handleStartMotionClipDrag}
             currentTime={currentTime}
             fps={fps}
             scrollTime={scrollTime}

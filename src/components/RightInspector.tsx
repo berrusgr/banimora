@@ -186,6 +186,8 @@ interface RightInspectorProps {
   totalProjectDuration: number;
   maxAllowedSceneDuration: number;
   selectedObject: CanvasObject | null;
+  selectedMotionClipId?: string | null;
+  onSelectMotionClip?: (clipId: string | null) => void;
   selectedPartId?: string | null;
   onSelectPart?: (partId: string | null) => void;
   isCameraSelected: boolean;
@@ -500,6 +502,8 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
   onEditCharacterInStudio,
   stageMotionPreview,
   onStageMotionPreviewChange,
+  selectedMotionClipId,
+  onSelectMotionClip,
   collapsed = false,
   onToggleCollapsed,
   widthPx = 276,
@@ -521,6 +525,12 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
     setSelectedContinuitySceneIds([]);
     setContinuityFeedback(null);
   }, [selectedObject?.id, scene.id]);
+
+  useEffect(() => {
+    if (selectedMotionClipId) {
+      setActiveTab('animate');
+    }
+  }, [selectedMotionClipId]);
   const [collapsedSections, setCollapsedSections] = useState<
     Partial<Record<DesignSectionKey, boolean>>
   >({});
@@ -3299,6 +3309,8 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               selectedObject={selectedObject}
               sceneDuration={scene.duration}
               currentTime={currentTime}
+              selectedMotionClipId={selectedMotionClipId}
+              onSelectMotionClip={onSelectMotionClip}
               onUpdateObject={onUpdateObject}
               onEnsureMotionProp={onEnsureMotionProp}
               stageMotionPreview={stageMotionPreview}

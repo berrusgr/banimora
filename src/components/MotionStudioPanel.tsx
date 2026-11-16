@@ -95,6 +95,8 @@ export interface MotionStudioPanelProps {
   selectedObject: CanvasObject;
   sceneDuration: number;
   currentTime: number;
+  selectedMotionClipId?: string | null;
+  onSelectMotionClip?: (clipId: string | null) => void;
   onUpdateObject: (id: string, patch: Partial<CanvasObject>) => void;
   onEnsureMotionProp?: (characterId: string, presetId: string) => string | null;
   onOpenAdvancedTimeline?: () => void;
@@ -142,6 +144,8 @@ interface MotionClipCardProps {
   totalCount: number;
   sceneDuration: number;
   motionPath?: CanvasObject['motionPath'];
+  isSelected?: boolean;
+  onSelect?: (clipId: string) => void;
   onUpdate: (clipId: string, patch: Partial<CharacterMotionClip>) => void;
   onUpdateTiming: (clipId: string, patch: { startTime?: number; duration?: number }) => void;
   onMove: (clipId: string, direction: 'up' | 'down') => void;
@@ -155,6 +159,8 @@ const MotionClipCard: React.FC<MotionClipCardProps> = ({
   totalCount,
   sceneDuration,
   motionPath,
+  isSelected = false,
+  onSelect,
   onUpdate,
   onUpdateTiming,
   onMove,
@@ -165,9 +171,14 @@ const MotionClipCard: React.FC<MotionClipCardProps> = ({
 
   return (
     <div
-      className={`rounded-lg border p-2 space-y-1.5 ${
+      data-motion-clip-card-id={clip.id}
+      data-selected={isSelected ? 'true' : 'false'}
+      onClick={() => onSelect?.(clip.id)}
+      className={`rounded-lg border p-2 space-y-1.5 transition-colors ${
         clip.enabled === false
           ? 'bg-slate-50 border-slate-200 opacity-65'
+          : isSelected
+          ? 'bg-indigo-50/40 border-indigo-400 ring-2 ring-indigo-500/25'
           : 'bg-white border-slate-200'
       }`}
     >
@@ -491,6 +502,8 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
   selectedObject,
   sceneDuration,
   currentTime,
+  selectedMotionClipId,
+  onSelectMotionClip,
   onUpdateObject,
   onEnsureMotionProp,
   onOpenAdvancedTimeline,
@@ -529,7 +542,23 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
   const [editingPkgId, setEditingPkgId] = useState<string | null>(null);
   const [editingPkgName, setEditingPkgName] = useState('');
 
-  // Poz Kütüphanesi (Faz 4B-2)
+  useEffect(() => {
+    if (!selectedMotionClipId) return;
+    const hasClip = (selectedObject.timelineData?.motionClips ?? []).some(
+      (c) => c.id === selectedMotionClipId
+    );
+    if (!hasClip) return;
+    setStudioTab((prev) => (prev === 'library' || prev === 'combos' ? prev : 'library'));
+    const raf = requestAnimationFrame(() => {
+      const el = document.querySelector(
+        `[data-motion-clip-card-id="${selectedMotionClipId}"]`
+      ) as HTMLElement | null;
+      el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [selectedMotionClipId, selectedObject.id, selectedObject.timelineData?.motionClips]);
+
+  // Pose Kütüphanesi (Faz 4B-2)
   const [userPoses, setUserPoses] = useState<SavedCharacterPose[]>(() => loadSavedPoses());
   const [poseCategory, setPoseCategory] = useState<PoseCategoryId | 'all'>('all');
   const [poseNameInput, setPoseNameInput] = useState('');
@@ -729,6 +758,9 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
       ...prev,
       motionClips: (prev.motionClips ?? []).filter((c) => c.id !== clipId),
     }));
+    if (selectedMotionClipId === clipId) {
+      onSelectMotionClip?.(null);
+    }
   };
 
   const handleMoveClip = (clipId: string, direction: 'up' | 'down') => {
@@ -1315,6 +1347,8 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
                     totalCount={motionClips.length}
                     sceneDuration={sceneDuration}
                     motionPath={selectedObject.motionPath}
+                    isSelected={selectedMotionClipId === clip.id}
+                    onSelect={(id) => onSelectMotionClip?.(id)}
                     onUpdate={handleUpdateClip}
                     onUpdateTiming={handleUpdateClipTiming}
                     onMove={handleMoveClip}
@@ -1688,6 +1722,8 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
                   totalCount={motionClips.length}
                   sceneDuration={sceneDuration}
                   motionPath={selectedObject.motionPath}
+                  isSelected={selectedMotionClipId === clip.id}
+                  onSelect={(id) => onSelectMotionClip?.(id)}
                   onUpdate={handleUpdateClip}
                   onUpdateTiming={handleUpdateClipTiming}
                   onMove={handleMoveClip}

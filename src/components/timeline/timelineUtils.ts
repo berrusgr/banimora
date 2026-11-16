@@ -1,5 +1,10 @@
 import type { AudioClip, CanvasObject, Scene } from '../../types/studio.ts';
-import type { TimelineClipRef, TimelineDragPreview } from './timelineTypes.ts';
+import type {
+  MotionClipDragMode,
+  MotionClipDragPreview,
+  TimelineClipRef,
+  TimelineDragPreview,
+} from './timelineTypes.ts';
 
 export const MIN_TIMELINE_HEIGHT = 160;
 export const MAX_TIMELINE_HEIGHT = 520;
@@ -329,6 +334,69 @@ export function applyDragPreviewToScene(
           }),
         }
       : undefined,
+  };
+}
+
+const MIN_MOTION_CLIP_DURATION = 0.3;
+
+/**
+ * Bir `CharacterMotionClip` sürükleme/kırpma işlemi için geçici zamanlama hesaplar.
+ */
+export function computeMotionClipDragTiming(
+  origStart: number,
+  origDuration: number,
+  deltaSec: number,
+  mode: MotionClipDragMode,
+  sceneDuration: number
+): { startTime: number; duration: number } {
+  const safeSceneDur = Math.max(MIN_MOTION_CLIP_DURATION, sceneDuration);
+  const origEnd = origStart + origDuration;
+  let nextStart = origStart;
+  let nextDur = origDuration;
+
+  if (mode === 'move') {
+    const maxStart = Math.max(0, safeSceneDur - 0.2);
+    nextStart = Math.max(0, Math.min(maxStart, origStart + deltaSec));
+  } else if (mode === 'trim-left') {
+    const maxStart = Math.max(0, origEnd - MIN_MOTION_CLIP_DURATION);
+    nextStart = Math.max(0, Math.min(maxStart, origStart + deltaSec));
+    nextDur = Math.max(MIN_MOTION_CLIP_DURATION, origEnd - nextStart);
+  } else {
+    const maxDur = Math.max(MIN_MOTION_CLIP_DURATION, safeSceneDur - origStart);
+    nextDur = Math.max(MIN_MOTION_CLIP_DURATION, Math.min(maxDur, origDuration + deltaSec));
+  }
+
+  return {
+    startTime: Number(nextStart.toFixed(2)),
+    duration: Number(nextDur.toFixed(2)),
+  };
+}
+
+/**
+ * Tamamlanan `MotionClipDragPreview` sonucunu sahnedeki ilgili karakterin `motionClips` dizisine uygular.
+ */
+export function applyMotionClipDragToScene(
+  scene: Scene,
+  preview: MotionClipDragPreview
+): Scene {
+  return {
+    ...scene,
+    objects: scene.objects.map((obj) => {
+      if (obj.id !== preview.characterId) return obj;
+      const clips = obj.timelineData?.motionClips ?? [];
+      if (!clips.some((c) => c.id === preview.clipId)) return obj;
+      return {
+        ...obj,
+        timelineData: {
+          ...obj.timelineData,
+          motionClips: clips.map((c) =>
+            c.id === preview.clipId
+              ? { ...c, startTime: preview.startTime, duration: preview.duration }
+              : c
+          ),
+        },
+      };
+    }),
   };
 }
 

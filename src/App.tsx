@@ -157,6 +157,7 @@ export function App() {
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
+  const [selectedMotionClipId, setSelectedMotionClipId] = useState<string | null>(null);
   const [isCameraSelected, setIsCameraSelected] = useState(false);
 
   useEffect(() => {
@@ -1448,6 +1449,18 @@ export function App() {
 
   const selectedObject =
     activeScene.objects.find((o) => o.id === selectedObjectId) || null;
+
+  useEffect(() => {
+    if (!selectedMotionClipId) return;
+    const stillExists =
+      selectedObject?.category === 'characters' &&
+      (selectedObject.timelineData?.motionClips ?? []).some(
+        (c) => c.id === selectedMotionClipId
+      );
+    if (!stillExists) {
+      setSelectedMotionClipId(null);
+    }
+  }, [activeScene.id, selectedMotionClipId, selectedObject]);
 
   // Update Scene Camera State
   const handleUpdateSceneCamera = (camera: SceneCamera, commitHistory = true) => {
@@ -2849,9 +2862,9 @@ export function App() {
 
   if (entryState.view === 'loading') {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 text-slate-200 gap-3">
-        <div className="h-8 w-8 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
-        <p className="text-xs font-medium text-slate-400">Banimora yükleniyor...</p>
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 text-slate-700 gap-3">
+        <div className="h-8 w-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
+        <p className="text-xs font-medium text-slate-500">Banimora yükleniyor...</p>
       </div>
     );
   }
@@ -3398,6 +3411,8 @@ export function App() {
           totalProjectDuration={totalProjectDuration}
           maxAllowedSceneDuration={maxAllowedSceneDuration}
           selectedObject={selectedObject}
+          selectedMotionClipId={selectedMotionClipId}
+          onSelectMotionClip={setSelectedMotionClipId}
           selectedPartId={selectedPartId}
           onSelectPart={setSelectedPartId}
           isCameraSelected={isCameraSelected}
@@ -3503,6 +3518,7 @@ export function App() {
           setIsPlaying(false);
           setCurrentTime(0);
           setSelectedObjectId(null);
+          setSelectedMotionClipId(null);
           setIsCameraSelected(false);
           setTransitionTriggerKey((k) => k + 1);
         }}
@@ -3514,6 +3530,13 @@ export function App() {
         onFpsChange={setProjectFps}
         scene={activeScene}
         selectedObjectId={selectedObjectId}
+        selectedMotionClipId={selectedMotionClipId}
+        onSelectMotionClip={(charId, clipId) => {
+          setSelectedObjectId(charId);
+          setSelectedObjectIds([charId]);
+          setIsCameraSelected(false);
+          setSelectedMotionClipId(clipId);
+        }}
         selectedPartId={selectedPartId}
         onSelectPart={setSelectedPartId}
         onSelectObject={(id) => {

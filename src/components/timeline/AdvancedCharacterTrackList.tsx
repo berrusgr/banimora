@@ -22,7 +22,9 @@ import {
   captureEvaluatedChannelKeyframeValue,
   DEFAULT_CAPTURE_CHARACTER_CONFIG,
 } from '../../utils/timelineRigBridge';
+import type { MotionClipDragMode, MotionClipDragPreview } from './timelineTypes';
 import {
+  computeMotionClipDragTiming,
   DEFAULT_TIMELINE_FPS,
   pixelXToTime,
   snapTimeToFrame,
@@ -33,6 +35,15 @@ import { KeyframeInspectorBar } from './KeyframeInspectorBar';
 export interface AdvancedCharacterTrackListProps {
   scene: Scene;
   selectedObjectId: string | null;
+  selectedMotionClipId?: string | null;
+  onSelectMotionClip?: (characterId: string, clipId: string | null) => void;
+  motionDragPreview?: MotionClipDragPreview | null;
+  onStartMotionClipDrag?: (
+    e: React.PointerEvent,
+    charObj: CanvasObject,
+    clip: CharacterMotionClip,
+    mode: MotionClipDragMode
+  ) => void;
   currentTime: number;
   fps?: number;
   scrollTime: number;
@@ -66,6 +77,10 @@ const CHARACTER_CHANNELS: readonly ChannelDef[] = [
 export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProps> = ({
   scene,
   selectedObjectId,
+  selectedMotionClipId: controlledSelectedMotionClipId,
+  onSelectMotionClip,
+  motionDragPreview,
+  onStartMotionClipDrag,
   currentTime,
   fps = DEFAULT_TIMELINE_FPS,
   scrollTime,
@@ -77,8 +92,21 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
 }) => {
   const characters = scene.objects.filter((o) => o.category === 'characters');
   const [expandedChars, setExpandedChars] = useState<Record<string, boolean>>({});
-  const [selectedMotionClipId, setSelectedMotionClipId] = useState<string | null>(null);
+  const [internalSelectedMotionClipId, setInternalSelectedMotionClipId] = useState<string | null>(
+    null
+  );
   const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
+  const activeSelectedMotionClipId =
+    controlledSelectedMotionClipId !== undefined
+      ? controlledSelectedMotionClipId
+      : internalSelectedMotionClipId;
+
+  const selectMotionClip = (characterId: string, clipId: string | null) => {
+    if (controlledSelectedMotionClipId === undefined) {
+      setInternalSelectedMotionClipId(clipId);
+    }
+    onSelectMotionClip?.(characterId, clipId);
+  };
 
   if (characters.length === 0) {
     return (
@@ -101,51 +129,68 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
     e: React.PointerEvent,
     charObj: CanvasObject,
     clip: CharacterMotionClip,
-    mode: 'move' | 'trim-left' | 'trim-right'
+    mode: MotionClipDragMode
   ) => {
+    if (onStartMotionClipDrag) {
+      onStartMotionClipDrag(e, charObj, clip, mode);
+      return;
+    }
     e.stopPropagation();
-    setSelectedMotionClipId(clip.id);
+    selectMotionClip(charObj.id, clip.id);
     onSelectObject(charObj.id);
     if (clip.locked || charObj.locked) return;
 
     const startClientX = e.clientX;
     const origStart = clip.startTime;
     const origDur = clip.duration;
-    const origEnd = origStart + origDur;
+    let latestTiming: { startTime: number; duration: number } | null = null;
+    let cancelled = false;
+
+    const cleanup = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+    };
 
     const onMove = (ev: PointerEvent) => {
+      if (cancelled) return;
       const dt = (ev.clientX - startClientX) / Math.max(1, zoomPxPerSec);
-      let nextStart = origStart;
-      let nextDur = origDur;
-      if (mode === 'move') {
-        nextStart = Math.max(0, Math.min(scene.duration - 0.2, origStart + dt));
-      } else if (mode === 'trim-left') {
-        nextStart = Math.max(0, Math.min(origEnd - 0.3, origStart + dt));
-        nextDur = origEnd - nextStart;
-      } else {
-        nextDur = Math.max(0.3, Math.min(scene.duration - origStart, origDur + dt));
-      }
-      updateCharTimeline(
-        charObj,
-        (prev) => ({
-          ...prev,
-          motionClips: (prev.motionClips ?? []).map((c) =>
-            c.id === clip.id
-              ? { ...c, startTime: Number(nextStart.toFixed(2)), duration: Number(nextDur.toFixed(2)) }
-              : c
-          ),
-        }),
-        false
-      );
+      latestTiming = computeMotionClipDragTiming(origStart, origDur, dt, mode, scene.duration);
+    };
+
+    const onCancel = () => {
+      cancelled = true;
+      latestTiming = null;
+      cleanup();
     };
 
     const onUp = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
+      cleanup();
+      if (
+        !cancelled &&
+        latestTiming &&
+        (Math.abs(latestTiming.startTime - origStart) > 1e-4 ||
+          Math.abs(latestTiming.duration - origDur) > 1e-4)
+      ) {
+        const committed = latestTiming;
+        updateCharTimeline(
+          charObj,
+          (prev) => ({
+            ...prev,
+            motionClips: (prev.motionClips ?? []).map((c) =>
+              c.id === clip.id
+                ? { ...c, startTime: committed.startTime, duration: committed.duration }
+                : c
+            ),
+          }),
+          true
+        );
+      }
     };
 
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
   };
 
   const handleDropPresetOnChannel = (
@@ -490,14 +535,26 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
 
                       {/* Hareket Klipleri */}
                       {channelClips.map((clip) => {
-                        const leftPx = timeToPixelX(clip.startTime, scrollTime, zoomPxPerSec);
-                        const widthPx = Math.max(24, clip.duration * zoomPxPerSec);
+                        const isDraggingThis =
+                          motionDragPreview &&
+                          motionDragPreview.characterId === charObj.id &&
+                          motionDragPreview.clipId === clip.id;
+                        const displayStart = isDraggingThis
+                          ? motionDragPreview.startTime
+                          : clip.startTime;
+                        const displayDur = isDraggingThis
+                          ? motionDragPreview.duration
+                          : clip.duration;
+                        const leftPx = timeToPixelX(displayStart, scrollTime, zoomPxPerSec);
+                        const widthPx = Math.max(24, displayDur * zoomPxPerSec);
                         if (leftPx + widthPx < 0 || leftPx > viewportWidthPx) return null;
-                        const isSelected = selectedMotionClipId === clip.id;
+                        const isSelected = activeSelectedMotionClipId === clip.id;
 
                         return (
                           <div
                             key={clip.id}
+                            data-motion-clip-id={clip.id}
+                            data-selected={isSelected ? 'true' : 'false'}
                             onPointerDown={(e) => handleStartMotionClipDrag(e, charObj, clip, 'move')}
                             style={{
                               transform: `translate3d(${leftPx}px, 0, 0)`,
@@ -507,7 +564,7 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
                             className={`absolute top-1 bottom-1 rounded px-1.5 flex items-center justify-between text-[9px] font-semibold text-white cursor-grab select-none shadow-xs ${
                               clip.enabled === false ? 'opacity-40' : 'opacity-90'
                             } ${isSelected ? 'ring-2 ring-slate-900' : ''}`}
-                            title={`${clip.name} (${clip.startTime.toFixed(1)}s - ${(clip.startTime + clip.duration).toFixed(1)}s)`}
+                            title={`${clip.name} (${displayStart.toFixed(1)}s - ${(displayStart + displayDur).toFixed(1)}s)`}
                           >
                             {/* Sol kırpma */}
                             <div
@@ -551,6 +608,7 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
                                       ...prev,
                                       motionClips: [...(prev.motionClips ?? []), copy],
                                     }));
+                                    selectMotionClip(charObj.id, copy.id);
                                   }}
                                   className="p-0.5 rounded hover:bg-white/25"
                                   title="Çoğalt"
@@ -560,14 +618,17 @@ export const AdvancedCharacterTrackList: React.FC<AdvancedCharacterTrackListProp
                                 <button
                                   type="button"
                                   onPointerDown={(e) => e.stopPropagation()}
-                                  onClick={() =>
+                                  onClick={() => {
                                     updateCharTimeline(charObj, (prev) => ({
                                       ...prev,
                                       motionClips: (prev.motionClips ?? []).filter(
                                         (c) => c.id !== clip.id
                                       ),
-                                    }))
-                                  }
+                                    }));
+                                    if (activeSelectedMotionClipId === clip.id) {
+                                      selectMotionClip(charObj.id, null);
+                                    }
+                                  }}
                                   className="p-0.5 rounded hover:bg-rose-500"
                                   title="Sil"
                                 >

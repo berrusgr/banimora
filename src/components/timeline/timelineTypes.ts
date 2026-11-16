@@ -38,6 +38,17 @@ export interface TimelineClipboardItem {
   audioClip?: AudioClip;
 }
 
+export type MotionClipDragMode = 'move' | 'trim-left' | 'trim-right';
+
+export interface MotionClipDragPreview {
+  characterId: string;
+  clipId: string;
+  mode: MotionClipDragMode;
+  startTime: number;
+  duration: number;
+  snapGuideTime?: number | null;
+}
+
 export interface AdaptiveTimelineCallbacks {
   onSelectScene: (sceneId: string) => void;
   onAddScene: () => void;

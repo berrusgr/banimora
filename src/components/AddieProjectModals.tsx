@@ -88,25 +88,31 @@ export const ProjectModeSelectorModal: React.FC<ProjectModeSelectorModalProps> =
 
           <button
             type="button"
-            onClick={() => onSelectMode('addie')}
+            disabled
+            aria-disabled="true"
             data-testid="select-mode-addie"
-            className="group text-left p-5 rounded-xl border-2 border-slate-200 hover:border-violet-500 bg-white hover:bg-violet-50/30 transition-all cursor-pointer flex flex-col justify-between gap-4 shadow-2xs hover:shadow-md"
+            className="text-left p-5 rounded-xl border-2 border-slate-200 bg-slate-50/80 opacity-65 cursor-not-allowed flex flex-col justify-between gap-4"
           >
             <div className="space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center">
-                <GraduationCap className="w-5 h-5" />
+              <div className="flex items-center justify-between gap-2">
+                <div className="w-10 h-10 rounded-xl bg-slate-200/80 text-slate-500 flex items-center justify-center">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <span className="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                  Yakında
+                </span>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900 group-hover:text-violet-700 transition-colors">
-                  ADDIE ile Eğitsel İçerik
+                <h3 className="text-sm font-bold text-slate-700">
+                  Edimo ile Eğitsel İçerik
                 </h3>
-                <p className="mt-1.5 text-xs text-slate-600 leading-relaxed">
+                <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">
                   ADDIE öğretim tasarımı yaklaşımıyla öğrenme hedeflerine uygun, etkileşimli eğitim videoları hazırla.
                 </p>
               </div>
             </div>
-            <span className="inline-flex items-center text-xs font-semibold text-violet-700 group-hover:translate-x-0.5 transition-transform">
-              Eğitsel Proje Oluştur →
+            <span className="inline-flex items-center text-xs font-medium text-slate-500">
+              Şimdilik kullanılamıyor
             </span>
           </button>
         </div>

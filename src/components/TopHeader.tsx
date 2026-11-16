@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Sparkles,
   Play,
@@ -18,6 +18,9 @@ import {
   MonitorPlay,
   CloudUpload,
   Loader2,
+  Link2,
+  FileCode2,
+  Package,
 } from 'lucide-react';
 import type { ProjectMode } from '../types/studio';
 import type { CombinedSyncStatus } from '../utils/projectSyncCoordinator';
@@ -87,7 +90,32 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   authSlot,
 }) => {
   const jsonInputRef = useRef<HTMLInputElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   const [jsonStatus, setJsonStatus] = useState<'saved' | 'loaded' | null>(null);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isExportMenuOpen) return;
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (
+        exportMenuRef.current &&
+        !exportMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isExportMenuOpen]);
   const [isModeMenuOpen, setIsModeMenuOpen] = useState(false);
 
   const triggerStatus = (status: 'saved' | 'loaded') => {
@@ -426,14 +454,102 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 
         {authSlot}
 
-        <button
-          onClick={onOpenExport}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all cursor-pointer whitespace-nowrap"
-          title="Video Dışa Aktar (MP4)"
-        >
-          <Download className="w-3.5 h-3.5 shrink-0" />
-          <span>MP4</span>
-        </button>
+        <div ref={exportMenuRef} className="relative">
+          <button
+            type="button"
+            data-testid="export-menu-trigger"
+            aria-haspopup="menu"
+            aria-expanded={isExportMenuOpen}
+            onClick={() => setIsExportMenuOpen((prev) => !prev)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all cursor-pointer whitespace-nowrap"
+            title="Dışa Aktarma Seçenekleri"
+          >
+            <Download className="w-3.5 h-3.5 shrink-0" />
+            <span>Dışa Aktar</span>
+            <ChevronDown
+              className={`w-3.5 h-3.5 shrink-0 transition-transform ${
+                isExportMenuOpen ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+
+          {isExportMenuOpen && (
+            <div
+              role="menu"
+              data-testid="export-menu-dropdown"
+              className="absolute right-0 mt-1.5 w-64 rounded-xl border border-slate-200 bg-white shadow-xl py-1.5 z-50"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                data-testid="export-menu-mp4"
+                onClick={() => {
+                  setIsExportMenuOpen(false);
+                  onOpenExport();
+                }}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-800 hover:bg-indigo-50 hover:text-indigo-700 transition-colors cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <Download className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span>MP4 indir</span>
+                </span>
+              </button>
+
+              <div className="my-1 border-t border-slate-100" />
+
+              <button
+                type="button"
+                role="menuitem"
+                disabled
+                aria-disabled="true"
+                data-testid="export-menu-watch-link"
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium text-slate-400 cursor-not-allowed"
+              >
+                <span className="flex items-center gap-2">
+                  <Link2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>İzleme bağlantısı oluştur</span>
+                </span>
+                <span className="rounded-full bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 shrink-0">
+                  Yakında
+                </span>
+              </button>
+
+              <button
+                type="button"
+                role="menuitem"
+                disabled
+                aria-disabled="true"
+                data-testid="export-menu-html5"
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium text-slate-400 cursor-not-allowed"
+              >
+                <span className="flex items-center gap-2">
+                  <FileCode2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>HTML5 indir</span>
+                </span>
+                <span className="rounded-full bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 shrink-0">
+                  Yakında
+                </span>
+              </button>
+
+              <button
+                type="button"
+                role="menuitem"
+                disabled
+                aria-disabled="true"
+                data-testid="export-menu-scorm"
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium text-slate-400 cursor-not-allowed"
+              >
+                <span className="flex items-center gap-2">
+                  <Package className="w-3.5 h-3.5 shrink-0" />
+                  <span>SCORM indir</span>
+                </span>
+                <span className="rounded-full bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 shrink-0">
+                  Yakında
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

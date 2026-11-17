@@ -612,16 +612,17 @@ export const DEFAULT_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
   // 6. Aşçı
   'char-prof-chef': {
     bodyStyle: 'slender-pro',
+    useDicebearHead: true,
     genderAge: 'male',
     skinTone: '#f3c6a8',
-    faceShape: 'round',
-    hairStyle: 'executive-side',
+    faceShape: 'oval',
+    hairStyle: 'short-modern',
     hairColor: '#3b2419',
     eyeStyle: 'normal',
     eyeColor: '#4a2c1d',
     eyebrowStyle: 'natural',
-    noseStyle: 'button',
-    mouthStyle: 'full-beard',
+    noseStyle: 'straight',
+    mouthStyle: 'smile',
     lipColor: '#8c4a3e',
     accessory: 'chef-hat',
     outfitStyle: 'chef-apron',
@@ -3817,124 +3818,146 @@ export function renderAccessory(
       case 'police-cap':
         return (
           <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
-            {/* Crown: taller to cover hair, contained horizontally */}
+            {/* Crown: tall to envelop entire cranium and hair, contained horizontally */}
             <path
-              d="M72 44 C72 10 148 10 148 44 Z"
+              d="M71 42 C69 14 74 -6 110 -6 C146 -6 151 14 149 42 Z"
               fill="#1e3a8a"
               stroke="#0f172a"
               strokeWidth={ILLUSTRATION_TOKENS.stroke.detail}
             />
-            <path d="M82 26 Q104 14 130 23" fill="none" stroke="#60a5fa" strokeWidth="2.2" opacity="0.32" />
-            <rect x="73" y="38" width="74" height="4.5" rx="1.5" fill="#fbbf24" />
-            <path d="M73 42 Q110 45 147 42 L149 47 Q110 51 71 47 Z" fill="#0f172a" />
-            <path d="M84 44.5 Q105 46.5 126 44.5" fill="none" stroke="#475569" strokeWidth="1.2" opacity="0.65" />
-            <path d="M110 18 L116 24 L114 32 L106 32 L104 24 Z" fill="#fbbf24" stroke="#b45309" strokeWidth="0.9" />
-            <circle cx="110" cy="25.5" r="2.2" fill="#fef3c7" opacity="0.8" />
+            {/* Subtle top crown highlight */}
+            <path d="M82 18 Q110 4 138 18" fill="none" stroke="#60a5fa" strokeWidth="2.2" opacity="0.35" />
+            {/* Gold braided band */}
+            <rect x="73" y="39" width="74" height="4.5" rx="1.5" fill="#fbbf24" stroke="#d97706" strokeWidth="0.6" />
+            {/* Glossy curved peaked visor */}
+            <path d="M72 43 Q110 48 148 43 L150 48 Q110 53 70 48 Z" fill="#0f172a" />
+            <path d="M82 46 Q110 48.5 138 46" fill="none" stroke="#475569" strokeWidth="1.2" opacity="0.65" />
+            {/* Gold police shield emblem */}
+            <path d="M110 14 L117 21 L115 31 L105 31 L103 21 Z" fill="#fbbf24" stroke="#b45309" strokeWidth="0.9" />
+            <circle cx="110" cy="22.5" r="2.4" fill="#fef3c7" opacity="0.85" />
           </g>
         );
       case 'fire-helmet':
         return (
           <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
-            {/* Dome: taller to cover hair, compact brim */}
+            {/* Dome: deep protective shell covering cranium */}
             <path
-              d="M71 44 C71 8 149 8 149 44 L153 48 Q110 52 67 48 Z"
+              d="M71 43 C69 10 74 -10 110 -10 C146 -10 151 10 149 43 Z"
               fill="#dc2626"
               stroke="#7f1d1d"
               strokeWidth={ILLUSTRATION_TOKENS.stroke.regular}
             />
-            <path d="M107 11 Q110 8 113 11 L114 44 H106 Z" fill="#b91c1c" />
-            <path d="M81 26 Q95 14 106 14" fill="none" stroke="#fca5a5" strokeWidth="2.2" opacity="0.55" />
-            <path d="M72 43 Q110 47 148 43" fill="none" stroke="#fde047" strokeWidth="2.6" />
-            <path d="M102 20 L118 20 L116 34 Q110 37 104 34 Z" fill="#facc15" stroke="#a16207" strokeWidth="1.1" />
-            <circle cx="110" cy="27" r="2.5" fill="#fef9c3" />
+            {/* High center ridge comb */}
+            <path d="M107 -12 Q110 -14 113 -12 L114 43 H106 Z" fill="#b91c1c" />
+            <path d="M80 18 Q95 4 105 4" fill="none" stroke="#fca5a5" strokeWidth="2.2" opacity="0.55" />
+            {/* Reflective yellow safety band */}
+            <path d="M72 40 Q110 44 148 40" fill="none" stroke="#fde047" strokeWidth="2.6" />
+            {/* Front brass badge shield */}
+            <path d="M101 16 L119 16 L117 32 Q110 35 103 32 Z" fill="#facc15" stroke="#a16207" strokeWidth="1.1" />
+            <circle cx="110" cy="23.5" r="2.6" fill="#fef9c3" />
+            {/* Compact protective brim */}
+            <path d="M68 43 Q110 47 152 43 L154 48 Q110 53 66 48 Z" fill="#b91c1c" stroke="#7f1d1d" strokeWidth="1" />
           </g>
         );
       case 'chef-hat':
         return (
           <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
-            {/* Puffy toque silhouette: taller & deeper band covering hairline */}
+            {/* Grand toque puff: rises tall to -28, completely covering hair while width stays within 68..152 */}
             <path
-              d="M76 32 C68 26 70 8 88 8 C95 1 125 1 132 8 C150 8 152 26 144 32 Z"
+              d="M73 34 C65 14 66 -16 86 -24 C96 -30 124 -30 134 -24 C154 -16 155 14 147 34 Z"
               fill="#ffffff"
               stroke="#94a3b8"
               strokeWidth={ILLUSTRATION_TOKENS.stroke.detail}
             />
-            <path d="M95 12 Q94 22 96 31" fill="none" stroke="#cbd5e1" strokeWidth="1.3" />
-            <path d="M110 9 Q110 20 110 31" fill="none" stroke="#cbd5e1" strokeWidth="1.3" />
-            <path d="M125 12 Q126 22 124 31" fill="none" stroke="#cbd5e1" strokeWidth="1.3" />
-            <rect x="75" y="30" width="70" height="15" rx="3" fill="#f8fafc" stroke="#94a3b8" strokeWidth={ILLUSTRATION_TOKENS.stroke.detail} />
-            <line x1="78" y1="40" x2="142" y2="40" stroke="#e2e8f0" strokeWidth="2" />
+            {/* Soft vertical pleats */}
+            <path d="M92 -18 Q90 6 93 33" fill="none" stroke="#cbd5e1" strokeWidth="1.4" opacity="0.8" />
+            <path d="M101 -24 Q100 4 102 33" fill="none" stroke="#cbd5e1" strokeWidth="1.4" opacity="0.8" />
+            <path d="M110 -26 Q110 3 110 33" fill="none" stroke="#cbd5e1" strokeWidth="1.5" opacity="0.8" />
+            <path d="M119 -24 Q120 4 118 33" fill="none" stroke="#cbd5e1" strokeWidth="1.4" opacity="0.8" />
+            <path d="M128 -18 Q130 6 127 33" fill="none" stroke="#cbd5e1" strokeWidth="1.4" opacity="0.8" />
+            {/* Structured chef headband sitting snugly across forehead */}
+            <rect x="73" y="34" width="74" height="14" rx="2.5" fill="#f8fafc" stroke="#94a3b8" strokeWidth={ILLUSTRATION_TOKENS.stroke.detail} />
+            <line x1="75" y1="43" x2="145" y2="43" stroke="#e2e8f0" strokeWidth="1.8" />
           </g>
         );
       case 'artist-beret':
         return (
           <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
             <path
-              d="M72 44 C70 14 142 10 148 29 C150 40 132 45 108 44 C86 44 73 45 72 44 Z"
+              d="M71 44 C68 12 140 6 150 24 C153 38 136 45 110 44 C86 44 72 45 71 44 Z"
               fill="#e11d48"
               stroke="#881337"
               strokeWidth={ILLUSTRATION_TOKENS.stroke.detail}
             />
-            <path d="M84 25 Q110 16 135 23" fill="none" stroke="#fda4af" strokeWidth="2" opacity="0.45" />
-            <path d="M74 42 Q110 45 146 39" fill="none" stroke="#9f1239" strokeWidth="2.2" />
-            <path d="M110 15 L113 9" stroke="#881337" strokeWidth="2.8" />
+            <path d="M82 22 Q110 12 136 20" fill="none" stroke="#fda4af" strokeWidth="2" opacity="0.45" />
+            <path d="M73 42 Q110 45 147 40" fill="none" stroke="#9f1239" strokeWidth="2.2" />
+            <path d="M110 12 L112 5" stroke="#881337" strokeWidth="2.8" strokeLinecap="round" />
           </g>
         );
       case 'straw-hat':
         return (
           <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
-            <ellipse cx="110" cy="43" rx="40" ry="6.5" fill="#fde047" stroke="#a16207" strokeWidth={ILLUSTRATION_TOKENS.stroke.detail} />
-            <ellipse cx="110" cy="43" rx="33" ry="4" fill="#facc15" opacity="0.45" />
+            {/* Curved straw brim surrounding forehead */}
+            <ellipse cx="110" cy="45" rx="44" ry="7.5" fill="#fde047" stroke="#a16207" strokeWidth={ILLUSTRATION_TOKENS.stroke.detail} />
+            <ellipse cx="110" cy="45" rx="36" ry="4.5" fill="#facc15" opacity="0.45" />
+            {/* Tall woven crown completely covering hair to -8 */}
             <path
-              d="M74 42 C76 11 144 11 146 42 Q110 45 74 42 Z"
+              d="M72 43 C72 12 78 -8 110 -8 C142 -8 148 12 148 43 Q110 46 72 43 Z"
               fill="#facc15"
               stroke="#a16207"
               strokeWidth={ILLUSTRATION_TOKENS.stroke.detail}
             />
-            <path d="M84 24 Q110 18 136 24" fill="none" stroke="#fef08a" strokeWidth="1.6" opacity="0.7" />
-            <path d="M74 37 Q110 40 146 37 L146 42 Q110 45 74 42 Z" fill="#dc2626" />
+            <path d="M82 18 Q110 8 138 18" fill="none" stroke="#fef08a" strokeWidth="1.8" opacity="0.75" />
+            {/* Crimson fabric ribbon band */}
+            <path d="M72 38 Q110 42 148 38 L148 43 Q110 46 72 43 Z" fill="#dc2626" />
           </g>
         );
       case 'hard-hat':
         return (
           <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+            {/* Safety helmet protective dome reaching -8, fully enclosing cranium */}
             <path
-              d="M72 44 C72 9 148 9 148 44 Z"
+              d="M71 44 C69 10 76 -8 110 -8 C144 -8 151 10 149 44 Z"
               fill="#facc15"
               stroke="#a16207"
               strokeWidth={ILLUSTRATION_TOKENS.stroke.detail}
             />
-            <path d="M82 26 Q95 14 105 14" fill="none" stroke="#fef9c3" strokeWidth="2.4" opacity="0.7" />
-            <rect x="106" y="12" width="8" height="29" rx="2.5" fill="#fde047" stroke="#ca8a04" strokeWidth="1" />
-            <path d="M69 42 Q110 45 151 42 L151 46 Q110 49 69 46 Z" fill="#eab308" stroke="#a16207" strokeWidth="1.2" />
+            <path d="M80 18 Q95 4 105 4" fill="none" stroke="#fef9c3" strokeWidth="2.4" opacity="0.75" />
+            {/* Center reinforcing ridge */}
+            <rect x="106" y="-6" width="8" height="49" rx="3" fill="#fde047" stroke="#ca8a04" strokeWidth="1" />
+            {/* Contoured protective front rim */}
+            <path d="M68 44 Q110 48 152 44 L152 48 Q110 52 68 48 Z" fill="#eab308" stroke="#a16207" strokeWidth="1.2" />
           </g>
         );
       case 'astronaut-helmet':
         return (
           <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
-            <circle cx="110" cy="64" r="52" fill="rgba(186,230,253,0.20)" stroke="#cbd5e1" strokeWidth="5" />
-            <circle cx="110" cy="64" r="54.5" fill="none" stroke="#64748b" strokeWidth="1.4" opacity="0.7" />
-            <path d="M72 42 Q92 22 118 26" fill="none" stroke="#ffffff" strokeWidth="3" opacity="0.75" />
-            <path d="M70 54 Q73 46 79 40" fill="none" stroke="#ffffff" strokeWidth="1.6" opacity="0.55" />
+            <circle cx="110" cy="58" r="54" fill="rgba(186,230,253,0.20)" stroke="#cbd5e1" strokeWidth="5" />
+            <circle cx="110" cy="58" r="56.5" fill="none" stroke="#64748b" strokeWidth="1.4" opacity="0.7" />
+            <path d="M70 38 Q90 18 120 22" fill="none" stroke="#ffffff" strokeWidth="3" opacity="0.75" />
+            <path d="M68 50 Q71 42 77 36" fill="none" stroke="#ffffff" strokeWidth="1.6" opacity="0.55" />
             {/* Collar locking ring */}
-            <path d="M78 106 Q110 116 142 106" fill="none" stroke="#94a3b8" strokeWidth="5.5" />
-            <path d="M78 106 Q110 116 142 106" fill="none" stroke="#e2e8f0" strokeWidth="2.5" />
+            <path d="M76 106 Q110 117 144 106" fill="none" stroke="#94a3b8" strokeWidth="5.5" />
+            <path d="M76 106 Q110 117 144 106" fill="none" stroke="#e2e8f0" strokeWidth="2.5" />
           </g>
         );
       case 'pilot-cap':
         return (
           <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+            {/* Crown: reaches -6, fully covering hair and skull within 71..149 */}
             <path
-              d="M72 44 C72 10 148 10 148 44 Z"
-              fill="#0f172a"
+              d="M71 42 C69 14 74 -6 110 -6 C146 -6 151 14 149 42 Z"
+              fill="#0b1120"
               stroke="#020617"
               strokeWidth={ILLUSTRATION_TOKENS.stroke.detail}
             />
-            <path d="M84 25 Q108 15 132 23" fill="none" stroke="#334155" strokeWidth="2" opacity="0.65" />
-            <rect x="73" y="38" width="74" height="4" rx="1.5" fill="#fbbf24" />
-            <path d="M73 42 Q110 45 147 42 L149 47 Q110 51 71 47 Z" fill="#020617" />
-            {/* Gold wings emblem */}
-            <path d="M96 25 L106 28 L110 23 L114 28 L124 25 L118 31 H102 Z" fill="#fbbf24" stroke="#b45309" strokeWidth="0.8" />
+            <path d="M82 18 Q110 4 138 18" fill="none" stroke="#334155" strokeWidth="2" opacity="0.65" />
+            {/* Double gold braided strap */}
+            <rect x="73" y="39" width="74" height="4.5" rx="1.5" fill="#fbbf24" stroke="#d97706" strokeWidth="0.6" />
+            {/* Peaked black visor */}
+            <path d="M72 43 Q110 48 148 43 L150 48 Q110 53 70 48 Z" fill="#020617" />
+            {/* Gold airline captain wings badge */}
+            <path d="M94 20 L106 24 L110 17 L114 24 L126 20 L120 28 H100 Z" fill="#fbbf24" stroke="#b45309" strokeWidth="0.8" />
           </g>
         );
       case 'medical-mask':
@@ -3963,10 +3986,10 @@ export function renderAccessory(
       case 'cap-hat':
         return (
           <g>
-            {/* Classic flat-vector cap: taller crown & compact visor */}
-            <path d="M71 45 C71 10, 149 10, 149 45 Z" fill="#2563eb" />
-            <path d="M70 43 Q110 39 152 46 Q132 50 70 46 Z" fill="#1d4ed8" />
-            <circle cx="110" cy="13" r="3" fill="#1e40af" />
+            {/* Classic flat-vector cap: taller crown to -6 & compact visor */}
+            <path d="M71 44 C69 10, 76 -6, 110 -6 C144 -6, 151 10, 149 44 Z" fill="#2563eb" />
+            <path d="M70 43 Q110 39 152 46 Q130 51 68 47 Z" fill="#1d4ed8" />
+            <circle cx="110" cy="-6" r="3.2" fill="#1e40af" />
           </g>
         );
       case 'name-badge':
@@ -5576,7 +5599,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
 
   const uid = useId().replace(/:/g, '');
   const useDicebear = config.useDicebearHead !== false;
-  const isChefPrototypeHead = assetId === 'char-prof-chef' && config.useDicebearHead !== true;
+  const isChefPrototypeHead = false;
   const isSpeakingNow = Boolean(config.lipSyncEnabled);
 
   // Procedural random blinking (2.5s - 5.5s, 130ms duration, 20% double-blink)

@@ -322,7 +322,36 @@ export function resolveDicebearOptions(
   animTime = 0,
   forceBlink = false
 ) {
-  const topVal = config.dicebearTop || mapHairStyleToDicebearTop(config.hairStyle || 'short-modern');
+  const mappedTop = mapHairStyleToDicebearTop(config.hairStyle || 'short-modern');
+  let topVal = config.dicebearTop || mappedTop;
+
+  // When wearing a hat or helmet, tuck voluminous/waving hair so it fits neatly under the hat crown
+  const HAT_ACCESSORIES = new Set([
+    'police-cap',
+    'fire-helmet',
+    'chef-hat',
+    'artist-beret',
+    'straw-hat',
+    'hard-hat',
+    'pilot-cap',
+    'cap-hat',
+  ]);
+  if (config.accessory && HAT_ACCESSORIES.has(config.accessory) && !config.dicebearTop) {
+    const voluminousTops = new Set([
+      'shortWaved',
+      'shaggy',
+      'shaggyMullet',
+      'fro',
+      'froBand',
+      'bigHair',
+      'curvy',
+      'curly',
+    ]);
+    if (voluminousTops.has(topVal)) {
+      topVal = isFemaleCharacter(config) ? 'straight01' : 'shortFlat';
+    }
+  }
+
   const isBald = topVal === 'bald';
 
   const requestedEyeStyle = config.dicebearEyes || mapEyeStyleToDicebear(config.eyeStyle || 'round');

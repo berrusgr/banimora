@@ -90,14 +90,10 @@ test('Part 2: All 15 profession characters use classic template, idle pose, and 
   assert.ok(panelSource.includes("topic === 'Meslekler'"), 'LeftLibraryPanel must filter Meslekler');
   assert.ok(panelSource.includes('Meslekler (15)'), 'LeftLibraryPanel must render Meslekler (15) filter button');
 
-  // Verify Phase 1 Chef Prototype Head wiring & DiceBear fallback
+  // Verify Chef character uses unified DiceBear head like other characters
   assert.ok(
-    rigSource.includes("const isChefPrototypeHead = assetId === 'char-prof-chef' && config.useDicebearHead !== true;"),
-    'char-prof-chef prototype head must be gated to char-prof-chef and allow DiceBear fallback when useDicebearHead === true'
-  );
-  assert.ok(
-    rigSource.includes('isChefPrototypeHead ? (') && rigSource.includes('renderChefPrototypeHead()'),
-    'renderChefPrototypeHead must be wired inside data-canonical-bone="head"'
+    rigSource.includes("'char-prof-chef': {") && rigSource.includes("accessory: 'chef-hat'"),
+    'char-prof-chef must be defined with unified rig and chef-hat accessory'
   );
 });
 

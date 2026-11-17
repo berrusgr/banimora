@@ -3,6 +3,7 @@ import {
   ArrowRight,
   Clock,
   FolderOpen,
+  GraduationCap,
   Layers,
   LogIn,
   Pause,
@@ -252,6 +253,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </span>
             </div>
 
+            {/* ADDIE Modeli ile Eğitsel İçerik — Yakında Vurgu Kartı */}
+            <div className="mt-4 rounded-xl border border-[#e06d53]/35 bg-gradient-to-r from-[#fdf6f4] via-white to-violet-50/90 p-3 shadow-2xs">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#e06d53] to-violet-600 text-white shadow-2xs">
+                    <GraduationCap className="h-4 w-4" />
+                  </span>
+                  <span className="truncate text-xs font-extrabold text-slate-900 sm:text-[13px]">
+                    ADDIE Modeli ile Eğitsel İçerik Tasarımı
+                  </span>
+                </div>
+                <span className="shrink-0 rounded-full bg-gradient-to-r from-[#e06d53] to-violet-600 px-2.5 py-0.5 text-[10px] font-extrabold tracking-wider text-white uppercase shadow-2xs">
+                  Yakında
+                </span>
+              </div>
+              <p className="mt-1.5 text-[11.5px] leading-relaxed text-slate-600">
+                <strong>Analiz • Tasarım • Geliştirme • Uygulama • Değerlendirme</strong>{' '}
+                adımlarıyla kazanım odaklı, pedagojik rehberli ders kurgusu çok yakında sizlerle.
+              </p>
+            </div>
+
             {/* Öncelikli 3 Eylem Butonu (Mobil Tam Genişlik, Masaüstü Yan Yana) */}
             <div className="mt-7 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
               <button
@@ -304,6 +326,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  <span className="hidden items-center gap-1 rounded-md bg-gradient-to-r from-[#e06d53]/25 to-violet-500/25 px-2 py-0.5 text-[10px] font-bold text-[#ffb4a2] border border-[#e06d53]/40 sm:inline-flex">
+                    <GraduationCap className="h-3 w-3 text-[#e06d53]" />
+                    <span>ADDIE Modu • Yakında</span>
+                  </span>
                   <span className="hidden rounded-md bg-violet-500/20 px-2 py-0.5 text-[10px] font-semibold text-violet-200 border border-violet-400/30 sm:inline-block">
                     Sahne 1 / 3
                   </span>

@@ -560,14 +560,6 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
                   );
                 })}
               </div>
-
-              <button
-                onClick={() => objectFileInputRef.current?.click()}
-                className="w-full py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Bilgisayardan Nesne / Görsel Yükle</span>
-              </button>
             </div>
           )}
 
@@ -758,8 +750,19 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
             activeCategory === 'elements' ||
             activeCategory === 'charts' ||
             activeCategory === 'text') && (
-            <div className="grid grid-cols-2 gap-2.5">
-              {filteredItems.map((item, idx) => (
+            <div
+              className={
+                activeCategory === 'text'
+                  ? 'grid grid-cols-1 gap-2'
+                  : 'grid grid-cols-2 gap-2.5'
+              }
+            >
+              {filteredItems.map((item, idx) => {
+                const isTextItem = item.category === 'text';
+                const textBaseW = Math.max(180, item.defaultWidth || 260);
+                const textBaseH = Math.max(60, item.defaultHeight || 120);
+                const textScale = Math.min(186 / textBaseW, 66 / textBaseH);
+                return (
                 <div
                   key={item.customKey || `${item.id}-${idx}`}
                   draggable
@@ -767,34 +770,59 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
                   onClick={() => onAddAsset(item)}
                   className="group relative bg-slate-50 hover:bg-indigo-50/40 border border-slate-200 hover:border-indigo-400 rounded-xl p-2 flex flex-col items-center cursor-grab active:cursor-grabbing transition-all"
                 >
-                  <div className="w-full h-24 rounded-lg bg-white border border-slate-200/80 flex items-center justify-center p-1 mb-1.5 overflow-hidden relative shadow-2xs">
-                    <div className="w-full h-full flex items-center justify-center pointer-events-none">
-                      <VectorAssetRenderer
-                        assetId={item.id}
-                        color={item.defaultColor}
-                        secondaryColor={item.defaultSecondaryColor}
-                        characterConfig={
-                          item.category === 'characters' && item.characterConfig
-                            ? {
-                                ...item.characterConfig,
-                                pose: 'idle',
-                                rigMode: 'preset',
-                                leftHandGesture: 'open',
-                                rightHandGesture: 'open',
-                                customJointAngles: undefined,
-                                targetJointAngles: undefined,
-                              }
-                            : item.characterConfig
-                        }
-                        animTime={0}
-                        imageUrl={item.imageUrl}
-                        chartData={item.chartData}
-                        chartPalette={item.chartPalette}
-                        tableData={item.tableData}
-                        text={item.defaultText ? item.defaultText.slice(0, 18) : 'Aa'}
-                        fontSize={11}
-                      />
-                    </div>
+                  <div
+                    className={`w-full ${
+                      isTextItem ? 'h-20' : 'h-24'
+                    } rounded-lg bg-white border border-slate-200/80 flex items-center justify-center p-1 mb-1.5 overflow-hidden relative shadow-2xs`}
+                  >
+                    {isTextItem ? (
+                      <div
+                        className="pointer-events-none flex items-center justify-center shrink-0"
+                        style={{
+                          width: `${textBaseW}px`,
+                          height: `${textBaseH}px`,
+                          transform: `scale(${textScale.toFixed(3)})`,
+                          transformOrigin: 'center center',
+                        }}
+                      >
+                        <VectorAssetRenderer
+                          assetId={item.id}
+                          color={item.defaultColor}
+                          secondaryColor={item.defaultSecondaryColor}
+                          animTime={0}
+                          text={item.defaultText || 'Örnek Metin'}
+                          fontSize={item.defaultFontSize || 15}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center pointer-events-none">
+                        <VectorAssetRenderer
+                          assetId={item.id}
+                          color={item.defaultColor}
+                          secondaryColor={item.defaultSecondaryColor}
+                          characterConfig={
+                            item.category === 'characters' && item.characterConfig
+                              ? {
+                                  ...item.characterConfig,
+                                  pose: 'idle',
+                                  rigMode: 'preset',
+                                  leftHandGesture: 'open',
+                                  rightHandGesture: 'open',
+                                  customJointAngles: undefined,
+                                  targetJointAngles: undefined,
+                                }
+                              : item.characterConfig
+                          }
+                          animTime={0}
+                          imageUrl={item.imageUrl}
+                          chartData={item.chartData}
+                          chartPalette={item.chartPalette}
+                          tableData={item.tableData}
+                          text={item.defaultText ? item.defaultText.slice(0, 18) : 'Aa'}
+                          fontSize={11}
+                        />
+                      </div>
+                    )}
 
                     {/* Top-left Favorite Star Button */}
                     <button
@@ -846,7 +874,8 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
                     {item.name}
                   </span>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

@@ -295,14 +295,19 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                           onChangeProjectMode('addie');
                         }
                       }}
-                      className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 cursor-pointer ${
+                      className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between gap-2 hover:bg-slate-50 cursor-pointer ${
                         projectMode === 'addie'
                           ? 'font-bold text-violet-700 bg-violet-50/50'
                           : 'text-slate-700'
                       }`}
                     >
-                      <span>ADDIE ile Eğitsel İçerik</span>
-                      {projectMode === 'addie' && <Check className="w-3.5 h-3.5" />}
+                      <span className="flex items-center gap-1.5">
+                        <span>ADDIE ile Eğitsel İçerik</span>
+                        <span className="rounded-full bg-gradient-to-r from-[#e06d53] to-violet-600 px-1.5 py-0.2 text-[9px] font-extrabold uppercase tracking-wider text-white">
+                          Yakında
+                        </span>
+                      </span>
+                      {projectMode === 'addie' && <Check className="w-3.5 h-3.5 shrink-0" />}
                     </button>
                   </div>
                 </>

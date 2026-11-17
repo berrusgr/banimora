@@ -24,7 +24,7 @@ import {
   type MotionConflictInfo,
 } from '../rig/motionRetarget.ts';
 import { solveTwoBoneArmIK } from '../rig/rigKinematics.ts';
-import { evaluateCharacterRigForRenderer } from '../rig/rigEvaluator.ts';
+import { evaluateCharacterRigForRenderer, RIG_BODY_MASK_BONES } from '../rig/rigEvaluator.ts';
 
 export interface TimelineRootTransformOverride {
   x?: number;
@@ -36,6 +36,10 @@ export interface TimelineRootTransformOverride {
 
 export interface TimelineRigBridgeResult {
   hasTimelineData: boolean;
+  /** Karakterin timeline'da en az bir hareket klibine sahip olup olmadığı */
+  hasMotionClips?: boolean;
+  /** Değerlendirilen anda aktif (bastırılmamış) bir hareket klibi olup olmadığı */
+  hasActiveMotionClip?: boolean;
   /** L1 / L2 katmanları (`evaluateCharacterRig` ile doğrudan tüketilir) */
   layers: RigAnimationLayerInput[];
   /** Keyframe kaynaklı kanonik kemik override'ları (L4) */
@@ -248,6 +252,10 @@ function filterBonesByProfile(
 /**
  * Zaman çizelgesindeki hazır hareket kliplerini mevcut L0–L5 `RigAnimationLayerInput[]`
  * katmanlarına dönüştürür. Partial rig profillerde desteklenmeyen kemikler filtrelenir.
+ *
+ * Öncelik kuralı: Klipler timeline'daki yukarıdan aşağıya sırasına göre değerlendirilir.
+ * Aynı kemikleri kontrol eden bir üstteki klip aktif olduğu sürece alttaki klip
+ * başlamaz (bastırılır); üstteki klip bittiği anda alttaki klip devreye girer.
  */
 export function evaluateMotionClipsToRigLayers(
   motionClips: readonly CharacterMotionClip[] | undefined,
@@ -258,20 +266,37 @@ export function evaluateMotionClipsToRigLayers(
     return [];
   }
 
-  const ordered = [...motionClips].sort((a, b) =>
-    a.startTime !== b.startTime ? a.startTime - b.startTime : a.id.localeCompare(b.id)
-  );
-
   const layers: RigAnimationLayerInput[] = [];
+  const activeBoneOwnersByStage: Array<{
+    stage: CharacterMotionClip['stage'];
+    bones: Set<CanonicalBoneId>;
+  }> = [];
 
-  for (let idx = 0; idx < ordered.length; idx++) {
-    const clip = ordered[idx];
+  for (let idx = 0; idx < motionClips.length; idx++) {
+    const clip = motionClips[idx];
     if (clip.enabled === false) continue;
     const end = clip.startTime + Math.max(0, clip.duration);
     if (currentTime < clip.startTime || currentTime > end) continue;
 
     const preset = getMotionPresetById(clip.presetId);
     if (!preset) continue;
+
+    const effectiveMask = mirrorMask(clip.mask ?? preset.mask, clip.mirrored);
+    const clipStage = clip.stage ?? preset.stage;
+    const maskBones = RIG_BODY_MASK_BONES[effectiveMask] ?? [];
+
+    // Üstteki (daha küçük indexli) ve aynı stage'de ortak kemik paylaşan bir klip aktifse,
+    // üstteki klip bitene kadar bu alttaki klibi başlatma (bastır).
+    const isSuppressedByUpperClip =
+      clipStage !== 'L1_LOCOMOTION' &&
+      activeBoneOwnersByStage.some(
+        (owner) =>
+          owner.stage === clipStage && maskBones.some((bone) => owner.bones.has(bone))
+      );
+
+    if (isSuppressedByUpperClip) {
+      continue;
+    }
 
     const localTime = currentTime - clip.startTime;
     const weight = computeClipEnvelopeWeight(clip, localTime);
@@ -289,13 +314,20 @@ export function evaluateMotionClipsToRigLayers(
       continue;
     }
 
+    if (clipStage !== 'L1_LOCOMOTION') {
+      activeBoneOwnersByStage.push({
+        stage: clipStage,
+        bones: new Set<CanonicalBoneId>(maskBones),
+      });
+    }
+
     layers.push({
       id: `timeline-clip:${clip.id}`,
-      stage: clip.stage ?? preset.stage,
-      mask: mirrorMask(clip.mask ?? preset.mask, clip.mirrored),
+      stage: clipStage,
+      mask: effectiveMask,
       enabled: true,
       weight,
-      priority: clip.priority ?? 10 + idx,
+      priority: clip.priority ?? Math.max(10, 1000 - idx),
       lockProcedural: preset.lockProcedural,
       boneAngles: retargeted.boneAngles,
       bodyBobY: retargeted.bodyBobY,
@@ -328,8 +360,8 @@ export function computeMotionPathWalkSpeed(
   if (distPx <= 1) return userSpeed;
 
   const nominalPxPerSec = 80;
-  const pathRatio = Math.max(0.45, Math.min(2.2, distPx / mpDur / nominalPxPerSec));
-  return Math.max(0.4, Math.min(2.5, userSpeed * (0.4 + 0.6 * pathRatio)));
+  const pathRatio = Math.max(0.6, Math.min(2.2, distPx / mpDur / nominalPxPerSec));
+  return Math.max(0.85, Math.min(2.5, userSpeed * (0.4 + 0.6 * pathRatio)));
 }
 
 export function buildMotionPathWalkClip(
@@ -342,7 +374,7 @@ export function buildMotionPathWalkClip(
   const objStart = obj.startTime ?? 0;
   const mpStart = objStart + Math.max(0, mp.startTime || 0);
   const mpDur = Math.max(0.2, mp.duration || 3.0);
-  const blend = Math.min(0.2, mpDur * 0.15);
+  const blend = Math.min(0.15, mpDur * 0.1);
 
   return {
     id: 'motion-path-walk',
@@ -450,12 +482,11 @@ export function evaluateCharacterTimelineForRig(
   let leftArmIKWeight: number | undefined;
   let rightArmIKWeight: number | undefined;
 
-  // Aktif duygu/ifade ipucu olan kliplerden ifade override'ı (keyframe daha yüksek öncelikli)
+  // Aktif (bastırılmamış) duygu/ifade ipucu olan kliplerden ifade override'ı (keyframe daha yüksek öncelikli)
   if (td?.motionClips) {
+    const activeLayerIds = new Set(layers.map((l) => l.id));
     const activeExprClip = td.motionClips.find((clip) => {
-      if (clip.enabled === false) return false;
-      const end = clip.startTime + Math.max(0, clip.duration);
-      if (currentTime < clip.startTime || currentTime > end) return false;
+      if (!activeLayerIds.has(`timeline-clip:${clip.id}`)) return false;
       const preset = getMotionPresetById(clip.presetId);
       return Boolean(preset?.expressionHint);
     });
@@ -534,6 +565,8 @@ export function evaluateCharacterTimelineForRig(
 
   return {
     hasTimelineData: true,
+    hasMotionClips: (td?.motionClips?.length ?? 0) > 0,
+    hasActiveMotionClip: layers.some((l) => l.stage !== 'L1_LOCOMOTION'),
     layers,
     userCanonicalBoneOverrides,
     userBodyBobYOverride,

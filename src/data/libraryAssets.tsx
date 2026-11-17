@@ -1519,6 +1519,10 @@ export const VectorAssetRenderer: React.FC<VectorRendererProps> = ({
       const syncedConfig: CharacterConfig = {
         ...resolvedCharConfig,
         topColor: color || resolvedCharConfig.topColor,
+        pose:
+          timelineRig?.hasMotionClips && !timelineRig.hasActiveMotionClip
+            ? 'idle'
+            : resolvedCharConfig.pose,
         expression: timelineRig?.expressionOverride ?? resolvedCharConfig.expression,
         headDirection: timelineRig?.lookDirectionOverride ?? resolvedCharConfig.headDirection,
         lipSyncEnabled:

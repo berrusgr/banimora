@@ -731,10 +731,18 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
       requiredSocket: preset.requiredSocket,
     };
 
-    updateTimelineData((prev) => ({
-      ...prev,
-      motionClips: [...(prev.motionClips ?? []), newClip],
-    }));
+    const prev: CharacterTimelineData = selectedObject.timelineData ?? {};
+    const resetPosePatch =
+      selectedObject.characterConfig && selectedObject.characterConfig.pose !== 'idle'
+        ? { characterConfig: { ...selectedObject.characterConfig, pose: 'idle' as const } }
+        : {};
+    onUpdateObject(selectedObject.id, {
+      ...resetPosePatch,
+      timelineData: {
+        ...prev,
+        motionClips: [...(prev.motionClips ?? []), newClip],
+      },
+    });
     const attachedPropName = onEnsureMotionProp?.(selectedObject.id, preset.id) ?? null;
     setRecentIds(recordRecentPresetId(preset.id));
     setMotionFeedback(
@@ -1298,30 +1306,6 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
                 </button>
               </div>
 
-              {conflicts.length > 0 && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 space-y-1 text-[10.5px] text-amber-900">
-                  <div className="font-semibold flex items-center gap-1 text-amber-800">
-                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                    <span>Çakışan Hareket Uyarısı</span>
-                  </div>
-                  {conflicts.map((c, idx) => {
-                    const a = motionClips.find((m) => m.id === c.clipAId);
-                    const b = motionClips.find((m) => m.id === c.clipBId);
-                    const regionLabel =
-                      a?.channelId && CHANNEL_LABELS[a.channelId]
-                        ? CHANNEL_LABELS[a.channelId]
-                        : 'aynı vücut bölgesi';
-                    return (
-                      <div key={idx} className="leading-snug text-amber-800">
-                        • <strong>{a?.name ?? c.clipAName}</strong> ve{' '}
-                        <strong>{b?.name ?? c.clipBName}</strong> aynı bölgeyi ({regionLabel})
-                        kontrol ediyor. Birlikte kullanılamayabilir veya biri diğerini baskılayabilir.
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
               <div className="space-y-1.5 max-h-60 overflow-y-auto pr-0.5">
                 {motionClips.map((clip, clipIdx) => (
                   <MotionClipCard
@@ -1638,20 +1622,6 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
               />
             </label>
           </div>
-
-          {/* Çakışma Uyarıları */}
-          {conflicts.length > 0 && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 space-y-1">
-              <div className="text-[10px] font-bold text-amber-800 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> Eşzamanlı Kemik Çakışması ({conflicts.length})
-              </div>
-              {conflicts.map((cf) => (
-                <div key={`${cf.clipAId}-${cf.clipBId}`} className="text-[10px] text-amber-700">
-                  • <b>{cf.clipAName}</b> ↔ <b>{cf.clipBName}</b>: {cf.reason}
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* Karakterin Aktif Hareketleri */}
           <div className="space-y-1.5 max-h-52 overflow-y-auto pr-0.5">

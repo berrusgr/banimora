@@ -3277,7 +3277,9 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                       autoFlipX:
                         selectedObject.motionPath?.autoFlipX ??
                         (selectedObject.category === 'characters' ? false : true),
-                      walkAlongPath: selectedObject.motionPath?.walkAlongPath ?? false,
+                      walkAlongPath:
+                        selectedObject.motionPath?.walkAlongPath ??
+                        (selectedObject.category === 'characters'),
                     },
                   });
                 }}
@@ -3796,7 +3798,9 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                       autoFlipX:
                         selectedObject.motionPath?.autoFlipX ??
                         (selectedObject.category === 'characters' ? false : true),
-                      walkAlongPath: selectedObject.motionPath?.walkAlongPath ?? false,
+                      walkAlongPath:
+                        selectedObject.motionPath?.walkAlongPath ??
+                        (selectedObject.category === 'characters'),
                     },
                   });
                 }}
@@ -3851,12 +3855,13 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                           Math.max(1.5, scene.duration - 0.5),
                         curve: selectedObject.motionPath?.curve ?? 'linear',
                         autoFlipX: true,
+                        walkAlongPath: selectedObject.category === 'characters',
                       },
                       ...(isArticulatedCharacter && resolvedCharConfig
                         ? {
                           characterConfig: {
                             ...resolvedCharConfig,
-                            pose: preset.pose,
+                            pose: 'idle',
                             headDirection:
                               preset.label === 'Masaya / Merkeze'
                                 ? 'center'

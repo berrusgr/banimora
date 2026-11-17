@@ -1947,7 +1947,9 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                               autoFlipX:
                                 obj.motionPath?.autoFlipX ??
                                 (obj.category === 'characters' ? false : true),
-                              walkAlongPath: obj.motionPath?.walkAlongPath ?? false,
+                              walkAlongPath:
+                                obj.motionPath?.walkAlongPath ??
+                                (obj.category === 'characters'),
                             },
                           },
                           true

@@ -146,7 +146,7 @@ const DEMO_VOICEOVER_CLIPS: AudioClip[] = [
 export function createDemoProjectSnapshot(): DemoProjectSnapshot {
   const baseSinanConfig = {
     ...DEFAULT_CHARACTER_CONFIGS['char-pro-sinan'],
-    pose: 'explain' as const,
+    pose: 'idle' as const,
     expression: 'happy' as const,
     headDirection: 'right' as const,
     lipSyncEnabled: true,

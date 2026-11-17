@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   ChevronDown,
   ChevronRight,
+  GripVertical,
   Image,
   Mic,
   Music,
@@ -50,6 +51,12 @@ interface SimpleTrackListProps {
   onToggleObjectLock: (id: string) => void;
   onToggleGroupMeta: (groupKey: string, field: 'hidden' | 'locked') => void;
   onAddOrSelectCamera: () => void;
+  onReorderObject?: (draggedId: string, targetId: string) => void;
+  onReorderMotionClip?: (
+    characterId: string,
+    draggedClipId: string,
+    targetClipId: string
+  ) => void;
 }
 
 const GROUP_DEFS: Array<{
@@ -89,10 +96,19 @@ export const SimpleTrackList: React.FC<SimpleTrackListProps> = ({
   onToggleObjectHide,
   onToggleObjectLock,
   onAddOrSelectCamera,
+  onReorderObject,
+  onReorderMotionClip,
 }) => {
   const [collapsedGroups, setCollapsedGroups] = useState<Partial<Record<SimpleTrackGroupId, boolean>>>(
     {}
   );
+  const [verticalDrag, setVerticalDrag] = useState<{
+    kind: 'object' | 'motion-clip';
+    scopeId: string;
+    draggedId: string;
+    targetId: string | null;
+    position: 'above' | 'below';
+  } | null>(null);
 
   const toggleGroup = (id: SimpleTrackGroupId) => {
     setCollapsedGroups((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -103,6 +119,91 @@ export const SimpleTrackList: React.FC<SimpleTrackListProps> = ({
   const sceneObjs = orderedObjects.filter((o) => o.category !== 'characters');
   const voiceClips = scene.audioClips.filter((a) => a.type === 'custom');
   const musicSfxClips = scene.audioClips.filter((a) => a.type !== 'custom');
+
+  const startVerticalReorderDrag = (
+    e: React.PointerEvent<HTMLElement>,
+    kind: 'object' | 'motion-clip',
+    scopeId: string,
+    draggedId: string,
+    orderedIds: string[]
+  ) => {
+    if (e.button !== 0) return;
+    if ((e.target as HTMLElement).closest('button')) return;
+    if (orderedIds.length < 2) return;
+    e.stopPropagation();
+
+    const startY = e.clientY;
+    let started = false;
+    let latestTargetId: string | null = null;
+    let latestPos: 'above' | 'below' = 'below';
+    const draggedIndex = orderedIds.indexOf(draggedId);
+    const attrName = kind === 'object' ? 'data-reorder-row-id' : 'data-reorder-motion-id';
+
+    const onMove = (ev: PointerEvent) => {
+      if (!started && Math.abs(ev.clientY - startY) < 6) return;
+      started = true;
+
+      let bestId: string | null = null;
+      let bestDist = Infinity;
+      let bestPos: 'above' | 'below' = 'below';
+
+      for (const candidateId of orderedIds) {
+        const el = document.querySelector(`[${attrName}="${candidateId}"]`) as HTMLElement | null;
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        const dist = Math.abs(ev.clientY - midY);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestId = candidateId;
+          bestPos = ev.clientY < midY ? 'above' : 'below';
+        }
+      }
+
+      if (bestId && bestId !== draggedId) {
+        const targetIdx = orderedIds.indexOf(bestId);
+        latestTargetId = bestId;
+        latestPos = targetIdx < draggedIndex ? 'above' : 'below';
+      } else {
+        latestTargetId = null;
+      }
+
+      setVerticalDrag({
+        kind,
+        scopeId,
+        draggedId,
+        targetId: latestTargetId,
+        position: latestPos,
+      });
+    };
+
+    const cleanup = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+    };
+
+    const onCancel = () => {
+      cleanup();
+      setVerticalDrag(null);
+    };
+
+    const onUp = () => {
+      cleanup();
+      setVerticalDrag(null);
+      if (started && latestTargetId && latestTargetId !== draggedId) {
+        if (kind === 'object') {
+          onReorderObject?.(draggedId, latestTargetId);
+        } else {
+          onReorderMotionClip?.(scopeId, draggedId, latestTargetId);
+        }
+      }
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+  };
 
   return (
     <div className="min-w-full">
@@ -185,6 +286,29 @@ export const SimpleTrackList: React.FC<SimpleTrackListProps> = ({
                           isLocked={obj.locked}
                           onToggleHide={() => onToggleObjectHide(obj.id)}
                           onToggleLock={() => onToggleObjectLock(obj.id)}
+                          rowReorderAttr={obj.id}
+                          isRowDragging={
+                            verticalDrag?.kind === 'object' && verticalDrag.draggedId === obj.id
+                          }
+                          dropIndicator={
+                            verticalDrag?.kind === 'object' &&
+                            verticalDrag.scopeId === 'characters' &&
+                            verticalDrag.targetId === obj.id
+                              ? verticalDrag.position
+                              : null
+                          }
+                          onStartRowDrag={
+                            onReorderObject && characterObjs.length > 1
+                              ? (e) =>
+                                  startVerticalReorderDrag(
+                                    e,
+                                    'object',
+                                    'characters',
+                                    obj.id,
+                                    characterObjs.map((c) => c.id)
+                                  )
+                              : undefined
+                          }
                           headerExtra={
                             viewMode === 'advanced' ? (
                               <span
@@ -261,14 +385,53 @@ export const SimpleTrackList: React.FC<SimpleTrackListProps> = ({
                               const isVisible = leftPx + widthPx >= 0 && leftPx <= viewportWidthPx;
                               const isSelected = selectedMotionClipId === clip.id;
                               const clipLabel = clip.name || clip.presetId;
+                              const isMotionDragging =
+                                verticalDrag?.kind === 'motion-clip' &&
+                                verticalDrag.draggedId === clip.id;
+                              const motionDropPos =
+                                verticalDrag?.kind === 'motion-clip' &&
+                                verticalDrag.scopeId === obj.id &&
+                                verticalDrag.targetId === clip.id
+                                  ? verticalDrag.position
+                                  : null;
 
                               return (
                                 <div
                                   key={clip.id}
-                                  className="flex items-stretch border-b border-slate-100 last:border-b-0 h-7 hover:bg-indigo-50/25"
+                                  data-reorder-motion-id={clip.id}
+                                  className={`flex items-stretch border-b border-slate-100 last:border-b-0 h-7 relative ${
+                                    isMotionDragging
+                                      ? 'bg-indigo-100/70 opacity-75 ring-1 ring-indigo-400'
+                                      : 'hover:bg-indigo-50/25'
+                                  }`}
                                 >
-                                  <div className="w-56 shrink-0 border-r border-slate-200 pl-7 pr-2 flex items-center justify-between gap-1 bg-white">
-                                    <span className="text-[10px] font-medium text-slate-700 truncate">
+                                  {motionDropPos === 'above' && (
+                                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-indigo-600 z-30 pointer-events-none" />
+                                  )}
+                                  {motionDropPos === 'below' && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 z-30 pointer-events-none" />
+                                  )}
+                                  <div
+                                    onPointerDown={(e) =>
+                                      startVerticalReorderDrag(
+                                        e,
+                                        'motion-clip',
+                                        obj.id,
+                                        clip.id,
+                                        motionClips.map((c) => c.id)
+                                      )
+                                    }
+                                    title="Üstteki animasyon alttakini bastırır — sıralamak için basılı tutup yukarı veya aşağı sürükleyin"
+                                    className={`w-56 shrink-0 border-r border-slate-200 pl-4 pr-2 flex items-center justify-between gap-1 bg-white select-none ${
+                                      motionClips.length > 1 && onReorderMotionClip
+                                        ? 'cursor-ns-resize'
+                                        : ''
+                                    }`}
+                                  >
+                                    {motionClips.length > 1 && onReorderMotionClip && (
+                                      <GripVertical className="w-3 h-3 text-slate-300 hover:text-slate-500 shrink-0" />
+                                    )}
+                                    <span className="text-[10px] font-medium text-slate-700 truncate flex-1">
                                       {clipLabel}
                                     </span>
                                     <span className="text-[9px] font-mono text-slate-400 shrink-0">
@@ -356,6 +519,29 @@ export const SimpleTrackList: React.FC<SimpleTrackListProps> = ({
                       isLocked={obj.locked}
                       onToggleHide={() => onToggleObjectHide(obj.id)}
                       onToggleLock={() => onToggleObjectLock(obj.id)}
+                      rowReorderAttr={obj.id}
+                      isRowDragging={
+                        verticalDrag?.kind === 'object' && verticalDrag.draggedId === obj.id
+                      }
+                      dropIndicator={
+                        verticalDrag?.kind === 'object' &&
+                        verticalDrag.scopeId === 'objects' &&
+                        verticalDrag.targetId === obj.id
+                          ? verticalDrag.position
+                          : null
+                      }
+                      onStartRowDrag={
+                        onReorderObject && sceneObjs.length > 1
+                          ? (e) =>
+                              startVerticalReorderDrag(
+                                e,
+                                'object',
+                                'objects',
+                                obj.id,
+                                sceneObjs.map((o) => o.id)
+                              )
+                          : undefined
+                      }
                       dragPreview={dragPreview}
                       onSelectClip={onSelectClip}
                       onStartClipDrag={onStartClipDrag}

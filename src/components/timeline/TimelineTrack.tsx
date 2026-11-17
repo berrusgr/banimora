@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, EyeOff, Lock, Unlock } from 'lucide-react';
+import { Eye, EyeOff, GripVertical, Lock, Unlock } from 'lucide-react';
 import type { TimelineClipKind, TimelineDragPreview } from './timelineTypes';
 import { TimelineClip } from './TimelineClip';
 
@@ -28,6 +28,10 @@ interface TimelineTrackProps {
   onToggleHide?: () => void;
   onToggleLock?: () => void;
   headerExtra?: React.ReactNode;
+  rowReorderAttr?: string;
+  isRowDragging?: boolean;
+  dropIndicator?: 'above' | 'below' | null;
+  onStartRowDrag?: (e: React.PointerEvent<HTMLDivElement>) => void;
   dragPreview: TimelineDragPreview | null;
   onSelectClip: (e: React.MouseEvent, id: string, kind: TimelineClipKind) => void;
   onStartClipDrag: (
@@ -52,6 +56,10 @@ export const TimelineTrack: React.FC<TimelineTrackProps> = React.memo(
     onToggleHide,
     onToggleLock,
     headerExtra,
+    rowReorderAttr,
+    isRowDragging,
+    dropIndicator,
+    onStartRowDrag,
     dragPreview,
     onSelectClip,
     onStartClipDrag,
@@ -60,12 +68,32 @@ export const TimelineTrack: React.FC<TimelineTrackProps> = React.memo(
 
     return (
       <div
-        className={`h-11 border-b border-slate-100 flex items-stretch transition-colors ${
-          hasSelectedClip ? 'bg-indigo-50/35' : 'bg-white hover:bg-slate-50/60'
+        data-reorder-row-id={rowReorderAttr}
+        className={`h-11 border-b border-slate-100 flex items-stretch transition-colors relative ${
+          isRowDragging
+            ? 'bg-indigo-100/70 opacity-75 ring-1 ring-indigo-400'
+            : hasSelectedClip
+              ? 'bg-indigo-50/35'
+              : 'bg-white hover:bg-slate-50/60'
         } ${isHidden ? 'opacity-55' : ''}`}
       >
+        {dropIndicator === 'above' && (
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-indigo-600 z-30 pointer-events-none" />
+        )}
+        {dropIndicator === 'below' && (
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 z-30 pointer-events-none" />
+        )}
         {/* Sol Sabit Track Başlığı */}
-        <div className="w-56 shrink-0 border-r border-slate-200 px-2.5 flex items-center gap-2 bg-white/95">
+        <div
+          onPointerDown={onStartRowDrag}
+          title={onStartRowDrag ? 'Sıralamak için basılı tutup yukarı veya aşağı sürükleyin' : undefined}
+          className={`w-56 shrink-0 border-r border-slate-200 px-2 flex items-center gap-1.5 bg-white/95 ${
+            onStartRowDrag ? 'cursor-ns-resize select-none' : ''
+          }`}
+        >
+          {onStartRowDrag && (
+            <GripVertical className="w-3.5 h-3.5 text-slate-300 hover:text-slate-500 shrink-0" />
+          )}
           <div className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center shrink-0">
             {icon}
           </div>

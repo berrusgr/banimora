@@ -115,6 +115,7 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
   onDeleteCameraMovement,
   onUpdateObject,
   onBatchUpdateScene,
+  onReorderObject,
   onUpdateAudioClip,
   onDeleteAudioClip,
   currentTime,
@@ -532,6 +533,33 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
       window.addEventListener('keydown', onKeyDown);
     },
     [commitSceneUpdate, onSelectMotionClip, onSelectObject, scene.duration, zoomPxPerSec]
+  );
+
+  // Motion Clip sırasını yukarı/aşağı değiştirme (üstteki klip alttakini bastırır)
+  const handleReorderMotionClip = useCallback(
+    (characterId: string, draggedClipId: string, targetClipId: string) => {
+      if (draggedClipId === targetClipId) return;
+      commitSceneUpdate((s) => ({
+        ...s,
+        objects: s.objects.map((o) => {
+          if (o.id !== characterId) return o;
+          const clips = [...(o.timelineData?.motionClips ?? [])];
+          const fromIdx = clips.findIndex((c) => c.id === draggedClipId);
+          const toIdx = clips.findIndex((c) => c.id === targetClipId);
+          if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return o;
+          const [moved] = clips.splice(fromIdx, 1);
+          clips.splice(toIdx, 0, moved);
+          return {
+            ...o,
+            timelineData: {
+              ...o.timelineData,
+              motionClips: clips,
+            },
+          };
+        }),
+      }), true);
+    },
+    [commitSceneUpdate]
   );
 
   // Kesme (Split)
@@ -1044,6 +1072,8 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
           }}
           onToggleGroupMeta={() => {}}
           onAddOrSelectCamera={onAddOrSelectCamera}
+          onReorderObject={onReorderObject}
+          onReorderMotionClip={handleReorderMotionClip}
         />
 
         {/* Sürekli Playhead Çizgisi */}

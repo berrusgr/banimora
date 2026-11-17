@@ -134,13 +134,14 @@ export const TimelineRuler: React.FC<TimelineRulerProps> = ({
         );
       })}
 
-      {/* Playhead Başlığı */}
+      {/* Playhead Başlığı ve Cetvel İçi Sürekli Çizgisi */}
       {playheadX >= -12 && playheadX <= viewportWidthPx + 12 && (
         <div
           style={{ transform: `translate3d(${playheadX}px, 0, 0)` }}
-          className="absolute top-0 bottom-0 left-0 pointer-events-none z-20"
+          className="absolute top-0 bottom-0 left-0 pointer-events-none z-40"
         >
           <div className="w-3 h-3 -ml-1.5 bg-rose-600 rounded-b-sm shadow-xs border border-white" />
+          <div className="absolute top-2.5 bottom-0 left-0 w-px bg-rose-600" />
         </div>
       )}
     </div>

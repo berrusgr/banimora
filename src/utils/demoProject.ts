@@ -258,18 +258,6 @@ export function createDemoProjectSnapshot(): DemoProjectSnapshot {
           timelineData: {
             motionClips: [
               {
-                id: 'mc-sinan-walk-in',
-                presetId: 'walk-normal',
-                name: 'Sahneye Yürüyerek Giriş',
-                channelId: 'root',
-                mask: 'full',
-                stage: 'L1_LOCOMOTION',
-                startTime: 0,
-                duration: 2.6,
-                speed: 1.05,
-                intensity: 1.0,
-              },
-              {
                 id: 'mc-sinan-greet',
                 presetId: 'wave-right',
                 name: 'Selamlama (El Sallama)',

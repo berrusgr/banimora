@@ -980,11 +980,11 @@ export function computePoseJointAngles(
               ? -10 - Math.max(0, s) * 8
               : 10 + Math.max(0, s) * 8,
           rightWrist: -s * 6,
-          leftHip: -s * 18,
-          leftKnee: isLeft ? -Math.max(0, s) * 20 : Math.max(0, -s) * 20,
-          rightHip: s * 18,
-          rightKnee: isLeft ? -Math.max(0, -s) * 20 : Math.max(0, s) * 20,
-          bodyBobY: Math.abs(c) * -4.5,
+          leftHip: -s * 11,
+          leftKnee: isLeft ? -Math.max(0, s) * 12 : Math.max(0, -s) * 12,
+          rightHip: s * 11,
+          rightKnee: isLeft ? -Math.max(0, -s) * 12 : Math.max(0, s) * 12,
+          bodyBobY: Math.abs(c) * -2.8,
         };
       }
       case 'run': {

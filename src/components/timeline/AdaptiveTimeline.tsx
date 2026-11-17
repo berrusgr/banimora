@@ -1050,7 +1050,7 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
         {playheadX >= 0 && playheadX <= viewportWidthPx && (
           <div
             style={{ transform: `translate3d(${224 + playheadX}px, 0, 0)` }}
-            className="absolute top-0 bottom-0 left-0 w-px bg-rose-600 pointer-events-none z-20"
+            className="absolute top-0 bottom-0 left-0 w-px bg-rose-600 pointer-events-none z-40"
           />
         )}
 

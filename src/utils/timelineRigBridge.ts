@@ -278,11 +278,15 @@ export function evaluateMotionClipsToRigLayers(
     const end = clip.startTime + Math.max(0, clip.duration);
     if (currentTime < clip.startTime || currentTime > end) continue;
 
-    const preset = getMotionPresetById(clip.presetId);
-    if (!preset) continue;
+    const isPoseClip = clip.clipKind === 'pose' || clip.poseBones !== undefined;
+    const preset = isPoseClip ? undefined : getMotionPresetById(clip.presetId);
+    if (!isPoseClip && !preset) continue;
 
-    const effectiveMask = mirrorMask(clip.mask ?? preset.mask, clip.mirrored);
-    const clipStage = clip.stage ?? preset.stage;
+    const effectiveMask = mirrorMask(
+      clip.mask ?? preset?.mask ?? 'upper-body',
+      clip.mirrored
+    );
+    const clipStage = clip.stage ?? preset?.stage ?? 'L2_GESTURE_AND_IK';
     const maskBones = RIG_BODY_MASK_BONES[effectiveMask] ?? [];
 
     // Üstteki (daha küçük indexli) ve aynı stage'de ortak kemik paylaşan bir klip aktifse,
@@ -303,8 +307,15 @@ export function evaluateMotionClipsToRigLayers(
     if (weight <= 0) continue;
 
     const intensity = clip.intensity ?? 1;
-    const phase01 = computeClipPhase01(clip, localTime, preset.cyclesPerSec, preset.oneShot);
-    const sampled = preset.sample(phase01, intensity);
+    const sampled = isPoseClip
+      ? {
+          boneAngles: clip.poseBones ?? {},
+          bodyBobY: clip.poseBodyBobY,
+        }
+      : preset!.sample(
+          computeClipPhase01(clip, localTime, preset!.cyclesPerSec, preset!.oneShot),
+          intensity
+        );
     const retargeted = retargetMotionSample(sampled, profile, { mirrored: clip.mirrored });
 
     if (
@@ -328,7 +339,7 @@ export function evaluateMotionClipsToRigLayers(
       enabled: true,
       weight,
       priority: clip.priority ?? Math.max(10, 1000 - idx),
-      lockProcedural: preset.lockProcedural,
+      lockProcedural: isPoseClip ? true : preset!.lockProcedural,
       boneAngles: retargeted.boneAngles,
       bodyBobY: retargeted.bodyBobY,
     });
@@ -487,11 +498,20 @@ export function evaluateCharacterTimelineForRig(
     const activeLayerIds = new Set(layers.map((l) => l.id));
     const activeExprClip = td.motionClips.find((clip) => {
       if (!activeLayerIds.has(`timeline-clip:${clip.id}`)) return false;
+      if (clip.poseExpression) return true;
       const preset = getMotionPresetById(clip.presetId);
       return Boolean(preset?.expressionHint);
     });
     if (activeExprClip) {
-      expressionOverride = getMotionPresetById(activeExprClip.presetId)?.expressionHint;
+      expressionOverride =
+        activeExprClip.poseExpression ??
+        getMotionPresetById(activeExprClip.presetId)?.expressionHint;
+    }
+    const activeLookClip = td.motionClips.find(
+      (clip) => activeLayerIds.has(`timeline-clip:${clip.id}`) && Boolean(clip.poseLookDirection)
+    );
+    if (activeLookClip?.poseLookDirection) {
+      lookDirectionOverride = activeLookClip.poseLookDirection;
     }
   }
 

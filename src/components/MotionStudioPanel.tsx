@@ -43,7 +43,7 @@ import type {
   StageMotionPreviewRequest,
 } from '../types/studio';
 import {
-  applyPoseToCharacterTimeline,
+  buildPoseMotionClip,
   BUILT_IN_POSES,
   captureCurrentCharacterPose,
   checkPoseCompatibility,
@@ -192,8 +192,15 @@ const MotionClipCard: React.FC<MotionClipCardProps> = ({
             title="Klibi aktif/pasif yap"
           />
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-slate-800 truncate">
-              {clip.name ?? clip.presetId}
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="text-[11px] font-semibold text-slate-800 truncate">
+                {clip.name ?? clip.presetId}
+              </div>
+              {(clip.clipKind === 'pose' || clip.poseBones !== undefined) && (
+                <span className="px-1.5 py-0.2 rounded bg-teal-100 text-teal-800 text-[8.5px] font-bold shrink-0">
+                  Poz
+                </span>
+              )}
             </div>
             <div className="text-[9.5px] text-slate-500 truncate">
               {CHANNEL_LABELS[clip.channelId]} • {clip.startTime.toFixed(1)}s –{' '}
@@ -1548,15 +1555,35 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
                         type="button"
                         disabled={compat.status === 'unsupported'}
                         onClick={() => {
-                          const nextTimeline = applyPoseToCharacterTimeline(
-                            selectedObject.timelineData,
-                            pose,
-                            currentTime,
-                            rigProfile
+                          const dur = Math.max(
+                            0.5,
+                            Math.min(sceneDuration - currentTime, durationPreset || 2.0)
                           );
-                          onUpdateObject(selectedObject.id, { timelineData: nextTimeline });
+                          const poseClip = buildPoseMotionClip(pose, currentTime, dur, rigProfile, {
+                            blendSec: blendSecPreset,
+                            mirrored: mirroredPreset,
+                          });
+                          const prevTd: CharacterTimelineData = selectedObject.timelineData ?? {};
+                          const resetPosePatch =
+                            selectedObject.characterConfig &&
+                            selectedObject.characterConfig.pose !== 'idle'
+                              ? {
+                                  characterConfig: {
+                                    ...selectedObject.characterConfig,
+                                    pose: 'idle' as const,
+                                  },
+                                }
+                              : {};
+                          onUpdateObject(selectedObject.id, {
+                            ...resetPosePatch,
+                            timelineData: {
+                              ...prevTd,
+                              motionClips: [...(prevTd.motionClips ?? []), poseClip],
+                            },
+                          });
+                          onSelectMotionClip?.(poseClip.id);
                           setPoseFeedback(
-                            `"${pose.name}" ${currentTime.toFixed(2)}s konumuna keyframe olarak eklendi.`
+                            `"${pose.name}" pozu ${currentTime.toFixed(1)}s konumuna (${dur.toFixed(1)}s) eklendi.`
                           );
                         }}
                         className="px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white text-[10px] font-semibold flex items-center gap-0.5"

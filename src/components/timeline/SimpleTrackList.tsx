@@ -385,6 +385,8 @@ export const SimpleTrackList: React.FC<SimpleTrackListProps> = ({
                               const isVisible = leftPx + widthPx >= 0 && leftPx <= viewportWidthPx;
                               const isSelected = selectedMotionClipId === clip.id;
                               const clipLabel = clip.name || clip.presetId;
+                              const isPoseClip =
+                                clip.clipKind === 'pose' || clip.poseBones !== undefined;
                               const isMotionDragging =
                                 verticalDrag?.kind === 'motion-clip' &&
                                 verticalDrag.draggedId === clip.id;
@@ -421,7 +423,7 @@ export const SimpleTrackList: React.FC<SimpleTrackListProps> = ({
                                         motionClips.map((c) => c.id)
                                       )
                                     }
-                                    title="Üstteki animasyon alttakini bastırır — sıralamak için basılı tutup yukarı veya aşağı sürükleyin"
+                                    title="Üstteki animasyon/poz alttakini bastırır — sıralamak için basılı tutup yukarı veya aşağı sürükleyin"
                                     className={`w-56 shrink-0 border-r border-slate-200 pl-4 pr-2 flex items-center justify-between gap-1 bg-white select-none ${
                                       motionClips.length > 1 && onReorderMotionClip
                                         ? 'cursor-ns-resize'
@@ -431,7 +433,16 @@ export const SimpleTrackList: React.FC<SimpleTrackListProps> = ({
                                     {motionClips.length > 1 && onReorderMotionClip && (
                                       <GripVertical className="w-3 h-3 text-slate-300 hover:text-slate-500 shrink-0" />
                                     )}
-                                    <span className="text-[10px] font-medium text-slate-700 truncate flex-1">
+                                    {isPoseClip && (
+                                      <span className="px-1 py-0.2 rounded bg-teal-100 text-teal-800 text-[8.5px] font-bold shrink-0">
+                                        Poz
+                                      </span>
+                                    )}
+                                    <span
+                                      className={`text-[10px] font-medium truncate flex-1 ${
+                                        isPoseClip ? 'text-teal-900' : 'text-slate-700'
+                                      }`}
+                                    >
                                       {clipLabel}
                                     </span>
                                     <span className="text-[9px] font-mono text-slate-400 shrink-0">
@@ -450,10 +461,12 @@ export const SimpleTrackList: React.FC<SimpleTrackListProps> = ({
                                           transform: `translate3d(${leftPx}px, 0, 0)`,
                                           width: `${widthPx}px`,
                                         }}
-                                        className={`absolute top-1 bottom-1 rounded bg-indigo-500 px-2 flex items-center justify-between text-[9.5px] font-semibold text-white cursor-grab select-none shadow-xs ${
+                                        className={`absolute top-1 bottom-1 rounded px-2 flex items-center justify-between text-[9.5px] font-semibold text-white cursor-grab select-none shadow-xs ${
+                                          isPoseClip ? 'bg-teal-600' : 'bg-indigo-500'
+                                        } ${
                                           clip.enabled === false ? 'opacity-45' : 'opacity-95'
                                         } ${isSelected ? 'ring-2 ring-slate-900' : ''}`}
-                                        title={`${clipLabel} (${displayStart.toFixed(1)}s – ${(
+                                        title={`${isPoseClip ? 'Poz: ' : ''}${clipLabel} (${displayStart.toFixed(1)}s – ${(
                                           displayStart + displayDur
                                         ).toFixed(1)}s)`}
                                       >

@@ -3,6 +3,7 @@ import type {
   ChannelKeyframe,
   CharacterChannelId,
   CharacterConfig,
+  CharacterMotionClip,
   CharacterTimelineData,
   PoseCategoryId,
   SavedCharacterPose,
@@ -354,5 +355,62 @@ export function applyPoseToCharacterTimeline(
   return {
     ...(prevTimeline ?? {}),
     channelKeyframes: nextChannelKeyframes,
+  };
+}
+
+/**
+ * Bir pozu süre bazlı `CharacterMotionClip` olarak oluşturur.
+ * Böylece poz timeline'da klip çubuğu olarak görünür, süresi bitince karakter
+ * normal duruşa (idle) döner ve üst/alt katman bastırma kuralıyla uyumlu çalışır.
+ */
+export function buildPoseMotionClip(
+  pose: SavedCharacterPose,
+  startTime: number,
+  duration: number,
+  profile: CharacterRigProfile,
+  options?: { blendSec?: number; mirrored?: boolean }
+): CharacterMotionClip {
+  const retargeted = retargetMotionSample(
+    { boneAngles: pose.bones, bodyBobY: pose.bodyBobY },
+    profile,
+    { mirrored: options?.mirrored }
+  );
+  const legBones: CanonicalBoneId[] = [
+    'leftHip',
+    'leftKnee',
+    'leftAnkle',
+    'rightHip',
+    'rightKnee',
+    'rightAnkle',
+  ];
+  const usesLegs = legBones.some(
+    (b) => typeof retargeted.boneAngles[b] === 'number' && Math.abs(retargeted.boneAngles[b]!) > 0.5
+  );
+  const safeDur = Math.max(0.4, Number(duration.toFixed(2)));
+  const blend = Math.min(safeDur * 0.25, options?.blendSec ?? 0.2);
+
+  return {
+    id: `mclip-pose-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    presetId: pose.id,
+    clipKind: 'pose',
+    poseId: pose.id,
+    poseBones: retargeted.boneAngles,
+    poseBodyBobY: retargeted.bodyBobY,
+    poseExpression: pose.expression,
+    poseLookDirection: pose.lookDirection,
+    name: pose.name,
+    channelId: 'torso',
+    mask: usesLegs ? 'full' : 'upper-body',
+    stage: 'L2_GESTURE_AND_IK',
+    startTime: Number(Math.max(0, startTime).toFixed(2)),
+    duration: safeDur,
+    speed: 1,
+    intensity: 1,
+    weight: 1,
+    blendInSec: blend,
+    blendOutSec: blend,
+    repeatMode: 'once',
+    mirrored: options?.mirrored,
+    enabled: true,
   };
 }

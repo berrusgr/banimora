@@ -1100,6 +1100,12 @@ export type MotionRepeatMode = 'loop' | 'once' | 'count';
 export interface CharacterMotionClip {
   id: string;
   presetId: string;
+  clipKind?: 'motion' | 'pose';
+  poseId?: string;
+  poseBones?: Partial<Record<CanonicalBoneId, number>>;
+  poseBodyBobY?: number;
+  poseExpression?: CharacterExpressionType;
+  poseLookDirection?: HeadDirectionType;
   name: string;
   channelId: CharacterChannelId;
   mask: RigBodyMaskId;

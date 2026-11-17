@@ -343,7 +343,7 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
           for (const o of scene.objects) {
             if (o.hidden) continue;
             const anim = computeObjectAnimation(o, currentTime, isPlaying);
-            if (!anim.isVisible && isPlaying) continue;
+            if (!anim.isVisible) continue;
             const rt = resolveSceneObjectRenderTransform(o, scene, currentTime, isPlaying, anim);
             const ox1 = rt.x + rt.translateX;
             const oy1 = rt.y + rt.translateY;
@@ -727,12 +727,21 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
             </span>
           )}
           {scene.camera?.enabled && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200 font-semibold shrink-0">
+            <button
+              type="button"
+              onClick={() => onSelectCamera(selectedCameraMovementId)}
+              title="Kamera Çerçevesini ve Ayarlarını Düzenle"
+              className={`pointer-events-auto inline-flex items-center gap-1 px-1.5 py-0.5 rounded border font-semibold shrink-0 cursor-pointer transition-colors ${
+                isCameraSelected
+                  ? 'bg-orange-500 text-white border-orange-600'
+                  : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
+              }`}
+            >
               <Video className="w-2.5 h-2.5" />
               Kamera: %{Math.round(cameraState.scale * 100)} Zoom
               {scene.camera.movements.length > 0 &&
                 ` • ${scene.camera.movements.length} Hareket`}
-            </span>
+            </button>
           )}
           {isPlaying && (
             <span className="ml-1 px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-bold shrink-0">
@@ -981,8 +990,8 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
             }}
             className="relative"
           >
-            {/* ORANGE CAMERA FRAME OVERLAYS (Visible in Editor Mode when Camera is Added) */}
-            {!isPlaying && scene.camera?.enabled && (
+            {/* ORANGE CAMERA FRAME OVERLAYS (Visible in Editor Mode only when Camera is selected for editing) */}
+            {!isPlaying && !playerMode && isCameraSelected && scene.camera?.enabled && (
               <>
                 {(() => {
                   const cam = scene.camera;
@@ -1199,13 +1208,16 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                 })()}
               </>
             )}
-            {/* MOTION PATH TRAJECTORY OVERLAYS (Visible in Editor Mode) */}
+            {/* MOTION PATH TRAJECTORY OVERLAYS (Visible in Editor Mode only for the selected active object) */}
             {!isPlaying &&
               !playerMode &&
               scene.objects.map((obj) => {
-                if (!obj.motionPath?.enabled) return null;
+                if (!obj.motionPath?.enabled || obj.hidden) return null;
+                const isSelected = obj.id === selectedObjectId || activeSelectedIds.includes(obj.id);
+                if (!isSelected) return null;
+                const anim = computeObjectAnimation(obj, currentTime, isPlaying);
+                if (!anim.isVisible) return null;
                 const mp = obj.motionPath;
-                const isSelected = obj.id === selectedObjectId;
                 const startCx = obj.x + obj.width / 2;
                 const startCy = obj.y + obj.height / 2;
                 const endCx = mp.endX + obj.width / 2;
@@ -1311,7 +1323,7 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
               const isSelected = !playerMode && activeSelectedIds.includes(obj.id) && !isPlaying;
               const anim = computeObjectAnimation(obj, currentTime, isPlaying);
 
-              if (obj.hidden || (!anim.isVisible && isPlaying)) {
+              if (obj.hidden || !anim.isVisible) {
                 return null;
               }
 

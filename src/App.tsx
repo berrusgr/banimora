@@ -859,8 +859,14 @@ export function App() {
           : undefined,
       partStates: createDefaultPartStates(mathDef),
       specificAnimations: mathDef ? [] : undefined,
-      startTime: 0,
-      duration: Math.max(4, Number((activeScene.duration - 0.4).toFixed(1))),
+      startTime: Number(Math.max(0, Math.min(Math.max(0, activeScene.duration - 1), currentTime)).toFixed(1)),
+      duration: Math.max(
+        1,
+        Math.min(
+          Math.max(4, Number((activeScene.duration - 0.4).toFixed(1))),
+          Number(Math.max(1, activeScene.duration - currentTime).toFixed(1))
+        )
+      ),
       trackColor: item.trackColor,
       animations: defaultAnimations,
     };
@@ -1506,11 +1512,11 @@ export function App() {
     );
   };
 
-  // Add or Select Camera Frame (Orange 16:9 Viewport on Stage)
+  // Add or Select Camera Frame (Orange 16:9 Viewport on Stage — toggles off if already selected)
   const handleAddOrSelectCamera = () => {
     setIsPlaying(false);
     setSelectedObjectId(null);
-    setIsCameraSelected(true);
+    setSelectedObjectIds([]);
 
     if (!activeScene.camera?.enabled) {
       const nextCam: SceneCamera = {
@@ -1524,6 +1530,9 @@ export function App() {
         movements: activeScene.camera?.movements || [],
       };
       handleUpdateSceneCamera(nextCam, true);
+      setIsCameraSelected(true);
+    } else {
+      setIsCameraSelected((prev) => !prev);
     }
   };
 
@@ -3368,16 +3377,12 @@ export function App() {
           onSelectObject={(id) => {
             setSelectedObjectId(id);
             setSelectedObjectIds(id ? [id] : []);
-            if (id !== null) {
-              setIsCameraSelected(false);
-            }
+            setIsCameraSelected(false);
           }}
           onSelectObjects={(ids) => {
             setSelectedObjectIds(ids);
             setSelectedObjectId(ids[0] ?? null);
-            if (ids.length > 0) {
-              setIsCameraSelected(false);
-            }
+            setIsCameraSelected(false);
           }}
           isCameraSelected={isCameraSelected}
           selectedCameraMovementId={selectedCameraMovementId}
@@ -3576,9 +3581,7 @@ export function App() {
         onSelectPart={setSelectedPartId}
         onSelectObject={(id) => {
           setSelectedObjectId(id);
-          if (id !== null) {
-            setIsCameraSelected(false);
-          }
+          setIsCameraSelected(false);
           setIsPlaying(false);
         }}
         isCameraSelected={isCameraSelected}

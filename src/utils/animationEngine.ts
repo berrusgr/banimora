@@ -69,12 +69,12 @@ export function computeObjectAnimation(
   const baseOpacity = obj.opacity / 100;
   const localTime = currentTime - obj.startTime;
 
-  // When paused and scrubbing, we still show exact frame preview;
-  // if outside object's timeline span:
+  // When paused and scrubbing, show only objects that are active at currentTime
+  // so the stage accurately reflects the timeline playhead without clutter:
   if (localTime < 0) {
     return {
-      isVisible: !isPlaying, // When editing while paused before start, keep dimly visible only if selected, handled in Canvas
-      opacity: isPlaying ? 0 : baseOpacity * 0.25,
+      isVisible: false,
+      opacity: 0,
       translateX: 0,
       translateY: 0,
       scaleX: 1,
@@ -88,8 +88,8 @@ export function computeObjectAnimation(
 
   if (localTime > obj.duration) {
     return {
-      isVisible: !isPlaying,
-      opacity: isPlaying ? 0 : baseOpacity * 0.25,
+      isVisible: false,
+      opacity: 0,
       translateX: 0,
       translateY: 0,
       scaleX: 1,

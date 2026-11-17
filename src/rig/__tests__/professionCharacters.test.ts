@@ -69,8 +69,11 @@ test('Part 2: All 15 profession characters use classic template, idle pose, and 
   for (const id of PROFESSION_IDS) {
     const rigConfigIdx = rigSource.indexOf(`'${id}':`);
     assert.ok(rigConfigIdx !== -1, `${id} must be defined in DEFAULT_CHARACTER_CONFIGS`);
-    const rigSnippet = rigSource.slice(rigConfigIdx, rigConfigIdx + 600);
-    assert.ok(rigSnippet.includes("bodyStyle: 'classic'"), `${id} must use classic bodyStyle`);
+    const rigSnippet = rigSource.slice(rigConfigIdx, rigConfigIdx + 700);
+    assert.ok(
+      rigSnippet.includes("bodyStyle: 'classic'") || rigSnippet.includes("bodyStyle: 'slender-pro'"),
+      `${id} must use classic or slender-pro bodyStyle`
+    );
     assert.ok(rigSnippet.includes("pose: 'idle'"), `${id} must use idle pose`);
 
     const libIdx = librarySource.indexOf(`id: '${id}'`);
@@ -86,6 +89,16 @@ test('Part 2: All 15 profession characters use classic template, idle pose, and 
 
   assert.ok(panelSource.includes("topic === 'Meslekler'"), 'LeftLibraryPanel must filter Meslekler');
   assert.ok(panelSource.includes('Meslekler (15)'), 'LeftLibraryPanel must render Meslekler (15) filter button');
+
+  // Verify Phase 1 Chef Prototype Head wiring & DiceBear fallback
+  assert.ok(
+    rigSource.includes("const isChefPrototypeHead = assetId === 'char-prof-chef' && config.useDicebearHead !== true;"),
+    'char-prof-chef prototype head must be gated to char-prof-chef and allow DiceBear fallback when useDicebearHead === true'
+  );
+  assert.ok(
+    rigSource.includes('isChefPrototypeHead ? (') && rigSource.includes('renderChefPrototypeHead()'),
+    'renderChefPrototypeHead must be wired inside data-canonical-bone="head"'
+  );
 });
 
 test('Part 2 Rig Compatibility: Classic profession rig evaluates walk, sit, and arm-raise without errors', () => {

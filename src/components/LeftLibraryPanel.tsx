@@ -58,7 +58,11 @@ interface LeftLibraryPanelProps {
   onAddAsset: (item: LibraryAssetItem, customPos?: { x: number; y: number }) => void;
   onUploadObjectFile: (file: File) => void;
   onUploadBackgroundFile: (file: File) => void;
-  onUploadAudioFile: (file: File, fallbackDuration?: number) => void;
+  onUploadAudioFile: (
+    file: File,
+    fallbackDuration?: number,
+    options?: { autoPlay?: boolean }
+  ) => void;
   onOpenCharacterStudio: (templateItem?: LibraryAssetItem) => void;
   activeBackgroundId: string;
   onSelectBackground: (bg: SceneBackground) => void;
@@ -116,6 +120,7 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
   const [activeChartGroup, setActiveChartGroup] = useState<ChartTableGroup>('all');
   const [characterGroup, setCharacterGroup] = useState<'all' | 'professions'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [libraryFilter, setLibraryFilter] = useState<'all' | 'favorites' | 'used'>('all');
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
     try {
@@ -369,25 +374,26 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
   });
 
   const handleObjectInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onUploadObjectFile(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      files.forEach((file) => onUploadObjectFile(file));
       e.target.value = '';
     }
   };
 
   const handleBgInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onUploadBackgroundFile(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      files.forEach((file) => onUploadBackgroundFile(file));
       e.target.value = '';
     }
   };
 
   const handleAudioInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onUploadAudioFile(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      const autoPlay = files.length === 1;
+      files.forEach((file) => onUploadAudioFile(file, undefined, { autoPlay }));
       e.target.value = '';
     }
   };
@@ -422,6 +428,7 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
       <input
         ref={objectFileInputRef}
         type="file"
+        multiple
         accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
         onChange={handleObjectInputChange}
         className="hidden"
@@ -429,6 +436,7 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
       <input
         ref={bgFileInputRef}
         type="file"
+        multiple
         accept="image/png,image/jpeg,image/webp,image/svg+xml"
         onChange={handleBgInputChange}
         className="hidden"
@@ -436,6 +444,7 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
       <input
         ref={audioFileInputRef}
         type="file"
+        multiple
         accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/mp4,audio/x-m4a,audio/aac,audio/webm,audio/*"
         onChange={handleAudioInputChange}
         className="hidden"
@@ -466,6 +475,7 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
               key={tab.id}
               onClick={() => {
                 setActiveCategory(tab.id);
+                setIsSearchFocused(false);
                 if (collapsed && onToggleCollapsed) {
                   onToggleCollapsed();
                 }
@@ -551,39 +561,6 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
                 })}
               </div>
 
-              {/* Konu / Tema Filtresi */}
-              <div className="flex flex-wrap gap-1">
-                {(
-                  [
-                    { id: 'all', label: 'Tümü' },
-                    { id: 'numbers', label: 'Sayılar & Temel' },
-                    { id: 'algebra', label: 'Cebir & Denklem' },
-                    { id: 'geometry', label: 'Geometri' },
-                    { id: 'tools', label: 'Çizim & Ölçüm' },
-                    { id: 'daily-life', label: 'Günlük Yaşam' },
-                    { id: 'trigonometry', label: 'Trigonometri' },
-                    { id: 'functions', label: 'Fonksiyonlar' },
-                    { id: 'probability', label: 'Olasılık & İstatistik' },
-                    { id: 'sequences', label: 'Üstel & Diziler' },
-                  ] as const
-                ).map((t) => {
-                  const isAct = activeMathTopic === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => setActiveMathTopic(t.id)}
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all cursor-pointer border ${
-                        isAct
-                          ? 'bg-indigo-100 text-indigo-700 border-indigo-300'
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-
               <button
                 onClick={() => objectFileInputRef.current?.click()}
                 className="w-full py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
@@ -614,28 +591,6 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
               <Music className="w-3.5 h-3.5" />
               <span>Dışarıdan Ses / Müzik Yükle (+ MP3/WAV)</span>
             </button>
-          )}
-
-          {/* ELEMENTS SUB-CATEGORIES */}
-          {activeCategory === 'elements' && (
-            <div className="flex flex-wrap gap-1">
-              {ELEMENT_CATEGORY_TABS.map((tab) => {
-                const isAct = activeElementGroup === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveElementGroup(tab.id)}
-                    className={`px-2 py-1 rounded-full text-[10.5px] font-semibold transition-all cursor-pointer border ${
-                      isAct
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
           )}
 
           {/* CHARTS & TABLES SUB-CATEGORIES */}
@@ -678,10 +633,71 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
                   placeholder="Karakter veya nesne ara..."
                   className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none transition-colors"
                 />
               </div>
+              {(isSearchFocused || searchQuery.trim().length > 0) &&
+                activeCategory === 'objects' && (
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {(
+                      [
+                        { id: 'all', label: 'Tümü' },
+                        { id: 'numbers', label: 'Sayılar & Temel' },
+                        { id: 'algebra', label: 'Cebir & Denklem' },
+                        { id: 'geometry', label: 'Geometri' },
+                        { id: 'tools', label: 'Çizim & Ölçüm' },
+                        { id: 'daily-life', label: 'Günlük Yaşam' },
+                        { id: 'trigonometry', label: 'Trigonometri' },
+                        { id: 'functions', label: 'Fonksiyonlar' },
+                        { id: 'probability', label: 'Olasılık & İstatistik' },
+                        { id: 'sequences', label: 'Üstel & Diziler' },
+                      ] as const
+                    ).map((t) => {
+                      const isAct = activeMathTopic === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => setActiveMathTopic(t.id)}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all cursor-pointer border ${
+                            isAct
+                              ? 'bg-indigo-100 text-indigo-700 border-indigo-300'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              {(isSearchFocused || searchQuery.trim().length > 0) &&
+                activeCategory === 'elements' && (
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {ELEMENT_CATEGORY_TABS.map((tab) => {
+                      const isAct = activeElementGroup === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => setActiveElementGroup(tab.id)}
+                          className={`px-2 py-1 rounded-full text-[10.5px] font-semibold transition-all cursor-pointer border ${
+                            isAct
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               <div className="flex items-center gap-1">
                 {(
                   [
@@ -995,10 +1011,13 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
               }}
               onDrop={(e) => {
                 e.preventDefault();
-                const file = e.dataTransfer.files?.[0];
-                if (file && file.type.startsWith('audio/')) {
-                  onUploadAudioFile(file);
-                }
+                const audioFiles = Array.from(e.dataTransfer.files || []).filter(
+                  (file) => file.type.startsWith('audio/')
+                );
+                const autoPlay = audioFiles.length === 1;
+                audioFiles.forEach((file) =>
+                  onUploadAudioFile(file, undefined, { autoPlay })
+                );
               }}
               className="space-y-2.5"
             >

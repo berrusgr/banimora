@@ -367,12 +367,19 @@ export function applySmartActionToScene(
     const behindObjects: CanvasObject[] = [];
     const frontObjects: CanvasObject[] = [];
 
+    const charScale = Math.max(
+      0.35,
+      Math.min(3.5, (targetChar.height * (targetChar.scaleY ?? 1)) / 260)
+    );
+
     for (const req of actionPackage.sceneRequirements) {
+      const scaledWidth = Math.max(12, Math.round(req.defaultWidth * charScale));
+      const scaledHeight = Math.max(12, Math.round(req.defaultHeight * charScale));
       const pos = clampToStage(
-        nextCharX + req.offsetFromCharX,
-        nextCharY + req.offsetFromCharY,
-        req.defaultWidth,
-        req.defaultHeight
+        nextCharX + Math.round(req.offsetFromCharX * charScale),
+        nextCharY + Math.round(req.offsetFromCharY * charScale),
+        scaledWidth,
+        scaledHeight
       );
 
       const reusable = findReusableObject(nextObjects, req, characterId, claimedIds);
@@ -457,8 +464,8 @@ export function applySmartActionToScene(
           category: isCompanionChar ? 'characters' : 'objects',
           x: pos.x,
           y: pos.y,
-          width: req.defaultWidth,
-          height: req.defaultHeight,
+          width: scaledWidth,
+          height: scaledHeight,
           rotation: 0,
           opacity: 100,
           color: palette.color,
@@ -466,6 +473,7 @@ export function applySmartActionToScene(
           trackColor: palette.color,
           startTime: objStartTime,
           duration: objDuration,
+          smartActionOwnerId: characterId,
           animations: { ...DEFAULT_STATIC_ANIMATIONS },
         };
         const newObj: CanvasObject = isCompanionChar

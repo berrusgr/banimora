@@ -930,7 +930,9 @@ export function App() {
       img.onerror = () => {
         const fallbackItem: LibraryAssetItem = {
           id: 'obj-uploaded-image',
-          customKey: `upload-obj-${Date.now()}`,
+          customKey: `upload-obj-${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2, 6)}`,
           name: cleanName,
           subtitle: 'Yüklenen Özel Görsel',
           category: 'objects',
@@ -958,7 +960,7 @@ export function App() {
         file.name.replace(/\.[^/.]+$/, '').slice(0, 28) || 'Özel Sahne Görseli';
 
       const newBg: SceneBackground = {
-        id: `bg-custom-${Date.now()}`,
+        id: `bg-custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         name: cleanName,
         style: `url("${dataUrl}") center / cover no-repeat`,
         imageUrl: dataUrl,
@@ -971,7 +973,11 @@ export function App() {
   };
 
   // Upload External Audio File from User's Computer (MP3, WAV, OGG, M4A, AAC) or Mic Recording
-  const handleUploadAudioFile = (file: File, fallbackDuration?: number) => {
+  const handleUploadAudioFile = (
+    file: File,
+    fallbackDuration?: number,
+    options?: { autoPlay?: boolean }
+  ) => {
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
@@ -1009,7 +1015,9 @@ export function App() {
 
         setCustomAudioClips((prev) => [uploadedClip, ...prev]);
         handleAddAudioClip(uploadedClip);
-        soundEngine.playClip(uploadedClip);
+        if (options?.autoPlay !== false) {
+          soundEngine.playClip(uploadedClip);
+        }
       };
 
       audioEl.onloadedmetadata = () => {
@@ -1111,16 +1119,42 @@ export function App() {
     (id: string, patch: Partial<CanvasObject>, commitHistory = true) => {
       updateScenesState(
         (prev) =>
-          prev.map((s) =>
-            s.id === activeScene.id
-              ? {
-                ...s,
-                objects: s.objects.map((o) =>
-                  o.id === id ? { ...o, ...patch } : o
-                ),
-              }
-              : s
-          ),
+          prev.map((s) => {
+            if (s.id !== activeScene.id) return s;
+            const prevTarget = s.objects.find((o) => o.id === id);
+            const isCharResize =
+              prevTarget?.category === 'characters' &&
+              (patch.width !== undefined || patch.height !== undefined) &&
+              prevTarget.width > 0 &&
+              prevTarget.height > 0;
+            const nextCharWidth = patch.width ?? prevTarget?.width ?? 1;
+            const nextCharHeight = patch.height ?? prevTarget?.height ?? 1;
+            const ratioX = isCharResize ? nextCharWidth / prevTarget!.width : 1;
+            const ratioY = isCharResize ? nextCharHeight / prevTarget!.height : 1;
+            const nextCharX = patch.x ?? prevTarget?.x ?? 0;
+            const nextCharY = patch.y ?? prevTarget?.y ?? 0;
+            const sizeChanged = isCharResize && (Math.abs(ratioX - 1) > 0.001 || Math.abs(ratioY - 1) > 0.001);
+
+            return {
+              ...s,
+              objects: s.objects.map((o) => {
+                if (o.id === id) return { ...o, ...patch };
+                if (
+                  sizeChanged &&
+                  (o.attachment?.parentObjectId === id || o.smartActionOwnerId === id)
+                ) {
+                  return {
+                    ...o,
+                    x: Math.round(nextCharX + (o.x - prevTarget!.x) * ratioX),
+                    y: Math.round(nextCharY + (o.y - prevTarget!.y) * ratioY),
+                    width: Math.max(12, Math.round(o.width * ratioX)),
+                    height: Math.max(12, Math.round(o.height * ratioY)),
+                  };
+                }
+                return o;
+              }),
+            };
+          }),
         commitHistory
       );
     },
@@ -1399,7 +1433,7 @@ export function App() {
   const handleAddAudioClip = (clip: AudioClip) => {
     const newClip: AudioClip = {
       ...clip,
-      id: `audio-${Date.now()}`,
+      id: `audio-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     };
     updateScenesState(
       (prev) =>

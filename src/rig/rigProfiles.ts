@@ -280,7 +280,7 @@ export function getBodyScaleForConfig(
       case 'youth':
         return { bodyScaleX: 0.88, bodyScaleY: 0.91, headScale: 0.62, translateY: 0 };
       case 'female':
-        return { bodyScaleX: 0.9, bodyScaleY: 0.96, headScale: 0.61, translateY: 0 };
+        return { bodyScaleX: 0.88, bodyScaleY: 0.91, headScale: 0.59, translateY: 0 };
       case 'senior':
         return { bodyScaleX: 0.96, bodyScaleY: 0.97, headScale: 0.63, translateY: 0 };
       case 'male':
@@ -295,7 +295,7 @@ export function getBodyScaleForConfig(
     case 'youth':
       return { bodyScaleX: 0.86, bodyScaleY: 0.9, headScale: 1.02, translateY: 16 };
     case 'female':
-      return { bodyScaleX: 0.9, bodyScaleY: 0.96, headScale: 0.98, translateY: 8 };
+      return { bodyScaleX: 0.88, bodyScaleY: 0.91, headScale: 0.96, translateY: 16 };
     case 'senior':
       return { bodyScaleX: 0.96, bodyScaleY: 0.95, headScale: 1.0, translateY: 10 };
     case 'male':

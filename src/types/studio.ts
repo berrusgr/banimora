@@ -973,6 +973,8 @@ export interface CanvasObject {
   hidden?: boolean;
   /** Faz 4A: Karakter prop soketine opsiyonel bağlanma bilgisi */
   attachment?: SceneObjectAttachment;
+  /** Akıllı eylemle karaktere bağlı oluşturulan nesnelerin sahip karakter kimliği */
+  smartActionOwnerId?: string;
   /** Adaptive Timeline (Faz T1): Karakter hareket klipleri ve kanal keyframe verileri */
   timelineData?: CharacterTimelineData;
   // Uploaded external image URL / DataURL

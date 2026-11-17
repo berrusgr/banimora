@@ -1358,32 +1358,32 @@ export const CharacterStudioModal: React.FC<CharacterStudioModalProps> = ({
               {/* TAB 1: CHARACTER LINEUP TEMPLATES, NAME, BODY STYLE, AGE/GENDER & SKIN TONE */}
               {activeTab === 'templates' && (
                 <div className="space-y-5">
-                  {/* NEW SLENDER PRO CHARACTER GROUP (Matching Uploaded Image 3!) */}
+                  {/* UNIFIED CHARACTER TEMPLATES ("Temel Karakter Şablonları") */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-xs font-bold text-slate-900">
-                        Kurumsal Uzun Oranlı Karakter Grubu (Yeni Pro Serisi: Erkek, Kadın, Yaşlı, Genç, Çocuk)
+                        Temel Karakter Şablonları
                       </label>
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                        Yeni Stil • Panolu & Kemerli
+                      <span className="text-[10px] text-indigo-600 font-semibold">
+                        Tıklayarak Şablonu Yükleyin
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-5 gap-2">
-                      {SLENDER_PRO_TEMPLATES.map((tpl) => (
+                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                      {[...SLENDER_PRO_TEMPLATES, ...LINEUP_TEMPLATES].map((tpl) => (
                         <button
                           key={tpl.key}
                           onClick={() => {
                             setName(tpl.name);
                             setSubtitle(tpl.subtitle);
-                            setConfig({ ...tpl.config });
+                            setConfig({ ...tpl.config, bodyStyle: 'slender-pro' });
                           }}
-                          className="group p-2 rounded-xl bg-indigo-50/40 hover:bg-indigo-50 border border-indigo-200 hover:border-indigo-500 flex flex-col items-center transition-all cursor-pointer"
+                          className="group p-2 rounded-xl bg-slate-50 hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-500 flex flex-col items-center transition-all cursor-pointer"
                         >
-                          <div className="w-full h-32 rounded-lg bg-[#f3e5c8] border border-amber-200/70 flex items-center justify-center p-1 mb-1.5 overflow-hidden">
-                            <div className="w-20 h-28">
+                          <div className="w-full h-28 rounded-lg bg-[#f3e5c8] border border-amber-200/70 flex items-center justify-center p-1 mb-1.5 overflow-hidden">
+                            <div className="w-18 h-26">
                               <ArticulatedCharacterRig
-                                config={tpl.config}
+                                config={{ ...tpl.config, bodyStyle: 'slender-pro' }}
                                 animTime={0}
                               />
                             </div>
@@ -1392,47 +1392,6 @@ export const CharacterStudioModal: React.FC<CharacterStudioModalProps> = ({
                             {tpl.name}
                           </span>
                           <span className="text-[10px] text-indigo-700 font-semibold">
-                            {tpl.ageBadge}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* CLASSIC LINEUP TEMPLATES */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs font-bold text-slate-900">
-                        Klasik Karakter Şablonları (Çocuktan Profesöre Serisi)
-                      </label>
-                      <span className="text-[10px] text-indigo-600 font-semibold">
-                        Tıklayarak Şablonu Yükleyin
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-2.5">
-                      {LINEUP_TEMPLATES.map((tpl) => (
-                        <button
-                          key={tpl.key}
-                          onClick={() => {
-                            setName(tpl.name);
-                            setSubtitle(tpl.subtitle);
-                            setConfig({ ...tpl.config });
-                          }}
-                          className="group p-2 rounded-xl bg-slate-50 hover:bg-indigo-50/40 border border-slate-200 hover:border-indigo-400 flex flex-col items-center transition-all cursor-pointer"
-                        >
-                          <div className="w-full h-28 rounded-lg bg-white border border-slate-100 flex items-center justify-center p-1 mb-1.5 overflow-hidden">
-                            <div className="w-16 h-24">
-                              <ArticulatedCharacterRig
-                                config={tpl.config}
-                                animTime={0}
-                              />
-                            </div>
-                          </div>
-                          <span className="text-xs font-bold text-slate-800 truncate w-full text-center">
-                            {tpl.name}
-                          </span>
-                          <span className="text-[10px] text-indigo-600 font-medium">
                             {tpl.ageBadge}
                           </span>
                         </button>

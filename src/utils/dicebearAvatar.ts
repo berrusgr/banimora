@@ -357,7 +357,7 @@ export function resolveDicebearOptions(
   } else if (resolvedExpression === 'angry') {
     if (!isBlinking) eyesVal = 'squint';
     eyebrowsVal = 'angryNatural';
-    mouthVal = 'grimace';
+    mouthVal = 'sad';
   } else if (resolvedExpression === 'worried') {
     if (!isBlinking && requestedEyeStyle.startsWith('iris-')) eyesVal = 'iris-worried';
     eyebrowsVal = 'sadConcernedNatural';
@@ -651,25 +651,35 @@ function renderAnatomicalDicebearMouthInner(
 function applyAnatomicalMouthToSvg(
   svg: string,
   config: Partial<CharacterConfig>,
-  animTime: number
+  animTime: number,
+  resolvedExpression?: CharacterExpressionType
 ): string {
-  if (!config.lipSyncEnabled || animTime <= 0.01) return svg;
-  const viseme = resolveVisemeAtTime(
-    config.ttsScript,
-    animTime,
-    true,
-    config.lipSyncAudioUrl,
-    config.lipSyncAudioStartTime
-  );
-  const inner = renderAnatomicalDicebearMouthInner(
-    viseme,
-    isFemaleCharacter(config),
-    config.lipColor
-  );
-  return svg.replace(
-    /<g transform="translate\(78 134\)">[\s\S]*?<\/g>/,
-    `<g transform="translate(78 134)">${inner}</g>`
-  );
+  if (config.lipSyncEnabled && animTime > 0.01) {
+    const viseme = resolveVisemeAtTime(
+      config.ttsScript,
+      animTime,
+      true,
+      config.lipSyncAudioUrl,
+      config.lipSyncAudioStartTime
+    );
+    const inner = renderAnatomicalDicebearMouthInner(
+      viseme,
+      isFemaleCharacter(config),
+      config.lipColor
+    );
+    return svg.replace(
+      /<g transform="translate\(78 134\)">[\s\S]*?<\/g>/,
+      `<g transform="translate(78 134)">${inner}</g>`
+    );
+  }
+  if (resolvedExpression === 'angry') {
+    const angryMouthInner = `<path d="M35 32.5 C36.5 19 56 15.5 72.5 25 C58 19.5 41.5 22.5 37 33.5 C36 34.5 34.8 33.8 35 32.5 Z" fill="#5c1c12" stroke="#47130b" stroke-width="0.6" stroke-linejoin="round" stroke-linecap="round"/>`;
+    return svg.replace(
+      /<g transform="translate\(78 134\)">[\s\S]*?<\/g>/,
+      `<g transform="translate(78 134)">${angryMouthInner}</g>`
+    );
+  }
+  return svg;
 }
 
 function applyCustomIrisEyesToSvg(
@@ -780,7 +790,7 @@ export function buildDicebearHeadInnerSvg(
     config.headDirection,
     config.skinTone
   );
-  svg = applyAnatomicalMouthToSvg(svg, config, animTime);
+  svg = applyAnatomicalMouthToSvg(svg, config, animTime, resolvedExpression);
   svg = applyCustomNoseToSvg(svg, config.noseStyle, config.headDirection);
   const dir = config.headDirection || 'center';
   const faceShift = dir === 'left' ? -11 : dir === 'right' ? 11 : 0;
@@ -798,7 +808,7 @@ export function buildDicebearHeadInnerSvg(
     // so long hair can flow freely past y=196 without any neck-level clipPath!
     .replace(
       'v18.4h-4a72 72 0 0 0-72 72v9h200v-9a72 72 0 0 0-72-72h-4v-18.39',
-      'v14q24 6 48 0v-14'
+      'v1q24 5 48 0v-1'
     );
 
   if (faceShift !== 0) {

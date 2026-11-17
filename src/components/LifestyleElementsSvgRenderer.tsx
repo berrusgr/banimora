@@ -372,19 +372,35 @@ export const LifestyleElementsSvgRenderer: React.FC<LifestyleElementsSvgRenderer
     case 'el-life-cookware':
       return (
         <svg viewBox="0 0 160 120" className="w-full h-full">
-          {/* Lid Knob */}
-          <circle cx="64" cy="24" r="6" fill={color} stroke="#0f172a" strokeWidth="2" />
-          {/* Lid */}
-          <path d="M 24,42 Q 64,20 104,42 Z" fill="#cbd5e1" stroke="#0f172a" strokeWidth="2.5" />
-          {/* Pot Handles */}
-          <path d="M 12,50 L 24,50 L 24,62 L 12,62 Z" fill={color} stroke="#0f172a" strokeWidth="2" />
-          <path d="M 104,50 L 116,50 L 116,62 L 104,62 Z" fill={color} stroke="#0f172a" strokeWidth="2" />
-          {/* Pot Body */}
-          <path d="M 24,42 L 104,42 L 102,94 Q 100,104 64,104 Q 28,104 26,94 Z" fill={secondaryColor} stroke="#0f172a" strokeWidth="2.5" />
-          {/* Frying Pan in front-right */}
-          <line x1="112" y1="88" x2="152" y2="74" stroke="#0f172a" strokeWidth="6" strokeLinecap="round" />
-          <ellipse cx="94" cy="94" rx="28" ry="12" fill={color} stroke="#0f172a" strokeWidth="2.5" />
-          <ellipse cx="94" cy="92" rx="22" ry="7" fill="#334155" />
+          {/* Pot Side Handles (Riveted Loops) */}
+          <path d="M 24,52 Q 10,50 10,58 Q 10,66 24,64" fill="none" stroke={primaryTones.stroke} strokeWidth="5.5" strokeLinecap="round" />
+          <path d="M 24,52 Q 11,50 11,58 Q 11,66 24,64" fill="none" stroke={primaryTones.base} strokeWidth="3" strokeLinecap="round" />
+          <path d="M 104,52 Q 118,50 118,58 Q 118,66 104,64" fill="none" stroke={primaryTones.stroke} strokeWidth="5.5" strokeLinecap="round" />
+          <path d="M 104,52 Q 117,50 117,58 Q 117,66 104,64" fill="none" stroke={primaryTones.base} strokeWidth="3" strokeLinecap="round" />
+          {/* Pot Body with 3D Cylindrical Shading */}
+          <path
+            d="M 24,44 L 104,44 L 101,92 Q 100,104 64,104 Q 28,104 27,92 Z"
+            fill={secondaryTones.base}
+            stroke={secondaryTones.stroke}
+            strokeWidth={sw}
+            strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin}
+          />
+          {/* Left vertical specular highlight + right shadow band */}
+          <path d="M 33,48 L 35,93 Q 36,98 42,100" fill="none" stroke={secondaryTones.specular} strokeWidth="4" strokeLinecap="round" opacity="0.5" />
+          <path d="M 86,46 L 100,46 L 97,92 Q 95,100 80,102 Q 86,96 86,88 Z" fill={secondaryTones.shadow} opacity="0.55" />
+          {/* Pot Rim */}
+          <ellipse cx="64" cy="44" rx="40" ry="6.5" fill={secondaryTones.highlight} stroke={secondaryTones.stroke} strokeWidth={swDetail} />
+          {/* Domed Lid + Specular + Ergonomic Knob */}
+          <path d="M 25,43 Q 64,19 103,43 Q 64,49 25,43 Z" fill="#cbd5e1" stroke="#334155" strokeWidth={sw} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} />
+          <path d="M 36,37 Q 50,27 66,27" fill="none" stroke="#ffffff" strokeWidth="2.4" strokeLinecap="round" opacity="0.8" />
+          <rect x="57" y="21" width="14" height="6" rx="3" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={swDetail} />
+          {/* Foreground Frying Pan */}
+          <path d="M 114,88 L 152,72" stroke={primaryTones.stroke} strokeWidth="7.5" strokeLinecap="round" />
+          <path d="M 114,88 L 152,72" stroke={primaryTones.base} strokeWidth="4.2" strokeLinecap="round" />
+          <ellipse cx="94" cy="96" rx="29" ry="12.5" fill={primaryTones.shadow} stroke={primaryTones.stroke} strokeWidth={sw} />
+          <ellipse cx="94" cy="92" rx="29" ry="11" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={swDetail} />
+          <ellipse cx="94" cy="92" rx="23" ry="7.5" fill="#1e293b" />
+          <path d="M 76,90 Q 94,85 112,90" fill="none" stroke="#475569" strokeWidth="1.6" strokeLinecap="round" opacity="0.7" />
         </svg>
       );
 
@@ -499,24 +515,37 @@ export const LifestyleElementsSvgRenderer: React.FC<LifestyleElementsSvgRenderer
     case 'el-office-desk':
       return (
         <svg viewBox="0 0 240 140" className="w-full h-full">
-          {/* Tapered Legs with Floor Pads */}
-          <rect x="22" y="42" width="12" height="88" rx="3" fill={secondaryTones.base} stroke={secondaryTones.stroke} strokeWidth={sw} />
-          <rect x="20" y="128" width="16" height="5" rx="2" fill={secondaryTones.deepShadow} />
-          <rect x="206" y="42" width="12" height="88" rx="3" fill={secondaryTones.base} stroke={secondaryTones.stroke} strokeWidth={sw} />
-          <rect x="204" y="128" width="16" height="5" rx="2" fill={secondaryTones.deepShadow} />
-          {/* Modesty Panel + Under-desk Shadow */}
-          <rect x="34" y="42" width="172" height="30" rx="2" fill={secondaryTones.shadow} stroke={secondaryTones.stroke} strokeWidth={swDetail} />
-          <rect x="34" y="42" width="172" height="6" fill={secondaryTones.deepShadow} opacity="0.4" />
-          {/* Drawer Unit */}
-          <rect x="148" y="42" width="58" height="60" rx="4.5" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={sw} />
-          <rect x="153" y="47" width="48" height="23" rx="2.5" fill={primaryTones.highlight} opacity="0.35" stroke={primaryTones.seam} strokeWidth="1.1" />
-          <rect x="153" y="74" width="48" height="23" rx="2.5" fill={primaryTones.highlight} opacity="0.35" stroke={primaryTones.seam} strokeWidth="1.1" />
-          <line x1="169" y1="58.5" x2="185" y2="58.5" stroke="#f8fafc" strokeWidth="3" strokeLinecap="round" />
-          <line x1="169" y1="85.5" x2="185" y2="85.5" stroke="#f8fafc" strokeWidth="3" strokeLinecap="round" />
-          {/* Beveled Tabletop */}
-          <rect x="10" y="25" width="220" height="17" rx="5.5" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={sw} />
-          <rect x="13" y="27" width="214" height="5" rx="2.5" fill={primaryTones.specular} opacity="0.45" />
-          <line x1="14" y1="39" x2="226" y2="39" stroke={primaryTones.shadow} strokeWidth="2" strokeLinecap="round" opacity="0.55" />
+          {/* Back Legs (darker for spatial depth) */}
+          <rect x="34" y="42" width="10" height="80" rx="2.5" fill={secondaryTones.deepShadow} stroke={secondaryTones.stroke} strokeWidth={swDetail} />
+          <rect x="196" y="42" width="10" height="80" rx="2.5" fill={secondaryTones.deepShadow} stroke={secondaryTones.stroke} strokeWidth={swDetail} />
+          {/* Modesty Panel + Under-table Ambient Shadow */}
+          <rect x="30" y="42" width="180" height="28" rx="2" fill={secondaryTones.shadow} stroke={secondaryTones.stroke} strokeWidth={swDetail} />
+          <rect x="24" y="40" width="192" height="7" fill={secondaryTones.deepShadow} opacity="0.45" />
+          {/* Front Tapered Legs with Floor Pads */}
+          <path d="M 20,40 L 32,40 L 30,130 L 22,130 Z" fill={secondaryTones.base} stroke={secondaryTones.stroke} strokeWidth={sw} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} />
+          <rect x="20" y="128" width="12" height="5" rx="2" fill={secondaryTones.deepShadow} />
+          <path d="M 208,40 L 220,40 L 218,130 L 210,130 Z" fill={secondaryTones.base} stroke={secondaryTones.stroke} strokeWidth={sw} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} />
+          <rect x="208" y="128" width="12" height="5" rx="2" fill={secondaryTones.deepShadow} />
+          {/* Beveled Drawer Cabinet */}
+          <rect x="148" y="42" width="58" height="62" rx="4.5" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={sw} />
+          <rect x="153" y="47" width="48" height="24" rx="3" fill={primaryTones.highlight} opacity="0.42" stroke={primaryTones.seam} strokeWidth="1.2" />
+          <rect x="153" y="75" width="48" height="24" rx="3" fill={primaryTones.highlight} opacity="0.42" stroke={primaryTones.seam} strokeWidth="1.2" />
+          <line x1="168" y1="59" x2="186" y2="59" stroke="#f8fafc" strokeWidth="3.2" strokeLinecap="round" />
+          <line x1="168" y1="87" x2="186" y2="87" stroke="#f8fafc" strokeWidth="3.2" strokeLinecap="round" />
+          {/* 3/4 Perspective Tabletop Top Surface */}
+          <path
+            d="M 20,16 L 220,16 L 232,30 L 8,30 Z"
+            fill={primaryTones.highlight}
+            stroke={primaryTones.stroke}
+            strokeWidth={sw}
+            strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin}
+          />
+          {/* Subtle woodgrain / surface sheen lines */}
+          <line x1="42" y1="21" x2="112" y2="21" stroke={primaryTones.specular} strokeWidth="1.8" strokeLinecap="round" opacity="0.55" />
+          <line x1="138" y1="25" x2="198" y2="25" stroke={primaryTones.specular} strokeWidth="1.4" strokeLinecap="round" opacity="0.4" />
+          {/* Tabletop Thick Front Edge */}
+          <rect x="8" y="30" width="224" height="12" rx="3.5" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={sw} />
+          <line x1="12" y1="32.5" x2="228" y2="32.5" stroke={primaryTones.specular} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
         </svg>
       );
 
@@ -870,26 +899,61 @@ export const LifestyleElementsSvgRenderer: React.FC<LifestyleElementsSvgRenderer
     case 'el-kitchen-stove':
       return (
         <svg viewBox="0 0 165 145" className="w-full h-full">
-          <rect x="12" y="24" width="141" height="112" rx="8" fill={color} stroke="#0f172a" strokeWidth="2.4" />
-          <rect x="12" y="24" width="141" height="20" rx="4" fill={secondaryColor} stroke="#0f172a" strokeWidth="2" />
-          <circle cx="38" cy="34" r="4" fill="#e2e8f0" />
-          <circle cx="56" cy="34" r="4" fill="#e2e8f0" />
-          <circle cx="110" cy="34" r="4" fill="#ef4444" />
-          <circle cx="128" cy="34" r="4" fill="#e2e8f0" />
-          <rect x="28" y="16" width="42" height="8" rx="2" fill="#0f172a" />
-          <rect x="94" y="16" width="42" height="8" rx="2" fill="#0f172a" />
-          <rect x="28" y="58" width="109" height="62" rx="6" fill="#1e293b" stroke="#0f172a" strokeWidth="2" />
-          <line x1="56" y1="68" x2="108" y2="68" stroke="#94a3b8" strokeWidth="4" strokeLinecap="round" />
+          {/* Leveling Feet */}
+          <rect x="20" y="133" width="12" height="6" rx="2" fill="#334155" />
+          <rect x="133" y="133" width="12" height="6" rx="2" fill="#334155" />
+          {/* 3/4 Perspective Cooktop Deck */}
+          <path
+            d="M 20,14 L 145,14 L 154,28 L 11,28 Z"
+            fill="#cbd5e1"
+            stroke={secondaryTones.stroke}
+            strokeWidth={sw}
+            strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin}
+          />
+          {/* Left & Right Gas Burners + Cast Iron Grates */}
+          <ellipse cx="48" cy="21" rx="20" ry="5" fill="#1e293b" />
+          <ellipse cx="48" cy="21" rx="13" ry="3" fill="none" stroke="#38bdf8" strokeWidth="1.6" strokeDasharray="3 2" opacity="0.85" />
+          <path d="M 28,20 L 68,20 M 38,16 L 34,25 M 58,16 L 62,25" stroke="#0f172a" strokeWidth="2.4" strokeLinecap="round" />
+          <ellipse cx="117" cy="21" rx="20" ry="5" fill="#1e293b" />
+          <ellipse cx="117" cy="21" rx="13" ry="3" fill="none" stroke="#f97316" strokeWidth="1.6" strokeDasharray="3 2" opacity="0.85" />
+          <path d="M 97,20 L 137,20 M 107,16 L 103,25 M 127,16 L 131,25" stroke="#0f172a" strokeWidth="2.4" strokeLinecap="round" />
+          {/* Stove Main Body */}
+          <rect x="11" y="28" width="143" height="106" rx="6" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={sw} />
+          <rect x="143" y="30" width="9" height="102" rx="2" fill={primaryTones.shadow} opacity="0.45" />
+          {/* Control Bezel */}
+          <rect x="11" y="28" width="143" height="22" rx="4" fill={secondaryTones.base} stroke={secondaryTones.stroke} strokeWidth={swDetail} />
+          {/* Digital Clock Display */}
+          <rect x="69" y="33" width="27" height="12" rx="2.5" fill="#0f172a" />
+          <rect x="74" y="37" width="17" height="4" rx="1" fill="#38bdf8" opacity="0.85" />
+          {/* Rotary Knobs with Indicator Ticks */}
+          {[28, 46, 118, 136].map((kx, idx) => (
+            <g key={kx}>
+              <circle cx={kx} cy="39" r="5.5" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.2" />
+              <line x1={kx} y1="39" x2={idx === 2 ? kx + 3 : kx} y2={idx === 2 ? 36 : 34.5} stroke={idx === 2 ? '#ef4444' : '#334155'} strokeWidth="1.8" strokeLinecap="round" />
+            </g>
+          ))}
+          {/* Oven Door Frame + Tinted Glass Window + Reflection */}
+          <rect x="24" y="59" width="117" height="65" rx="6" fill="#334155" stroke="#0f172a" strokeWidth={swDetail} />
+          <rect x="32" y="72" width="101" height="44" rx="4" fill="#0f172a" />
+          <polygon points="34,74 72,74 48,114 34,114" fill="#ffffff" opacity="0.12" />
+          {/* Tubular Stainless Oven Handle */}
+          <rect x="44" y="63" width="77" height="5" rx="2.5" fill="#e2e8f0" stroke="#475569" strokeWidth="1" />
         </svg>
       );
 
     case 'el-kitchen-spatula':
       return (
         <svg viewBox="0 0 30 78" className="w-full h-full">
-          <rect x="12" y="28" width="6" height="44" rx="3" fill={color} stroke="#0f172a" strokeWidth="1.6" />
-          <polygon points="7,8 23,8 21,28 9,28" fill={secondaryColor} stroke="#0f172a" strokeWidth="1.8" strokeLinejoin="round" />
-          <line x1="12" y1="13" x2="12" y2="23" stroke="#0f172a" strokeWidth="1.4" />
-          <line x1="18" y1="13" x2="18" y2="23" stroke="#0f172a" strokeWidth="1.4" />
+          {/* Ergonomic Handle + Hanging Hole */}
+          <path d="M 12,30 L 18,30 L 19,70 Q 15,74 11,70 Z" fill={primaryTones.base} stroke={primaryTones.stroke} strokeWidth={swDetail} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} />
+          <circle cx="15" cy="66" r="1.6" fill="#f8fafc" />
+          {/* Bolster */}
+          <rect x="11" y="26" width="8" height="5" rx="1.5" fill="#cbd5e1" stroke="#475569" strokeWidth="1" />
+          {/* Slotted Turner Blade */}
+          <path d="M 6,7 Q 15,5 24,7 L 21,26 L 9,26 Z" fill={secondaryTones.base} stroke={secondaryTones.stroke} strokeWidth={swDetail} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} />
+          <line x1="11.5" y1="11" x2="12" y2="22" stroke={secondaryTones.stroke} strokeWidth="1.5" strokeLinecap="round" />
+          <line x1="15" y1="10.5" x2="15" y2="22" stroke={secondaryTones.stroke} strokeWidth="1.5" strokeLinecap="round" />
+          <line x1="18.5" y1="11" x2="18" y2="22" stroke={secondaryTones.stroke} strokeWidth="1.5" strokeLinecap="round" />
         </svg>
       );
 

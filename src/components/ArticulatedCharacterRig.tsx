@@ -38,6 +38,7 @@ import {
   evaluateCharacterRig,
   evaluateCharacterRigForRenderer,
 } from '../rig/rigEvaluator';
+import { sampleEightFrameWalkCycle } from '../data/motionPresets';
 import {
   computeTorsoChainWorldTransform,
 } from '../rig/rigKinematics';
@@ -963,28 +964,22 @@ export function computePoseJointAngles(
         };
       case 'walk': {
         const isLeft = headDirection === 'left';
-        const isRight = headDirection === 'right';
+        const phase = (animTime * 1.15) % 1;
+        const w = sampleEightFrameWalkCycle(phase, 1, { reverse: isLeft });
+        const b = w.boneAngles;
         return {
-          headTilt: s * 3,
-          leftShoulder: 8 + s * 14,
-          leftElbow: isLeft
-            ? 10 + Math.max(0, s) * 8
-            : isRight
-              ? -10 - Math.max(0, -s) * 8
-              : -10 - Math.max(0, -s) * 8,
-          leftWrist: s * 6,
-          rightShoulder: -8 - s * 14,
-          rightElbow: isLeft
-            ? 10 + Math.max(0, -s) * 8
-            : isRight
-              ? -10 - Math.max(0, s) * 8
-              : 10 + Math.max(0, s) * 8,
-          rightWrist: -s * 6,
-          leftHip: -s * 11,
-          leftKnee: isLeft ? -Math.max(0, s) * 12 : Math.max(0, -s) * 12,
-          rightHip: s * 11,
-          rightKnee: isLeft ? -Math.max(0, -s) * 12 : Math.max(0, s) * 12,
-          bodyBobY: Math.abs(c) * -2.8,
+          headTilt: s * 2.5,
+          leftShoulder: b.leftShoulder ?? 0,
+          leftElbow: b.leftElbow ?? -8,
+          leftWrist: s * 4,
+          rightShoulder: b.rightShoulder ?? 0,
+          rightElbow: b.rightElbow ?? -8,
+          rightWrist: -s * 4,
+          leftHip: b.leftHip ?? 0,
+          leftKnee: isLeft ? -(b.leftKnee ?? 0) : (b.leftKnee ?? 0),
+          rightHip: b.rightHip ?? 0,
+          rightKnee: isLeft ? -(b.rightKnee ?? 0) : (b.rightKnee ?? 0),
+          bodyBobY: w.bodyBobY ?? 0,
         };
       }
       case 'run': {
@@ -1224,21 +1219,55 @@ export function computePoseJointAngles(
           bodyBobY: Math.abs(s) * -7,
         };
       case 'idle':
-      default:
+      default: {
+        const breath = Math.sin(animTime * 1.6);
+        if (headDirection === 'right') {
+          return {
+            headTilt: Math.sin(animTime * 0.85) * 0.8,
+            leftShoulder: 7.5 + breath * 1.2,
+            leftElbow: -9 - breath * 0.8,
+            leftWrist: -2,
+            rightShoulder: -3.5 - breath * 1.2,
+            rightElbow: -7 + breath * 0.8,
+            rightWrist: 2,
+            leftHip: 1.5,
+            leftKnee: 0,
+            rightHip: -2.0,
+            rightKnee: 2.5,
+            bodyBobY: breath * -0.9,
+          };
+        }
+        if (headDirection === 'left') {
+          return {
+            headTilt: Math.sin(animTime * 0.85) * -0.8,
+            leftShoulder: 3.5 + breath * 1.2,
+            leftElbow: 7 - breath * 0.8,
+            leftWrist: -2,
+            rightShoulder: -7.5 - breath * 1.2,
+            rightElbow: 9 + breath * 0.8,
+            rightWrist: 2,
+            leftHip: 2.0,
+            leftKnee: -2.5,
+            rightHip: -1.5,
+            rightKnee: 0,
+            bodyBobY: breath * -0.9,
+          };
+        }
         return {
-          headTilt: 0,
-          leftShoulder: 4 + s * 1.8,
-          leftElbow: -4,
-          leftWrist: 0,
-          rightShoulder: -4 - s * 1.8,
-          rightElbow: 4,
-          rightWrist: 0,
-          leftHip: 0,
+          headTilt: Math.sin(animTime * 0.85) * 0.6,
+          leftShoulder: 5.5 + breath * 1.3,
+          leftElbow: -7 - breath * 0.8,
+          leftWrist: -2,
+          rightShoulder: -5.5 - breath * 1.3,
+          rightElbow: 7 + breath * 0.8,
+          rightWrist: 2,
+          leftHip: -1.2,
           leftKnee: 0,
-          rightHip: 0,
+          rightHip: 1.2,
           rightKnee: 0,
-          bodyBobY: 0,
+          bodyBobY: breath * -0.9,
         };
+      }
     }
   };
 
@@ -5396,6 +5425,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
   const bStyle = config.bottomStyle || 'trousers';
   const sStyle = config.shoeStyle || 'dress';
   const isBareCalf = bStyle === 'shorts' || bStyle === 'skirt';
+  const isFeminineTrousers = config.genderAge === 'female' && !isBareCalf;
   const hasBottomPatternFill =
     bottomPat === 'striped' || bottomPat === 'plaid' || bottomPat === 'polka';
   const bottomFill = hasBottomPatternFill
@@ -5883,17 +5913,6 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
             fill="none"
             stroke="#1e293b"
             strokeWidth="2.1"
-            strokeLinecap="round"
-          />
-        );
-      }
-      if (resolvedExpression === 'happy') {
-        return (
-          <path
-            d={`M${cx - 6.2} ${cy + 1.5} Q${cx} ${cy - 3.8} ${cx + 6.2} ${cy + 1.5}`}
-            fill="none"
-            stroke="#1e293b"
-            strokeWidth="2.2"
             strokeLinecap="round"
           />
         );
@@ -6411,7 +6430,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
           {useDicebear && (
             <g
               data-rig-group="back-hair-collar-base"
-              transform={`translate(${collarAnchorInRootSpace.x}, ${collarAnchorInRootSpace.y + speechHeadBobY}) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
+              transform={`translate(${collarAnchorInRootSpace.x}, ${collarAnchorInRootSpace.y}) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
             >
               <g
                 data-rig-group="back-hair-neck-carrier"
@@ -6419,7 +6438,11 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
               >
                 <g
                   data-rig-group="back-hair-head-carrier"
-                  transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 105)` : undefined}
+                  transform={
+                    canonicalHeadAngle !== 0 || speechHeadBobY !== 0
+                      ? `translate(0, ${speechHeadBobY}) rotate(${canonicalHeadAngle} 110 105)`
+                      : undefined
+                  }
                 >
                   {renderDicebearBackHair()}
                 </g>
@@ -6433,10 +6456,71 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
               data-canonical-bone="pelvis"
               transform={pelvisAngle !== 0 ? `rotate(${pelvisAngle} 104 168)` : undefined}
             >
+              {/* Arka kol (sağa/sola bakarken gövde, kemer, kalça ve bacakların arkasında) */}
+              {(headDirection === 'right' || headDirection === 'left') && (
+                <g
+                  transform={spineAngle !== 0 ? `rotate(${spineAngle} 104 144)` : undefined}
+                >
+                  <g
+                    transform={chestAngle !== 0 ? `rotate(${chestAngle} 104 108)` : undefined}
+                  >
+                    {headDirection === 'right' ? (
+                      <g transform={`rotate(${rightShoulderAngle} 131 80)`}>
+                        <path
+                          d="M123.5 80 A7.5 7.5 0 0 1 138.5 80 C140 94, 140.5 106, 140.5 118 A7 7 0 0 1 126.5 118 C125.5 106, 123.5 94, 123.5 80 Z"
+                          fill={config.topColor}
+                        />
+                        <g transform={`rotate(${rightElbowAngle} 133.5 118)`}>
+                          <circle cx="133.5" cy="118" r="7" fill={config.topColor} />
+                          <path
+                            d="M126.5 118 C126 132, 127 146, 128.5 159 L138.5 159 C140 146, 141 132, 140.5 118 Z"
+                            fill={config.topColor}
+                          />
+                          {renderArticulatedHand(
+                            'right',
+                            effectiveHandSkinTone,
+                            rightHandGesture,
+                            rightWristAngle,
+                            133.5,
+                            159.5,
+                            1.12
+                          )}
+                        </g>
+                      </g>
+                    ) : (
+                      <g transform={`rotate(${leftShoulderAngle} 75 80)`}>
+                        <path
+                          d="M67.5 80 A7.5 7.5 0 0 1 82.5 80 L81 118 A7 7 0 0 1 67 118 Z"
+                          fill={config.topColor}
+                        />
+                        <g transform={`rotate(${leftElbowAngle} 74 118)`}>
+                          <circle cx="74" cy="118" r="7" fill={config.topColor} />
+                          <path
+                            d="M67 118 C67 132, 68 146, 68.5 159 L77.5 159 C79 146, 80 132, 81 118 Z"
+                            fill={config.topColor}
+                          />
+                          {renderArticulatedHand(
+                            'left',
+                            effectiveHandSkinTone,
+                            leftHandGesture,
+                            leftWristAngle,
+                            73,
+                            159.5,
+                            1.12
+                          )}
+                        </g>
+                      </g>
+                    )}
+                  </g>
+                </g>
+              )}
+
               {/* 1. LEGS & SHOES (Sculpted Anatomical Taper, Cel-Shading & Colored Ink) */}
-              {/* LEFT LEG */}
-              <g transform={`rotate(${leftHipAngle} 89 168)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
-                <circle cx="89" cy="168" r={bStyle === 'skirt' ? 12.5 : 14.5} fill={bStyle === 'skirt' ? config.skinTone : config.bottomColor} />
+              {(() => {
+                const leftLegNode = (
+                  /* LEFT LEG */
+              <g key="left-leg" transform={`rotate(${leftHipAngle} 89 168)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+                <circle cx="89" cy="168" r={bStyle === 'skirt' ? 12.5 : isFeminineTrousers ? 13.5 : 14.5} fill={bStyle === 'skirt' ? config.skinTone : config.bottomColor} />
                 {bStyle === 'shorts' ? (
                   <>
                     <path
@@ -6469,23 +6553,38 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                 ) : (
                   <>
                     <path
-                      d="M74 168 C71 190, 72 220, 76 246 L101 246 C104 220, 105 190, 104 168 Z"
+                      d={
+                        isFeminineTrousers
+                          ? 'M75 168 C73.5 190, 76 220, 79.5 246 L98 246 C100.5 220, 102.5 190, 103 168 Z'
+                          : 'M74 168 C71 190, 72 220, 76 246 L101 246 C104 220, 105 190, 104 168 Z'
+                      }
                       fill={config.bottomColor}
                     />
                     {/* Inner-thigh cel shadow */}
                     <path
-                      d="M95 170 C97 192, 97 220, 95 245 L100 245 C103 220, 104 192, 103 170 Z"
+                      d={
+                        isFeminineTrousers
+                          ? 'M94 170 C96 192, 95 220, 93.5 245 L97.5 245 C100 220, 101.5 192, 101.5 170 Z'
+                          : 'M95 170 C97 192, 97 220, 95 245 L100 245 C103 220, 104 192, 103 170 Z'
+                      }
                       fill={deriveMaterialTones(config.bottomColor).shadow}
                       opacity="0.45"
                     />
                   </>
                 )}
                 {bStyle === 'joggers' && (
-                  <line x1="75.5" y1="168" x2="77.5" y2="246" stroke={secondaryTop} strokeWidth="2.4" />
+                  <line
+                    x1={isFeminineTrousers ? 76.5 : 75.5}
+                    y1="168"
+                    x2={isFeminineTrousers ? 80 : 77.5}
+                    y2="246"
+                    stroke={secondaryTop}
+                    strokeWidth="2.4"
+                  />
                 )}
                 {renderBoneOverlay('leftHip', 89, 168, 89, 240, 0, 'Sol Kalça (Üst Bacak)')}
                 <g transform={`rotate(${leftKneeAngle} 89 246)`}>
-                  <circle cx="88.5" cy="246" r={bStyle === 'skirt' ? 8.5 : 11.5} fill={calfColor} />
+                  <circle cx="88.5" cy="246" r={bStyle === 'skirt' ? 8.5 : isFeminineTrousers ? 9.2 : 11.5} fill={calfColor} />
                   {bStyle === 'skirt' ? (
                     <>
                       <path
@@ -6502,27 +6601,56 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   ) : (
                     <>
                       <path
-                        d="M76 246 C74 268, 75 292, 78 314 L97 314 C100 292, 102 268, 101 246 Z"
+                        d={
+                          isFeminineTrousers
+                            ? 'M79.5 246 C77.5 262, 78 278, 81 294 C82 302, 82.5 308, 82.5 314 L94.5 314 C95 307, 96 299, 97 290 C99 275, 100 262, 98 246 Z'
+                            : 'M76 246 C74 268, 75 292, 78 314 L97 314 C100 292, 102 268, 101 246 Z'
+                        }
                         fill={calfColor}
                       />
                       {/* Knee fold & calf cel-shadow */}
                       <path
-                        d="M93 248 C95 270, 94 292, 91 313 L96 313 C99 292, 101 270, 100 248 Z"
+                        d={
+                          isFeminineTrousers
+                            ? 'M92.5 248 C94.5 264, 94 278, 92 293 C91.5 301, 91 307, 90.5 313 L94 313 C94.5 306, 95.5 298, 96.5 289 C98.5 274, 99.5 262, 97.5 248 Z'
+                            : 'M93 248 C95 270, 94 292, 91 313 L96 313 C99 292, 101 270, 100 248 Z'
+                        }
                         fill={deriveMaterialTones(calfColor).shadow}
                         opacity="0.45"
                       />
                       {/* Tailored trouser hem cuff & break fold (only for trousers) */}
                       {!isBareCalf && (
                         <>
-                          <rect x="77" y="307" width="21" height="6" rx="1.5" fill={pantsShade} opacity="0.72" />
-                          <path d="M78 309 Q87.5 311.5 97 309" fill="none" stroke={deriveMaterialTones(calfColor).highlight} strokeWidth="0.9" opacity="0.35" />
+                          <rect
+                            x={isFeminineTrousers ? 81.5 : 77}
+                            y="307"
+                            width={isFeminineTrousers ? 14 : 21}
+                            height="6"
+                            rx="1.5"
+                            fill={pantsShade}
+                            opacity="0.72"
+                          />
+                          <path
+                            d={isFeminineTrousers ? 'M82.5 309 Q88.5 311 94.5 309' : 'M78 309 Q87.5 311.5 97 309'}
+                            fill="none"
+                            stroke={deriveMaterialTones(calfColor).highlight}
+                            strokeWidth="0.9"
+                            opacity="0.35"
+                          />
                         </>
                       )}
                       <path d="M84 244 Q88.5 246 93 244.5 M85 250 Q88.5 251.5 92 250" fill="none" stroke={pantsShade} strokeWidth="0.9" opacity="0.28" strokeLinecap="round" />
                     </>
                   )}
                   {bStyle === 'joggers' && (
-                    <line x1="77.5" y1="246" x2="79" y2="310" stroke={secondaryTop} strokeWidth="2.4" />
+                    <line
+                      x1={isFeminineTrousers ? 80 : 77.5}
+                      y1="246"
+                      x2={isFeminineTrousers ? 83 : 79}
+                      y2="310"
+                      stroke={secondaryTop}
+                      strokeWidth="2.4"
+                    />
                   )}
                   <g
                     data-canonical-bone="leftAnkle"
@@ -6543,10 +6671,12 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   )}
                 </g>
               </g>
+                );
 
-              {/* RIGHT LEG */}
-              <g transform={`rotate(${rightHipAngle} 119 168)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
-                <circle cx="119" cy="168" r={bStyle === 'skirt' ? 12.5 : 14.5} fill={bStyle === 'skirt' ? config.skinTone : config.bottomColor} />
+                const rightLegNode = (
+                  /* RIGHT LEG */
+              <g key="right-leg" transform={`rotate(${rightHipAngle} 119 168)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+                <circle cx="119" cy="168" r={bStyle === 'skirt' ? 12.5 : isFeminineTrousers ? 13.5 : 14.5} fill={bStyle === 'skirt' ? config.skinTone : config.bottomColor} />
                 {bStyle === 'shorts' ? (
                   <>
                     <path
@@ -6578,22 +6708,37 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                 ) : (
                   <>
                     <path
-                      d="M104 168 C103 190, 104 220, 106 246 L130 246 C133 220, 135 190, 134 168 Z"
+                      d={
+                        isFeminineTrousers
+                          ? 'M105 168 C104.5 190, 106.5 220, 108.5 246 L127 246 C130 220, 132.5 190, 132.5 168 Z'
+                          : 'M104 168 C103 190, 104 220, 106 246 L130 246 C133 220, 135 190, 134 168 Z'
+                      }
                       fill={config.bottomColor}
                     />
                     <path
-                      d="M124 170 C126 192, 126 220, 124 245 L129 245 C132 220, 134 192, 133 170 Z"
+                      d={
+                        isFeminineTrousers
+                          ? 'M122.5 170 C124.5 192, 124 220, 122.5 245 L126.5 245 C129 220, 131.5 192, 131 170 Z'
+                          : 'M124 170 C126 192, 126 220, 124 245 L129 245 C132 220, 134 192, 133 170 Z'
+                      }
                       fill={deriveMaterialTones(config.bottomColor).shadow}
                       opacity="0.45"
                     />
                   </>
                 )}
                 {bStyle === 'joggers' && (
-                  <line x1="132" y1="168" x2="128.5" y2="246" stroke={secondaryTop} strokeWidth="2.4" />
+                  <line
+                    x1={isFeminineTrousers ? 131 : 132}
+                    y1="168"
+                    x2={isFeminineTrousers ? 126.5 : 128.5}
+                    y2="246"
+                    stroke={secondaryTop}
+                    strokeWidth="2.4"
+                  />
                 )}
                 {renderBoneOverlay('rightHip', 119, 168, 118, 240, 0, 'Sağ Kalça (Üst Bacak)')}
                 <g transform={`rotate(${rightKneeAngle} 118 246)`}>
-                  <circle cx="118" cy="246" r={bStyle === 'skirt' ? 8.5 : 11.5} fill={calfColor} />
+                  <circle cx="118" cy="246" r={bStyle === 'skirt' ? 8.5 : isFeminineTrousers ? 9.2 : 11.5} fill={calfColor} />
                   {bStyle === 'skirt' ? (
                     <>
                       <path
@@ -6610,25 +6755,54 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   ) : (
                     <>
                       <path
-                        d="M106 246 C104 268, 105 292, 106 314 L124 314 C128 292, 131 268, 130 246 Z"
+                        d={
+                          isFeminineTrousers
+                            ? 'M108.5 246 C107.5 262, 108 278, 110.5 294 C111.5 302, 112 308, 112 314 L124 314 C124.5 307, 125.5 299, 126.5 290 C128.5 275, 129 262, 127 246 Z'
+                            : 'M106 246 C104 268, 105 292, 106 314 L124 314 C128 292, 131 268, 130 246 Z'
+                        }
                         fill={calfColor}
                       />
                       <path
-                        d="M121 248 C123 270, 121 292, 119 313 L123 313 C127 292, 129 270, 129 248 Z"
+                        d={
+                          isFeminineTrousers
+                            ? 'M121 248 C123 264, 122 278, 120 293 C119.5 301, 119 307, 118.5 313 L123 313 C124 306, 125 298, 126 289 C128 274, 128.5 262, 126.5 248 Z'
+                            : 'M121 248 C123 270, 121 292, 119 313 L123 313 C127 292, 129 270, 129 248 Z'
+                        }
                         fill={deriveMaterialTones(calfColor).shadow}
                         opacity="0.45"
                       />
                       {!isBareCalf && (
                         <>
-                          <rect x="105.5" y="307" width="19.5" height="6" rx="1.5" fill={pantsShade} opacity="0.72" />
-                          <path d="M106.5 309 Q115 311.5 124 309" fill="none" stroke={deriveMaterialTones(calfColor).highlight} strokeWidth="0.9" opacity="0.35" />
+                          <rect
+                            x={isFeminineTrousers ? 111 : 105.5}
+                            y="307"
+                            width={isFeminineTrousers ? 14 : 19.5}
+                            height="6"
+                            rx="1.5"
+                            fill={pantsShade}
+                            opacity="0.72"
+                          />
+                          <path
+                            d={isFeminineTrousers ? 'M112 309 Q118 311 124 309' : 'M106.5 309 Q115 311.5 124 309'}
+                            fill="none"
+                            stroke={deriveMaterialTones(calfColor).highlight}
+                            strokeWidth="0.9"
+                            opacity="0.35"
+                          />
                         </>
                       )}
                       <path d="M112 244 Q117.5 246 122 244.5 M113 250 Q117.5 251.5 121 250" fill="none" stroke={pantsShade} strokeWidth="0.9" opacity="0.28" strokeLinecap="round" />
                     </>
                   )}
                   {bStyle === 'joggers' && (
-                    <line x1="128.5" y1="246" x2="123" y2="310" stroke={secondaryTop} strokeWidth="2.4" />
+                    <line
+                      x1={isFeminineTrousers ? 126.5 : 128.5}
+                      y1="246"
+                      x2={isFeminineTrousers ? 123.5 : 123}
+                      y2="310"
+                      stroke={secondaryTop}
+                      strokeWidth="2.4"
+                    />
                   )}
                   <g
                     data-canonical-bone="rightAnkle"
@@ -6649,6 +6823,20 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   )}
                 </g>
               </g>
+                );
+
+                return headDirection === 'right' ? (
+                  <>
+                    {rightLegNode}
+                    {leftLegNode}
+                  </>
+                ) : (
+                  <>
+                    {leftLegNode}
+                    {rightLegNode}
+                  </>
+                );
+              })()}
 
               {/* Upper Pelvis / Hip block (or A-line Midi Skirt when bottomStyle === 'skirt') */}
               {bStyle === 'skirt' ? (
@@ -6755,49 +6943,51 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   data-canonical-bone="chest"
                   transform={chestAngle !== 0 ? `rotate(${chestAngle} 104 108)` : undefined}
                 >
-                  {/* TORSO BODY (Anatomical 2D Vector Contour + Directional Volume Shading) */}
+                  {(() => {
+                    const torsoBodyNode = (
+                      <g key="slender-torso-body">
+                        {/* TORSO BODY (Anatomical 2D Vector Contour + Directional Volume Shading) */}
                   <defs>
                     <linearGradient id={`${patternUid}-slender-torso-vol`} x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#ffffff" stopOpacity="0.18" />
-                      <stop offset="48%" stopColor="#ffffff" stopOpacity="0" />
-                      <stop offset="100%" stopColor="#0f172a" stopOpacity="0.18" />
+                      <stop offset="0%" stopColor="#ffffff" stopOpacity="0.10" />
+                      <stop offset="50%" stopColor="#ffffff" stopOpacity="0" />
+                      <stop offset="100%" stopColor="#0f172a" stopOpacity="0.10" />
                     </linearGradient>
                   </defs>
-                  <path
-                    d={
+                  {(() => {
+                    const slenderTorsoD =
                       config.genderAge === 'female'
-                        ? 'M72 75 C83 67, 125 67, 136 75 C138 79, 134 98, 129 116 C128 127, 132 136, 132 142 Q104 144 76 142 C76 136, 80 127, 79 116 C74 98, 70 79, 72 75 Z'
-                        : 'M69 75 C81 66, 127 66, 139 75 C141 80, 137 104, 134 124 L133 142 Q104 144 75 142 L74 124 C71 104, 67 80, 69 75 Z'
-                    }
-                    fill={
-                      effectiveOutfitStyle === 'lab-coat'
-                        ? '#f8fafc'
-                        : config.topColor
-                    }
-                    stroke={deriveMaterialTones(effectiveOutfitStyle === 'lab-coat' ? '#f8fafc' : config.topColor).stroke}
-                    strokeWidth="1.45"
-                    strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin}
-                  />
-                  {/* Cel-shaded right shadow & top-left highlight */}
-                  <path
-                    d={
-                      config.genderAge === 'female'
-                        ? 'M122 72 C129 73, 134 75, 136 77 C137 82, 133 100, 129 116 C128 127, 131 136, 131 142 L118 143 C121 124, 122 96, 122 72 Z'
-                        : 'M124 72 C131 73, 136 75, 138 77 C140 82, 136 105, 133 125 L132 142 L119 143 C122 124, 124 96, 124 72 Z'
-                    }
-                    fill={deriveMaterialTones(effectiveOutfitStyle === 'lab-coat' ? '#f8fafc' : config.topColor).shadow}
-                    opacity="0.42"
-                    pointerEvents="none"
-                  />
-                  <path
-                    d={
-                      config.genderAge === 'female'
-                        ? 'M72 75 C83 67, 125 67, 136 75 C138 79, 134 98, 129 116 C128 127, 132 136, 132 142 Q104 144 76 142 C76 136, 80 127, 79 116 C74 98, 70 79, 72 75 Z'
-                        : 'M69 75 C81 66, 127 66, 139 75 C141 80, 137 104, 134 124 L133 142 Q104 144 75 142 L74 124 C71 104, 67 80, 69 75 Z'
-                    }
-                    fill={`url(#${patternUid}-slender-torso-vol)`}
-                    pointerEvents="none"
-                  />
+                        ? 'M92 67 C85 68, 79 70.5, 75 72.5 A7.5 7.5 0 0 0 67.5 80 A7.5 7.5 0 0 0 75 87.5 C76 98, 79 108, 79 116 C80 127, 76 136, 76 142 Q104 144 132 142 C132 136, 128 127, 129 116 C129 108, 130 98, 131 87.5 A7.5 7.5 0 0 0 138.5 80 A7.5 7.5 0 0 0 131 72.5 C127 70.5, 121 68, 116 67 Q104 66 92 67 Z'
+                        : 'M92 67 C85 68, 79 70.5, 75 72.5 A7.5 7.5 0 0 0 67.5 80 A7.5 7.5 0 0 0 75 87.5 C75 104, 74 124, 75 142 Q104 144 133 142 C134 124, 132 104, 131 87.5 A7.5 7.5 0 0 0 138.5 80 A7.5 7.5 0 0 0 131 72.5 C127 70.5, 121 68, 116 67 Q104 66 92 67 Z';
+                    return (
+                      <>
+                        <path
+                          d={slenderTorsoD}
+                          fill={
+                            effectiveOutfitStyle === 'lab-coat'
+                              ? '#f8fafc'
+                              : config.topColor
+                          }
+                        />
+                        {/* Cel-shaded right shadow (kept below shoulder socket so arm rotation stays seamless) */}
+                        <path
+                          d={
+                            config.genderAge === 'female'
+                              ? 'M122 90 L130.5 90 C130 100, 129 108, 129 116 C128 127, 132 136, 132 142 L118 143 C121 124, 122 106, 122 90 Z'
+                              : 'M123 90 L131 90 C132 105, 133 125, 132 142 L119 143 C122 124, 123 106, 123 90 Z'
+                          }
+                          fill={deriveMaterialTones(effectiveOutfitStyle === 'lab-coat' ? '#f8fafc' : config.topColor).shadow}
+                          opacity="0.18"
+                          pointerEvents="none"
+                        />
+                        <path
+                          d={slenderTorsoD}
+                          fill={`url(#${patternUid}-slender-torso-vol)`}
+                          pointerEvents="none"
+                        />
+                      </>
+                    );
+                  })()}
 
                   {/* Neck-to-collar skin bridge (prevents torso top stroke from cutting across the throat) */}
                   <path
@@ -6806,14 +6996,14 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                     pointerEvents="none"
                   />
 
-                  {/* Under-arm & Waist Tonal Fold Lines */}
+                  {/* Under-arm & Waist Tonal Fold Lines (kept below shoulder socket) */}
                   <path
-                    d="M78 88 Q82 114 77 142 M130 88 Q126 114 131 142"
+                    d="M78 93 Q82 116 77 142 M130 93 Q126 116 131 142"
                     fill="none"
                     stroke={effectiveOutfitStyle === 'lab-coat' ? '#cbd5e1' : shirtShade}
-                    strokeWidth="1.4"
+                    strokeWidth="1.2"
                     strokeLinecap="round"
-                    opacity="0.7"
+                    opacity="0.55"
                   />
                   <path
                     d="M84 142 Q104 146 124 142"
@@ -6846,14 +7036,6 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                     config.outfitStyle === 'pocket-shirt' ||
                     config.outfitStyle === 'button-cardigan') && (
                       <g strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
-                        {/* Shoulder-to-armhole tailored seam lines */}
-                        <path
-                          d="M75 74 Q79 84 78 94 M133 74 Q129 84 130 94"
-                          fill="none"
-                          stroke={shirtShade}
-                          strokeWidth="0.95"
-                          opacity="0.42"
-                        />
                         {/* Subtle underarm & waist-tuck fabric folds above belt */}
                         <path
                           d="M82 135 Q88 140 93 138 M116 138 Q122 140 127 135 M79 124 Q83 128 86 127 M129 124 Q125 128 122 127"
@@ -7091,18 +7273,21 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                   )}
 
                   {/* Belt moved to pelvis waistband above */}
+                      </g>
+                    );
 
-                  {/* RIGHT ARM / VIEWER'S RIGHT (Seamless lineless matching left arm + natural length) */}
-                  <g transform={`rotate(${rightShoulderAngle} 131 82)`}>
+                    const rightArmNode = (
+                      /* RIGHT ARM / VIEWER'S RIGHT (Concentric seamless shoulder socket + natural length) */
+                  <g key="slender-right-arm" transform={`rotate(${rightShoulderAngle} 131 80)`}>
                     {/* Upper Sleeve */}
                     <path
-                      d="M123 80 A8 8 0 0 1 139 80 C141 94, 141.5 106, 140.5 118 A7 7 0 0 1 126.5 118 C125.5 106, 123 94, 123 80 Z"
+                      d="M123.5 80 A7.5 7.5 0 0 1 138.5 80 C140 93, 140.8 106, 140.5 118 A7 7 0 0 1 126.5 118 C125.8 106, 123.5 93, 123.5 80 Z"
                       fill={config.topColor}
                     />
                     <path
-                      d="M136 83 C138.5 95, 139 106, 138 117 L140 117 C141 106, 141 95, 138.5 82 Z"
+                      d="M137 93 C138.5 101, 138.8 109, 138 117 L140 117 C140.8 109, 140.8 100, 139 92 Z"
                       fill={deriveMaterialTones(config.topColor).shadow}
-                      opacity="0.28"
+                      opacity="0.18"
                     />
                     {renderBoneOverlay('rightShoulder', 131, 82, 133.5, 114, 0, 'Sağ Omuz (Üst Kol)')}
                     {/* Elbow & Forearm */}
@@ -7239,12 +7424,14 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                       )}
                     </g>
                   </g>
+                    );
 
-                  {/* LEFT ARM / VIEWER'S LEFT (Hangs naturally with buttoned cuff, Image 3) */}
-                  <g transform={`rotate(${leftShoulderAngle} 75 80)`}>
+                    const leftArmNode = (
+                      /* LEFT ARM / VIEWER'S LEFT (Concentric seamless shoulder socket) */
+                  <g key="slender-left-arm" transform={`rotate(${leftShoulderAngle} 75 80)`}>
                     {/* Upper Arm */}
                     <path
-                      d="M67 80 A8 8 0 0 1 83 80 L81 118 A7 7 0 0 1 67 118 Z"
+                      d="M67.5 80 A7.5 7.5 0 0 1 82.5 80 L81 118 A7 7 0 0 1 67 118 Z"
                       fill={config.topColor}
                     />
                     {renderBoneOverlay('leftShoulder', 75, 80, 74, 114, 0, 'Sol Omuz (Üst Kol)')}
@@ -7327,6 +7514,32 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                       </g>
                     </g>
                   </g>
+                    );
+
+                    if (headDirection === 'right') {
+                      return (
+                        <>
+                          {torsoBodyNode}
+                          {leftArmNode}
+                        </>
+                      );
+                    }
+                    if (headDirection === 'left') {
+                      return (
+                        <>
+                          {torsoBodyNode}
+                          {rightArmNode}
+                        </>
+                      );
+                    }
+                    return (
+                      <>
+                        {torsoBodyNode}
+                        {rightArmNode}
+                        {leftArmNode}
+                      </>
+                    );
+                  })()}
                 </g>
               </g>
             </g>
@@ -7335,7 +7548,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
             {/* 3. REFINED SLENDER-PRO HEAD & NECK (Anchored to scaled collar in root space!) */}
             <g
               data-rig-group="head-collar-base"
-                  transform={`translate(${collarAnchorInRootSpace.x}, ${collarAnchorInRootSpace.y + speechHeadBobY}) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
+                  transform={`translate(${collarAnchorInRootSpace.x}, ${collarAnchorInRootSpace.y}) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
                 >
                   <g
                     data-canonical-bone="neck"
@@ -7344,16 +7557,20 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                     {!useDicebear && (
                       <g
                         data-rig-group="vector-back-hair-head-carrier"
-                        transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 105)` : undefined}
+                        transform={
+                          canonicalHeadAngle !== 0 || speechHeadBobY !== 0
+                            ? `translate(0, ${speechHeadBobY}) rotate(${canonicalHeadAngle} 110 105)`
+                            : undefined
+                        }
                       >
                         {renderHairBack(config.hairStyle, config.hairColor)}
                       </g>
                     )}
 
-                    {/* Slender Neck anchored at collar (110, 114) and tucked seamlessly into collar */}
+                    {/* Slender Neck anchored at collar (110, 114) and tucked deeply into collar */}
                     <g transform={`translate(110, 114) scale(${neckScaleX}, ${neckScaleY}) translate(-110, -114)`}>
                       <path
-                        d="M95 82 L125 82 L122 115 Q110 123 98 115 Z"
+                        d="M95 82 L125 82 L123 122 Q110 130 97 122 Z"
                         fill={config.skinTone}
                       />
                       {!useDicebear && (
@@ -7366,7 +7583,11 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
 
                     <g
                       data-canonical-bone="head"
-                      transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 105)` : undefined}
+                      transform={
+                        canonicalHeadAngle !== 0 || speechHeadBobY !== 0
+                          ? `translate(0, ${speechHeadBobY}) rotate(${canonicalHeadAngle} 110 105)`
+                          : undefined
+                      }
                     >
                       {config.photoAvatarMode === 'hybrid-head' && config.photoAvatarUrl ? (
                         renderHybridPhotoHead()
@@ -7531,6 +7752,79 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                 {/* Action Background Props (e.g., Office Chair behind seated character) */}
                 {!portraitMode && renderActionBackgroundProps(config.pose)}
 
+                {/* Arka kol (classic şablonda sağa/sola bakarken gövde, kalça ve bacakların arkasında) */}
+                {!portraitMode && (headDirection === 'right' || headDirection === 'left') && (
+                  <g
+                    transform={`translate(110, 155) scale(${prop.bodyScaleX}, ${prop.bodyScaleY}) translate(-110, -155)`}
+                  >
+                    <g
+                      transform={pelvisAngle !== 0 ? `rotate(${pelvisAngle} 110 ${classicUpperPelvisPivotY})` : undefined}
+                    >
+                      <g
+                        transform={spineAngle !== 0 ? `rotate(${spineAngle} 110 196)` : undefined}
+                      >
+                        <g
+                          transform={chestAngle !== 0 ? `rotate(${chestAngle} 110 155)` : undefined}
+                        >
+                          {headDirection === 'right' ? (
+                            <g transform={`${isChefPrototypeHead ? 'translate(5, 0) ' : ''}rotate(${rightShoulderAngle} 143 129)`}>
+                              <path
+                                d={
+                                  isChefPrototypeHead
+                                    ? 'M133 129 A10 10 0 0 1 153 129 C153 142, 152 154, 151 166 A8 8 0 0 1 134 166 C133 154, 133 142, 133 129 Z'
+                                    : 'M135 129 A8 8 0 0 1 151 129 C151 142, 150.5 154, 150 166 A7.5 7.5 0 0 1 135 166 C134.5 154, 134.5 142, 135 129 Z'
+                                }
+                                fill={upperSleeveColor}
+                              />
+                              <g transform={`rotate(${rightElbowAngle} 142.5 166)`}>
+                                <path
+                                  d="M135 166 A7.5 7.5 0 0 1 150 166 L148.5 201 A6 6 0 0 1 136.5 201 Z"
+                                  fill={upperSleeveColor}
+                                />
+                                {renderArticulatedHand(
+                                  'right',
+                                  effectiveHandSkinTone,
+                                  rightHandGesture,
+                                  rightWristAngle,
+                                  142.5,
+                                  202,
+                                  1.0
+                                )}
+                              </g>
+                            </g>
+                          ) : (
+                            <g transform={`${isChefPrototypeHead ? 'translate(-5, 0) ' : ''}rotate(${leftShoulderAngle} 77 129)`}>
+                              <path
+                                d={
+                                  isChefPrototypeHead
+                                    ? 'M67 129 A10 10 0 0 1 87 129 C88 142, 87 154, 86 166 A8 8 0 0 1 69 166 C68 154, 67 142, 67 129 Z'
+                                    : 'M69 129 A8 8 0 0 1 85 129 C85.5 142, 85.5 154, 85 166 A7.5 7.5 0 0 1 70 166 C69.5 154, 69 142, 69 129 Z'
+                                }
+                                fill={upperSleeveColor}
+                              />
+                              <g transform={`rotate(${leftElbowAngle} 77.5 166)`}>
+                                <path
+                                  d="M70 166 A7.5 7.5 0 0 1 85 166 L83.5 201 A6 6 0 0 1 71.5 201 Z"
+                                  fill={upperSleeveColor}
+                                />
+                                {renderArticulatedHand(
+                                  'left',
+                                  effectiveHandSkinTone,
+                                  leftHandGesture,
+                                  leftWristAngle,
+                                  77.5,
+                                  202,
+                                  1.0
+                                )}
+                              </g>
+                            </g>
+                          )}
+                        </g>
+                      </g>
+                    </g>
+                  </g>
+                )}
+
                 {/* ============================================================
             1. SEAMLESS LINELESS LOWER BODY: HIPS, THIGHS, KNEES, CALVES & FEET
            ============================================================ */}
@@ -7548,8 +7842,10 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                         fill={bottomFill}
                       />
 
-                      {/* LEFT LEG (Hip Pivot at 96, 202 inside Pelvis so running never opens a gap) */}
-                      <g transform={`rotate(${leftHipAngle} 96 202)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+                      {(() => {
+                        const leftLegNode = (
+                          /* LEFT LEG (Hip Pivot at 96, 202 inside Pelvis so running never opens a gap) */
+                      <g key="left-leg" transform={`rotate(${leftHipAngle} 96 202)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
                         {/* Upper Leg (Thigh) - Sculpted anatomical curve + cel-shading + ink */}
                         {bStyle === 'skirt' ? (
                           <>
@@ -7566,11 +7862,19 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                         ) : (
                           <>
                             <path
-                              d="M84 202 A12 12 0 0 1 108 202 C108.5 222, 107.5 240, 106 256 A10 10 0 0 1 86 256 C84.5 240, 83.5 222, 84 202 Z"
+                              d={
+                                isFeminineTrousers
+                                  ? 'M85 202 A11 11 0 0 1 107 202 C107 222, 106 240, 104.5 256 A8.5 8.5 0 0 1 87.5 256 C86 240, 85 222, 85 202 Z'
+                                  : 'M84 202 A12 12 0 0 1 108 202 C108.5 222, 107.5 240, 106 256 A10 10 0 0 1 86 256 C84.5 240, 83.5 222, 84 202 Z'
+                              }
                               fill={bottomFill}
                             />
                             <path
-                              d="M101 204 C103 222, 103 240, 101 255 L105 255 C107 240, 108 222, 107 204 Z"
+                              d={
+                                isFeminineTrousers
+                                  ? 'M100.5 204 C102.5 222, 102.5 240, 100.5 255 L104 255 C105.5 240, 106.5 222, 106 204 Z'
+                                  : 'M101 204 C103 222, 103 240, 101 255 L105 255 C107 240, 108 222, 107 204 Z'
+                              }
                               fill={deriveMaterialTones(config.bottomColor).shadow}
                               opacity="0.4"
                             />
@@ -7612,11 +7916,19 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                           ) : (
                             <>
                               <path
-                                d="M86 256 A10 10 0 0 1 106 256 C106.5 274, 105 290, 103 306 A7 7 0 0 1 89 306 C87 290, 85.5 274, 86 256 Z"
+                                d={
+                                  isFeminineTrousers
+                                    ? 'M87.5 256 A8.5 8.5 0 0 1 104.5 256 C105.5 270, 104 285, 102 306 A5.5 5.5 0 0 1 90 306 C88 285, 86.5 270, 87.5 256 Z'
+                                    : 'M86 256 A10 10 0 0 1 106 256 C106.5 274, 105 290, 103 306 A7 7 0 0 1 89 306 C87 290, 85.5 274, 86 256 Z'
+                                }
                                 fill={lowerLegColor}
                               />
                               <path
-                                d="M100 258 C102 274, 101 290, 99 305 L102 305 C104 290, 106 274, 105 258 Z"
+                                d={
+                                  isFeminineTrousers
+                                    ? 'M99.5 258 C101.5 272, 101 286, 99 305 L101.5 305 C103.5 286, 105 272, 104 258 Z'
+                                    : 'M100 258 C102 274, 101 290, 99 305 L102 305 C104 290, 106 274, 105 258 Z'
+                                }
                                 fill={deriveMaterialTones(bStyle === 'shorts' ? config.skinTone : config.bottomColor).shadow}
                                 opacity="0.4"
                               />
@@ -7624,12 +7936,12 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                           )}
                           {bStyle === 'joggers' && (
                             <>
-                              <line x1="87" y1="258" x2="89" y2="300" stroke={shadeColor(config.bottomColor, 34)} strokeWidth="2.2" strokeLinecap="round" />
-                              <rect x="88" y="300" width="16" height="5" rx="2" fill={pantsShade} />
+                              <line x1={isFeminineTrousers ? 88.5 : 87} y1="258" x2={isFeminineTrousers ? 90.5 : 89} y2="300" stroke={shadeColor(config.bottomColor, 34)} strokeWidth="2.2" strokeLinecap="round" />
+                              <rect x={isFeminineTrousers ? 89.5 : 88} y="300" width={isFeminineTrousers ? 13 : 16} height="5" rx="2" fill={pantsShade} />
                             </>
                           )}
                           {bStyle === 'jeans' && (
-                            <rect x="88" y="300" width="16" height="4.5" rx="1.5" fill={shadeColor(config.bottomColor, 18)} />
+                            <rect x={isFeminineTrousers ? 89.5 : 88} y="300" width={isFeminineTrousers ? 13 : 16} height="4.5" rx="1.5" fill={shadeColor(config.bottomColor, 18)} />
                           )}
                           {/* Left Shoe / Foot (Style & Direction-aware) */}
                           <g
@@ -7651,9 +7963,11 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                           )}
                         </g>
                       </g>
+                        );
 
-                      {/* RIGHT LEG (Hip Pivot at 124, 202 inside Pelvis) */}
-                      <g transform={`rotate(${rightHipAngle} 124 202)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+                        const rightLegNode = (
+                          /* RIGHT LEG (Hip Pivot at 124, 202 inside Pelvis) */
+                      <g key="right-leg" transform={`rotate(${rightHipAngle} 124 202)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
                         {/* Upper Leg (Thigh) */}
                         {bStyle === 'skirt' ? (
                           <>
@@ -7670,11 +7984,19 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                         ) : (
                           <>
                             <path
-                              d="M112 202 A12 12 0 0 1 136 202 C136.5 222, 135.5 240, 134 256 A10 10 0 0 1 114 256 C112.5 240, 111.5 222, 112 202 Z"
+                              d={
+                                isFeminineTrousers
+                                  ? 'M113 202 A11 11 0 0 1 135 202 C135.5 222, 134.5 240, 132.5 256 A8.5 8.5 0 0 1 115.5 256 C113.5 240, 112.5 222, 113 202 Z'
+                                  : 'M112 202 A12 12 0 0 1 136 202 C136.5 222, 135.5 240, 134 256 A10 10 0 0 1 114 256 C112.5 240, 111.5 222, 112 202 Z'
+                              }
                               fill={bottomFill}
                             />
                             <path
-                              d="M129 204 C131 222, 131 240, 129 255 L133 255 C135 240, 136 222, 135 204 Z"
+                              d={
+                                isFeminineTrousers
+                                  ? 'M128.5 204 C130.5 222, 130.5 240, 128.5 255 L132 255 C134 240, 135 222, 134 204 Z'
+                                  : 'M129 204 C131 222, 131 240, 129 255 L133 255 C135 240, 136 222, 135 204 Z'
+                              }
                               fill={deriveMaterialTones(config.bottomColor).shadow}
                               opacity="0.4"
                             />
@@ -7716,11 +8038,19 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                           ) : (
                             <>
                               <path
-                                d="M114 256 A10 10 0 0 1 134 256 C134.5 274, 133 290, 131 306 A7 7 0 0 1 117 306 C115 290, 113.5 274, 114 256 Z"
+                                d={
+                                  isFeminineTrousers
+                                    ? 'M115.5 256 A8.5 8.5 0 0 1 132.5 256 C133.5 270, 131.5 285, 129.5 306 A5.5 5.5 0 0 1 117.5 306 C115.5 285, 114.5 270, 115.5 256 Z'
+                                    : 'M114 256 A10 10 0 0 1 134 256 C134.5 274, 133 290, 131 306 A7 7 0 0 1 117 306 C115 290, 113.5 274, 114 256 Z'
+                                }
                                 fill={lowerLegColor}
                               />
                               <path
-                                d="M128 258 C130 274, 129 290, 127 305 L130 305 C132 290, 134 274, 133 258 Z"
+                                d={
+                                  isFeminineTrousers
+                                    ? 'M127.5 258 C129.5 272, 129 286, 127 305 L129 305 C131 286, 133 272, 132 258 Z'
+                                    : 'M128 258 C130 274, 129 290, 127 305 L130 305 C132 290, 134 274, 133 258 Z'
+                                }
                                 fill={deriveMaterialTones(bStyle === 'shorts' ? config.skinTone : config.bottomColor).shadow}
                                 opacity="0.4"
                               />
@@ -7728,12 +8058,12 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                           )}
                           {bStyle === 'joggers' && (
                             <>
-                              <line x1="133" y1="258" x2="131" y2="300" stroke={shadeColor(config.bottomColor, 34)} strokeWidth="2.2" strokeLinecap="round" />
-                              <rect x="116" y="300" width="16" height="5" rx="2" fill={pantsShade} />
+                              <line x1={isFeminineTrousers ? 131.5 : 133} y1="258" x2={isFeminineTrousers ? 129.5 : 131} y2="300" stroke={shadeColor(config.bottomColor, 34)} strokeWidth="2.2" strokeLinecap="round" />
+                              <rect x={isFeminineTrousers ? 117.5 : 116} y="300" width={isFeminineTrousers ? 13 : 16} height="5" rx="2" fill={pantsShade} />
                             </>
                           )}
                           {bStyle === 'jeans' && (
-                            <rect x="116" y="300" width="16" height="4.5" rx="1.5" fill={shadeColor(config.bottomColor, 18)} />
+                            <rect x={isFeminineTrousers ? 117.5 : 116} y="300" width={isFeminineTrousers ? 13 : 16} height="4.5" rx="1.5" fill={shadeColor(config.bottomColor, 18)} />
                           )}
                           {/* Right Shoe / Foot (Style & Direction-aware) */}
                           <g
@@ -7755,6 +8085,20 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                           )}
                         </g>
                       </g>
+                        );
+
+                        return headDirection === 'right' ? (
+                          <>
+                            {rightLegNode}
+                            {leftLegNode}
+                          </>
+                        ) : (
+                          <>
+                            {leftLegNode}
+                            {rightLegNode}
+                          </>
+                        );
+                      })()}
 
                       {/* A-Line Skirt overlay when bottomStyle === 'skirt' */}
                       {bStyle === 'skirt' && (
@@ -7779,8 +8123,7 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                 {useDicebear && (
                   <g
                     data-rig-group="back-hair-collar-base"
-                    transform={`translate(${collarAnchorInRootSpace.x}, ${collarAnchorInRootSpace.y + speechHeadBobY
-                      }) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
+                    transform={`translate(${collarAnchorInRootSpace.x}, ${collarAnchorInRootSpace.y}) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
                   >
                     <g
                       data-rig-group="back-hair-neck-carrier"
@@ -7788,7 +8131,11 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                     >
                       <g
                         data-rig-group="back-hair-head-carrier"
-                        transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 105)` : undefined}
+                        transform={
+                          canonicalHeadAngle !== 0 || speechHeadBobY !== 0
+                            ? `translate(0, ${speechHeadBobY}) rotate(${canonicalHeadAngle} 110 105)`
+                            : undefined
+                        }
                       >
                         {renderDicebearBackHair()}
                       </g>
@@ -7814,36 +8161,31 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                         data-canonical-bone="chest"
                         transform={chestAngle !== 0 ? `rotate(${chestAngle} 110 155)` : undefined}
                       >
-                        {/* TORSO BASE SILHOUETTE (Anatomical 2D Vector Contour + Cel-Shading + Ink) */}
+                        {(() => {
+                          const classicTorsoD = isChefPrototypeHead
+                            ? 'M68 119 C80 111, 140 111, 152 119 C154 125, 148 152, 142 175 L140 197 Q110 202 80 197 L78 175 C72 152, 66 125, 68 119 Z'
+                            : config.genderAge === 'female'
+                              ? 'M97 113 C89 114, 82 117, 77 121 A8 8 0 0 0 69 129 A8 8 0 0 0 77 137 C79 147, 81 154, 83 161 C84 174, 80 189, 81 197 Q110 202 139 197 C140 189, 136 174, 137 161 C139 154, 141 147, 143 137 A8 8 0 0 0 151 129 A8 8 0 0 0 143 121 C138 117, 131 114, 123 113 Q110 112 97 113 Z'
+                              : 'M97 113 C89 114, 82 117, 77 121 A8 8 0 0 0 69 129 A8 8 0 0 0 77 137 C79 152, 80 164, 80 174 L82 197 Q110 202 138 197 L140 174 C140 164, 141 152, 143 137 A8 8 0 0 0 151 129 A8 8 0 0 0 143 121 C138 117, 131 114, 123 113 Q110 112 97 113 Z';
+                          const classicTorsoBodyNode = (
+                            <g key="classic-torso-body">
+                              {/* TORSO BASE SILHOUETTE (Anatomical 2D Vector Contour + Concentric Shoulder Sockets) */}
                         <path
-                          d={
-                            isChefPrototypeHead
-                              ? 'M66 118 C80 111, 140 111, 154 118 C156 124, 148 152, 142 175 L140 197 Q110 202 80 197 L78 175 C72 152, 64 124, 66 118 Z'
-                              : config.genderAge === 'female'
-                                ? 'M75 119 C84 113, 136 113, 145 119 C147 123, 143 142, 137 161 C136 174, 140 189, 139 197 Q110 202 81 197 C80 189, 84 174, 83 161 C77 142, 73 123, 75 119 Z'
-                                : 'M73 119 C83 113, 137 113, 147 119 C149 124, 144 150, 140 174 L138 197 Q110 202 82 197 L80 174 C76 150, 71 124, 73 119 Z'
-                          }
+                          d={classicTorsoD}
                           fill={torsoFill}
-                          stroke={deriveMaterialTones(config.topColor).stroke}
-                          strokeWidth="1.45"
-                          strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin}
                         />
                         <path
                           d={
                             config.genderAge === 'female'
-                              ? 'M130 116 C137 117, 142 119, 144 121 C146 125, 142 143, 136 161 C135 174, 139 189, 138 197 L124 198 C128 175, 130 145, 130 116 Z'
-                              : 'M130 116 C138 117, 143 119, 146 121 C148 126, 143 151, 139 174 L137 197 L124 198 C128 175, 130 145, 130 116 Z'
+                              ? 'M129 140 L141 140 C139 149, 138 155, 137 161 C136 174, 140 189, 139 197 L124 198 C128 175, 129 156, 129 140 Z'
+                              : 'M129 140 L142 140 C141 153, 140 164, 140 174 L138 197 L124 198 C128 175, 129 156, 129 140 Z'
                           }
                           fill={deriveMaterialTones(config.topColor).shadow}
-                          opacity="0.38"
+                          opacity="0.18"
                           pointerEvents="none"
                         />
                         <path
-                          d={
-                            config.genderAge === 'female'
-                              ? 'M75 119 C84 113, 136 113, 145 119 C147 123, 143 142, 137 161 C136 174, 140 189, 139 197 Q110 202 81 197 C80 189, 84 174, 83 161 C77 142, 73 123, 75 119 Z'
-                              : 'M73 119 C83 113, 137 113, 147 119 C149 124, 144 150, 140 174 L138 197 Q110 202 82 197 L80 174 C76 150, 71 124, 73 119 Z'
-                          }
+                          d={classicTorsoD}
                           fill={`url(#${patternUid}-torso-volume)`}
                           pointerEvents="none"
                         />
@@ -8301,22 +8643,24 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                         <circle cx="125.8" cy="147" r="2.6" fill="#fbbf24" stroke="#b45309" strokeWidth="0.8" />
                       </g>
                     )}
+                            </g>
+                          );
 
-                    {/* LEFT ARM (Rendered AFTER torso & belt so arm/props stay in front!) */}
-                    {!portraitMode && (
-                      <g transform={`${isChefPrototypeHead ? 'translate(-5, 0) ' : ''}rotate(${leftShoulderAngle} 77 129)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+                          const classicLeftArmNode = !portraitMode ? (
+                            /* LEFT ARM (Rendered AFTER torso & belt so arm/props stay in front!) */
+                      <g key="classic-left-arm" transform={`${isChefPrototypeHead ? 'translate(-5, 0) ' : ''}rotate(${leftShoulderAngle} 77 129)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
                         <path
                           d={
                             isChefPrototypeHead
                               ? 'M67 129 A10 10 0 0 1 87 129 C88 142, 87 154, 86 166 A8 8 0 0 1 69 166 C68 154, 67 142, 67 129 Z'
-                              : 'M69 129 A8.5 8.5 0 0 1 86 129 C86.5 142, 86 154, 85 166 A7.5 7.5 0 0 1 70 166 C69.5 154, 69 142, 69 129 Z'
+                              : 'M69 129 A8 8 0 0 1 85 129 C85.5 142, 85.5 154, 85 166 A7.5 7.5 0 0 1 70 166 C69.5 154, 69 142, 69 129 Z'
                           }
                           fill={upperSleeveColor}
                         />
                         <path
-                          d="M81 131 C83 142, 83 154, 82 165 L84.5 165 C85.5 154, 86 142, 85 130 Z"
+                          d="M81 141 C82.5 149, 82.8 157, 82 165 L84.5 165 C85.2 157, 85.5 149, 84.5 141 Z"
                           fill={deriveMaterialTones(upperSleeveColor).shadow}
-                          opacity="0.38"
+                          opacity="0.26"
                         />
                         {config.outfitStyle === 'chef-apron' && (
                           <rect
@@ -8403,23 +8747,23 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                           </g>
                         </g>
                       </g>
-                    )}
+                          ) : null;
 
-                    {/* RIGHT ARM (Rendered AFTER torso & belt so arm/props stay in front!) */}
-                    {!portraitMode && (
-                      <g transform={`${isChefPrototypeHead ? 'translate(5, 0) ' : ''}rotate(${rightShoulderAngle} 143 129)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
+                          const classicRightArmNode = !portraitMode ? (
+                            /* RIGHT ARM (Rendered AFTER torso & belt so arm/props stay in front!) */
+                      <g key="classic-right-arm" transform={`${isChefPrototypeHead ? 'translate(5, 0) ' : ''}rotate(${rightShoulderAngle} 143 129)`} strokeLinejoin={ILLUSTRATION_TOKENS.lineJoin} strokeLinecap={ILLUSTRATION_TOKENS.lineCap}>
                         <path
                           d={
                             isChefPrototypeHead
                               ? 'M133 129 A10 10 0 0 1 153 129 C153 142, 152 154, 151 166 A8 8 0 0 1 134 166 C133 154, 133 142, 133 129 Z'
-                              : 'M134 129 A8.5 8.5 0 0 1 151 129 C151 142, 150.5 154, 150 166 A7.5 7.5 0 0 1 135 166 C134.5 154, 134 142, 134 129 Z'
+                              : 'M135 129 A8 8 0 0 1 151 129 C151 142, 150.5 154, 150 166 A7.5 7.5 0 0 1 135 166 C134.5 154, 134.5 142, 135 129 Z'
                           }
                           fill={upperSleeveColor}
                         />
                         <path
-                          d="M146 131 C148 142, 148 154, 147 165 L149.5 165 C150.5 154, 150.5 142, 149.5 130 Z"
+                          d="M146 141 C147.5 149, 147.8 157, 147 165 L149.5 165 C150.2 157, 150.5 149, 149.5 141 Z"
                           fill={deriveMaterialTones(upperSleeveColor).shadow}
-                          opacity="0.38"
+                          opacity="0.26"
                         />
                         {config.outfitStyle === 'chef-apron' && (
                           <rect
@@ -8506,19 +8850,43 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                           </g>
                         </g>
                       </g>
-                    )}
+                          ) : null;
+
+                          if (headDirection === 'right') {
+                            return (
+                              <>
+                                {classicTorsoBodyNode}
+                                {classicLeftArmNode}
+                              </>
+                            );
+                          }
+                          if (headDirection === 'left') {
+                            return (
+                              <>
+                                {classicTorsoBodyNode}
+                                {classicRightArmNode}
+                              </>
+                            );
+                          }
+                          return (
+                            <>
+                              {classicTorsoBodyNode}
+                              {classicLeftArmNode}
+                              {classicRightArmNode}
+                            </>
+                          );
+                        })()}
+                      </g>
+                    </g>
                   </g>
                 </g>
-              </g>
-          </g>
 
           {/* ============================================================
             3. LINELESS NECK & HEAD WITH FACIAL FEATURES (BAŞ & UZUVLAR)
            ============================================================ */}
           <g
             data-rig-group="head-collar-base"
-            transform={`translate(${collarAnchorInRootSpace.x}, ${collarAnchorInRootSpace.y + speechHeadBobY
-              }) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
+            transform={`translate(${collarAnchorInRootSpace.x}, ${collarAnchorInRootSpace.y}) scale(${prop.headScale}) rotate(${torsoCumulativeAngleDeg + legacyHeadTiltAngle + speechHeadTilt}) translate(-110, -114)`}
           >
             <g
               data-canonical-bone="neck"
@@ -8528,16 +8896,20 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
               {!useDicebear && (
                 <g
                   data-rig-group="vector-back-hair-head-carrier"
-                  transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 105)` : undefined}
+                  transform={
+                    canonicalHeadAngle !== 0 || speechHeadBobY !== 0
+                      ? `translate(0, ${speechHeadBobY}) rotate(${canonicalHeadAngle} 110 105)`
+                      : undefined
+                  }
                 >
                   {renderHairBack(config.hairStyle, config.hairColor)}
                 </g>
               )}
 
-              {/* Neck (Lineless, anchored at collar 110,114 and tucked seamlessly into collar) */}
+              {/* Neck (Lineless, anchored at collar 110,114 and tucked deeply into collar) */}
               <g transform={`translate(110, 114) scale(${neckScaleX}, ${neckScaleY}) translate(-110, -114)`}>
                 <path
-                  d="M95 82 L125 82 L122 115 Q110 123 98 115 Z"
+                  d="M95 82 L125 82 L123 122 Q110 130 97 122 Z"
                   fill={config.skinTone}
                 />
                 {!useDicebear && (
@@ -8550,7 +8922,11 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
 
               <g
                 data-canonical-bone="head"
-                transform={canonicalHeadAngle !== 0 ? `rotate(${canonicalHeadAngle} 110 105)` : undefined}
+                transform={
+                  canonicalHeadAngle !== 0 || speechHeadBobY !== 0
+                    ? `translate(0, ${speechHeadBobY}) rotate(${canonicalHeadAngle} 110 105)`
+                    : undefined
+                }
               >
                 {config.photoAvatarMode === 'hybrid-head' && config.photoAvatarUrl ? (
                   renderHybridPhotoHead()

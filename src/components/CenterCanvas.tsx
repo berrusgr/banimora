@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Copy,
   Trash2,
@@ -23,6 +24,10 @@ import {
   Grid3X3,
   Layout,
   Maximize,
+  RefreshCw,
+  ChevronRight,
+  EyeOff,
+  Type,
 } from 'lucide-react';
 import { WorkspaceMode } from '../utils/workspaceLayoutStorage';
 import {
@@ -32,11 +37,12 @@ import {
   LibraryAssetItem,
   RigJointKey,
   Scene,
+  SceneBackground,
   SceneCamera,
   StageMotionPreviewRequest,
 } from '../types/studio';
 import { getMotionPresetById } from '../data/motionPresets';
-import { VectorAssetRenderer } from '../data/libraryAssets';
+import { LIBRARY_ITEMS, SCENE_BACKGROUNDS, VectorAssetRenderer } from '../data/libraryAssets';
 import { getMathAssetDefinition, resolveObjectAssetClass } from '../data/mathAssetsRegistry';
 import { resolveEffectiveCharacterConfig } from '../utils/audioLipSync';
 import { DEFAULT_CHARACTER_CONFIGS } from './ArticulatedCharacterRig';
@@ -80,6 +86,12 @@ interface CenterCanvasProps {
   onDropLibraryAsset?: (item: LibraryAssetItem, pos: { x: number; y: number }) => void;
   onDropExternalFile?: (file: File, pos: { x: number; y: number }) => void;
   onEditCharacterInStudio?: (obj: CanvasObject) => void;
+  customCharacters?: LibraryAssetItem[];
+  customBackgrounds?: SceneBackground[];
+  onSelectBackground?: (bg: SceneBackground) => void;
+  onAddScene?: () => void;
+  onContinueScene?: () => void;
+  onTriggerTransitionPreview?: () => void;
   currentTime: number;
   isPlaying: boolean;
   stageMotionPreview?: StageMotionPreviewRequest | null;
@@ -191,6 +203,12 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
   onDropLibraryAsset = NOOP,
   onDropExternalFile = NOOP,
   onEditCharacterInStudio = NOOP,
+  customCharacters = [],
+  customBackgrounds = [],
+  onSelectBackground,
+  onAddScene,
+  onContinueScene,
+  onTriggerTransitionPreview,
   currentTime,
   isPlaying,
   stageMotionPreview,
@@ -222,6 +240,149 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
   // Inline text editing on canvas
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const clickStartRef = useRef<{ id: string; x: number; y: number } | null>(null);
+
+  // Right-click character context menu
+  const [charContextMenu, setCharContextMenu] = useState<{
+    objectId: string;
+    x: number;
+    y: number;
+    showSwapPicker: boolean;
+  } | null>(null);
+  const [charSwapSearch, setCharSwapSearch] = useState('');
+
+  const charMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!charContextMenu) return;
+    const handleClose = (e: MouseEvent) => {
+      if (e.button === 2) return;
+      if (charMenuRef.current && charMenuRef.current.contains(e.target as Node)) return;
+      setCharContextMenu(null);
+      setCharSwapSearch('');
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setCharContextMenu(null);
+        setCharSwapSearch('');
+      }
+    };
+    window.addEventListener('mousedown', handleClose, true);
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('mousedown', handleClose, true);
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [charContextMenu]);
+
+  // Right-click scene context menu
+  const [sceneContextMenu, setSceneContextMenu] = useState<{
+    x: number;
+    y: number;
+    showBgPicker: boolean;
+  } | null>(null);
+  const sceneMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!sceneContextMenu) return;
+    const handleClose = (e: MouseEvent) => {
+      if (e.button === 2) return;
+      if (sceneMenuRef.current && sceneMenuRef.current.contains(e.target as Node)) return;
+      setSceneContextMenu(null);
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSceneContextMenu(null);
+    };
+    window.addEventListener('mousedown', handleClose, true);
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('mousedown', handleClose, true);
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [sceneContextMenu]);
+
+  const [objectContextMenu, setObjectContextMenu] = useState<{
+    objectId: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const objectMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!objectContextMenu) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (e.button === 2) return;
+      if (objectMenuRef.current && objectMenuRef.current.contains(e.target as Node)) return;
+      setObjectContextMenu(null);
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setObjectContextMenu(null);
+    };
+    window.addEventListener('mousedown', handleOutside, true);
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('mousedown', handleOutside, true);
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [objectContextMenu]);
+
+  const openSceneContextMenu = (e: React.MouseEvent) => {
+    if (playerMode || isPlaying) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setCharContextMenu(null);
+    setObjectContextMenu(null);
+    onSelectObject(null);
+    const menuW = 250;
+    const menuH = 380;
+    const safeX = Math.min(e.clientX, window.innerWidth - menuW - 12);
+    const safeY = Math.min(e.clientY, window.innerHeight - menuH - 12);
+    setSceneContextMenu({
+      x: Math.max(8, safeX),
+      y: Math.max(8, safeY),
+      showBgPicker: false,
+    });
+  };
+
+  const openObjectContextMenu = (e: React.MouseEvent, obj: CanvasObject) => {
+    if (playerMode || isPlaying) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setSceneContextMenu(null);
+    onSelectObject(obj.id);
+    if (obj.category === 'characters') {
+      setObjectContextMenu(null);
+      const menuW = 240;
+      const menuH = 380;
+      const safeX = Math.min(e.clientX, window.innerWidth - menuW - 12);
+      const safeY = Math.min(e.clientY, window.innerHeight - menuH - 12);
+      setCharSwapSearch('');
+      setCharContextMenu({
+        objectId: obj.id,
+        x: Math.max(8, safeX),
+        y: Math.max(8, safeY),
+        showSwapPicker: false,
+      });
+      return;
+    }
+    setCharContextMenu(null);
+    const menuW = 236;
+    const menuH = 320;
+    const safeX = Math.min(e.clientX, window.innerWidth - menuW - 12);
+    const safeY = Math.min(e.clientY, window.innerHeight - menuH - 12);
+    setObjectContextMenu({
+      objectId: obj.id,
+      x: Math.max(8, safeX),
+      y: Math.max(8, safeY),
+    });
+  };
+
+  useEffect(() => {
+    if (isPlaying || playerMode) {
+      setCharContextMenu(null);
+      setObjectContextMenu(null);
+      setSceneContextMenu(null);
+    }
+  }, [isPlaying, playerMode]);
 
   // Re-render when async lip-sync audio analysis completes (e.g. while paused/scrubbing)
   const [, setLipSyncReadyTick] = useState(0);
@@ -947,6 +1108,11 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
 
           {/* Logical 960x540 Stage scaled smoothly to the 16:9 container (and Camera Zoom/Pan during Playback!) */}
           <div
+            onContextMenu={(e) => {
+              if (e.target === e.currentTarget) {
+                openSceneContextMenu(e);
+              }
+            }}
             onMouseDown={(e) => {
               if (e.target !== e.currentTarget) return;
               if (isPlaying || e.button !== 0) {
@@ -1281,8 +1447,10 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
 
                     {/* Draggable Motion Path Destination Ghost & Handle (Point B) */}
                     <div
+                      onContextMenu={(e) => openObjectContextMenu(e, obj)}
                       onMouseDown={(e) => {
                         e.stopPropagation();
+                        if (e.button !== 0) return;
                         onSelectObject(obj.id);
                         setInteraction({
                           type: 'motion-target',
@@ -1419,8 +1587,10 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
                       setEditingTextId(obj.id);
                     }
                   }}
+                  onContextMenu={(e) => openObjectContextMenu(e, obj)}
                   onMouseDown={(e) => {
                     e.stopPropagation();
+                    if (e.button !== 0) return;
                     clickStartRef.current = { id: obj.id, x: e.clientX, y: e.clientY };
 
                     let nextSelected = activeSelectedIds;
@@ -2108,6 +2278,791 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Right-Click Character Context Menu */}
+      {charContextMenu &&
+        !playerMode &&
+        !isPlaying &&
+        (() => {
+          const targetObj = scene.objects.find((o) => o.id === charContextMenu.objectId);
+          if (!targetObj || targetObj.category !== 'characters') return null;
+
+          const curCfg =
+            targetObj.characterConfig ||
+            DEFAULT_CHARACTER_CONFIGS[targetObj.assetId] ||
+            DEFAULT_CHARACTER_CONFIGS['char-pro-sinan'];
+          const curDir = curCfg.headDirection || 'center';
+          const canEditStudio = targetObj.assetId !== 'char-robot-mira';
+
+          const allCharacterOptions = [
+            ...customCharacters,
+            ...LIBRARY_ITEMS.filter((i) => i.category === 'characters'),
+          ].filter((item) => {
+            if (!charSwapSearch.trim()) return true;
+            const q = charSwapSearch.trim().toLowerCase();
+            return (
+              item.name.toLowerCase().includes(q) ||
+              item.subtitle.toLowerCase().includes(q)
+            );
+          });
+
+          const handleSwapCharacter = (item: LibraryAssetItem) => {
+            const baseNewCfg =
+              item.characterConfig ||
+              DEFAULT_CHARACTER_CONFIGS[item.id] ||
+              DEFAULT_CHARACTER_CONFIGS['char-pro-sinan'];
+            onUpdateObject(
+              targetObj.id,
+              {
+                assetId: item.id,
+                name: item.name,
+                color: item.defaultColor,
+                secondaryColor: item.defaultSecondaryColor ?? targetObj.secondaryColor,
+                trackColor: item.trackColor,
+                characterConfig: {
+                  ...baseNewCfg,
+                  pose: curCfg.pose,
+                  expression: curCfg.expression,
+                  headDirection: curCfg.headDirection,
+                  lipSyncEnabled: curCfg.lipSyncEnabled,
+                  lipSyncAudioUrl: curCfg.lipSyncAudioUrl,
+                  lipSyncAudioName: curCfg.lipSyncAudioName,
+                  lipSyncAudioStartTime: curCfg.lipSyncAudioStartTime,
+                  lipSyncAudioClips: curCfg.lipSyncAudioClips,
+                  ttsScript: curCfg.ttsScript,
+                },
+              },
+              true
+            );
+            setCharContextMenu(null);
+            setCharSwapSearch('');
+          };
+
+          return createPortal(
+            <div
+              ref={charMenuRef}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onContextMenu={(e) => e.preventDefault()}
+              style={{ left: `${charContextMenu.x}px`, top: `${charContextMenu.y}px` }}
+              className="fixed z-[9999] flex items-start gap-1.5"
+            >
+              <div className="w-60 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl py-1.5 text-xs text-slate-800">
+                <div className="px-3 py-1.5 border-b border-slate-100 flex items-center justify-between gap-2">
+                  <span className="font-bold text-slate-900 truncate">{targetObj.name}</span>
+                  <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-semibold shrink-0">
+                    Karakter
+                  </span>
+                </div>
+
+                {/* Karakteri Değiştir */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCharContextMenu((prev) =>
+                      prev ? { ...prev, showSwapPicker: !prev.showSwapPicker } : prev
+                    )
+                  }
+                  className={`w-full px-3 py-1.5 flex items-center justify-between gap-2 hover:bg-indigo-50 hover:text-indigo-700 transition-colors cursor-pointer ${
+                    charContextMenu.showSwapPicker ? 'bg-indigo-50 text-indigo-700 font-semibold' : ''
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <RefreshCw className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Karakteri Değiştir</span>
+                  </span>
+                  <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                </button>
+
+                {/* Stüdyoda Düzenle */}
+                {canEditStudio && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCharContextMenu(null);
+                      onEditCharacterInStudio(targetObj);
+                    }}
+                    className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-indigo-50 hover:text-indigo-700 transition-colors cursor-pointer"
+                  >
+                    <UserCog className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Stüdyoda Düzenle</span>
+                  </button>
+                )}
+
+                {/* Bakış Yönü */}
+                <div className="px-3 py-1.5 flex items-center justify-between gap-1.5 border-y border-slate-100 my-1">
+                  <span className="text-[10.5px] font-semibold text-slate-500">Bakış:</span>
+                  <div className="flex items-center gap-1">
+                    {(
+                      [
+                        { id: 'left', label: 'Sola' },
+                        { id: 'center', label: 'Öne' },
+                        { id: 'right', label: 'Sağa' },
+                      ] as const
+                    ).map((dir) => (
+                      <button
+                        key={dir.id}
+                        type="button"
+                        onClick={() => {
+                          onUpdateObject(
+                            targetObj.id,
+                            {
+                              characterConfig: {
+                                ...curCfg,
+                                headDirection: dir.id,
+                              },
+                            },
+                            true
+                          );
+                          setCharContextMenu(null);
+                        }}
+                        className={`px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer transition-colors ${
+                          curDir === dir.id
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {dir.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Yatay Aynala */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateObject(targetObj.id, { flipX: !targetObj.flipX }, true);
+                    setCharContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center justify-between gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <FlipHorizontal className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Yatay Aynala</span>
+                  </span>
+                  {targetObj.flipX && (
+                    <span className="text-[9.5px] px-1.5 rounded bg-indigo-100 text-indigo-700 font-bold">
+                      Açık
+                    </span>
+                  )}
+                </button>
+
+                {/* 2D Kemik Rig Düzenle */}
+                {canEditStudio && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBoneRigEditMode((v) => !v);
+                      setCharContextMenu(null);
+                    }}
+                    className="w-full px-3 py-1.5 flex items-center justify-between gap-2 hover:bg-pink-50 hover:text-pink-700 transition-colors cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Bone className="w-3.5 h-3.5 text-pink-500" />
+                      <span>2D Kemik Rig Düzenle</span>
+                    </span>
+                    {boneRigEditMode && (
+                      <span className="text-[9.5px] px-1.5 rounded bg-pink-100 text-pink-700 font-bold">
+                        Açık
+                      </span>
+                    )}
+                  </button>
+                )}
+
+                <div className="my-1 border-t border-slate-100" />
+
+                {/* Katman Sırası */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onLayerMove(targetObj.id, 'up');
+                    setCharContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Öne Getir (Katman Yukarı)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onLayerMove(targetObj.id, 'down');
+                    setCharContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Arkaya Gönder (Katman Aşağı)</span>
+                </button>
+
+                <div className="my-1 border-t border-slate-100" />
+
+                {/* Çoğalt, Kilitle, Gizle */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDuplicateObject(targetObj.id);
+                    setCharContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Çoğalt</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateObject(targetObj.id, { locked: !targetObj.locked }, true);
+                    setCharContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  {targetObj.locked ? (
+                    <>
+                      <Unlock className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Kilidi Aç</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Konumu Kilitle</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateObject(targetObj.id, { hidden: true }, true);
+                    setCharContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <EyeOff className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Sahnede Gizle</span>
+                </button>
+
+                <div className="my-1 border-t border-slate-100" />
+
+                {/* Sil */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDeleteObject(targetObj.id);
+                    setCharContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 text-rose-600 hover:bg-rose-50 font-semibold transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Sahneden Sil</span>
+                </button>
+              </div>
+
+              {/* Karakteri Değiştir Alt Paneli */}
+              {charContextMenu.showSwapPicker && (
+                <div className="w-64 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl p-2 space-y-2">
+                  <div className="text-[11px] font-bold text-slate-800 px-1">
+                    Yerine Geçen Karakteri Seçin
+                  </div>
+                  <input
+                    type="text"
+                    value={charSwapSearch}
+                    onChange={(e) => setCharSwapSearch(e.target.value)}
+                    placeholder="Karakter ara..."
+                    autoFocus
+                    className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:outline-none"
+                  />
+                  <div className="max-h-64 overflow-y-auto space-y-1 pr-0.5">
+                    {allCharacterOptions.map((item) => {
+                      const isCurrent = item.id === targetObj.assetId && item.name === targetObj.name;
+                      return (
+                        <button
+                          key={item.customKey ?? item.id}
+                          type="button"
+                          onClick={() => handleSwapCharacter(item)}
+                          className={`w-full px-2 py-1.5 rounded-lg flex items-center gap-2 text-left transition-colors cursor-pointer ${
+                            isCurrent
+                              ? 'bg-indigo-50 border border-indigo-200'
+                              : 'hover:bg-slate-100 border border-transparent'
+                          }`}
+                        >
+                          <div className="w-8 h-9 shrink-0 flex items-center justify-center overflow-hidden rounded bg-slate-50 border border-slate-100">
+                            <VectorAssetRenderer
+                              assetId={item.id}
+                              color={item.defaultColor}
+                              secondaryColor={item.defaultSecondaryColor}
+                              characterConfig={item.characterConfig}
+                            />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[11px] font-semibold text-slate-800 truncate">
+                              {item.name}
+                            </div>
+                            <div className="text-[9.5px] text-slate-500 truncate">
+                              {item.subtitle}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                    {allCharacterOptions.length === 0 && (
+                      <div className="text-[11px] text-slate-400 text-center py-4">
+                        Eşleşen karakter bulunamadı.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>,
+            document.body
+          );
+        })()}
+
+      {/* Right-Click Non-Character Object Context Menu */}
+      {objectContextMenu &&
+        !playerMode &&
+        !isPlaying &&
+        (() => {
+          const targetObj = scene.objects.find((o) => o.id === objectContextMenu.objectId);
+          if (!targetObj || targetObj.category === 'characters') return null;
+
+          const isTextEditable =
+            !targetObj.locked &&
+            (typeof targetObj.text === 'string' ||
+              targetObj.category === 'text' ||
+              targetObj.assetId === 'obj-speech-bubble' ||
+              targetObj.assetId === 'obj-formula-card' ||
+              targetObj.assetId === 'obj-badge-star');
+
+          const categoryLabelMap: Record<string, string> = {
+            text: 'Metin',
+            shapes: 'Şekil',
+            math: 'Matematik',
+            charts: 'Grafik',
+            images: 'Görsel',
+            props: 'Nesne',
+          };
+          const categoryLabel = categoryLabelMap[targetObj.category] || 'Nesne';
+
+          return createPortal(
+            <div
+              ref={objectMenuRef}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onContextMenu={(e) => e.preventDefault()}
+              style={{ left: `${objectContextMenu.x}px`, top: `${objectContextMenu.y}px` }}
+              className="fixed z-[9999]"
+            >
+              <div className="w-60 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl py-1.5 text-xs text-slate-800">
+                <div className="px-3 py-1.5 border-b border-slate-100 flex items-center justify-between gap-2">
+                  <span className="font-bold text-slate-900 truncate">{targetObj.name}</span>
+                  <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold shrink-0">
+                    {categoryLabel}
+                  </span>
+                </div>
+
+                {/* Metni Düzenle */}
+                {isTextEditable && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setObjectContextMenu(null);
+                      setEditingTextId(targetObj.id);
+                    }}
+                    className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-indigo-50 hover:text-indigo-700 transition-colors cursor-pointer"
+                  >
+                    <Type className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Metni Düzenle</span>
+                  </button>
+                )}
+
+                {/* Yatay Aynala */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateObject(targetObj.id, { flipX: !targetObj.flipX }, true);
+                    setObjectContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center justify-between gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <FlipHorizontal className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Yatay Aynala</span>
+                  </span>
+                  {targetObj.flipX && (
+                    <span className="text-[9.5px] px-1.5 rounded bg-indigo-100 text-indigo-700 font-bold">
+                      Açık
+                    </span>
+                  )}
+                </button>
+
+                {/* Döndürmeyi Sıfırla */}
+                {(targetObj.rotation ?? 0) !== 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onUpdateObject(targetObj.id, { rotation: 0 }, true);
+                      setObjectContextMenu(null);
+                    }}
+                    className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Döndürmeyi Sıfırla (0°)</span>
+                  </button>
+                )}
+
+                <div className="my-1 border-t border-slate-100" />
+
+                {/* Katman Sırası */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onLayerMove(targetObj.id, 'up');
+                    setObjectContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Öne Getir (Katman Yukarı)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onLayerMove(targetObj.id, 'down');
+                    setObjectContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Arkaya Gönder (Katman Aşağı)</span>
+                </button>
+
+                <div className="my-1 border-t border-slate-100" />
+
+                {/* Çoğalt, Kilitle, Gizle */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDuplicateObject(targetObj.id);
+                    setObjectContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Çoğalt</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateObject(targetObj.id, { locked: !targetObj.locked }, true);
+                    setObjectContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  {targetObj.locked ? (
+                    <>
+                      <Unlock className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Kilidi Aç</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Konumu Kilitle</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateObject(targetObj.id, { hidden: true }, true);
+                    setObjectContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <EyeOff className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Sahnede Gizle</span>
+                </button>
+
+                <div className="my-1 border-t border-slate-100" />
+
+                {/* Sil */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDeleteObject(targetObj.id);
+                    setObjectContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 text-rose-600 hover:bg-rose-50 font-semibold transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Sahneden Sil</span>
+                </button>
+              </div>
+            </div>,
+            document.body
+          );
+        })()}
+
+      {/* Right-Click Scene Context Menu */}
+      {sceneContextMenu &&
+        !playerMode &&
+        !isPlaying &&
+        (() => {
+          const hiddenObjs = scene.objects.filter((o) => o.hidden);
+          const allBgs = [...customBackgrounds, ...SCENE_BACKGROUNDS];
+
+          return createPortal(
+            <div
+              ref={sceneMenuRef}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onContextMenu={(e) => e.preventDefault()}
+              style={{ left: `${sceneContextMenu.x}px`, top: `${sceneContextMenu.y}px` }}
+              className="fixed z-[9999] flex items-start gap-1.5"
+            >
+              <div className="w-60 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl py-1.5 text-xs text-slate-800">
+                <div className="px-3 py-1.5 border-b border-slate-100 flex items-center justify-between gap-2">
+                  <span className="font-bold text-slate-900 truncate">{scene.name}</span>
+                  <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold shrink-0">
+                    Sahne
+                  </span>
+                </div>
+
+                {/* Arka Planı Değiştir */}
+                {onSelectBackground && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSceneContextMenu((prev) =>
+                        prev ? { ...prev, showBgPicker: !prev.showBgPicker } : prev
+                      )
+                    }
+                    className={`w-full px-3 py-1.5 flex items-center justify-between gap-2 hover:bg-indigo-50 hover:text-indigo-700 transition-colors cursor-pointer ${
+                      sceneContextMenu.showBgPicker
+                        ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                        : ''
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Arka Planı Değiştir</span>
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                  </button>
+                )}
+
+                {/* Kamera */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelectCamera(selectedCameraMovementId);
+                    setSceneContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center justify-between gap-2 hover:bg-orange-50 hover:text-orange-700 transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Video className="w-3.5 h-3.5 text-orange-500" />
+                    <span>
+                      {isCameraSelected ? 'Kamera Çerçevesini Gizle' : 'Kamera Çerçevesini Göster'}
+                    </span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    onAddCameraMovement();
+                    setSceneContextMenu(null);
+                  }}
+                  className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-orange-50 hover:text-orange-700 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5 text-orange-500" />
+                  <span>Kamera Hareketi Ekle</span>
+                </button>
+
+                {onTriggerTransitionPreview && scene.transition.type !== 'none' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onTriggerTransitionPreview();
+                      setSceneContextMenu(null);
+                    }}
+                    className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-indigo-50 hover:text-indigo-700 transition-colors cursor-pointer"
+                  >
+                    <Wand2 className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Sahne Geçişini Önizle</span>
+                  </button>
+                )}
+
+                <div className="my-1 border-t border-slate-100" />
+
+                {/* Görünüm: Izgara & Zoom */}
+                {onToggleGrid && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onToggleGrid();
+                      setSceneContextMenu(null);
+                    }}
+                    className="w-full px-3 py-1.5 flex items-center justify-between gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Grid3X3 className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Izgarayı {showGrid ? 'Gizle' : 'Göster'}</span>
+                    </span>
+                    {showGrid && (
+                      <span className="text-[9.5px] px-1.5 rounded bg-indigo-100 text-indigo-700 font-bold">
+                        Açık
+                      </span>
+                    )}
+                  </button>
+                )}
+
+                {onZoomChange && zoom !== 100 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onZoomChange(100);
+                      setSceneContextMenu(null);
+                    }}
+                    className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    <Maximize className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Yakınlaştırmayı Sıfırla (%100)</span>
+                  </button>
+                )}
+
+                {onChangeWorkspaceMode && (
+                  <div className="px-3 py-1.5 flex items-center justify-between gap-1.5 border-y border-slate-100 my-1">
+                    <span className="text-[10.5px] font-semibold text-slate-500">Alan:</span>
+                    <div className="flex items-center gap-1">
+                      {(
+                        [
+                          { id: 'standard', label: 'Standart' },
+                          { id: 'wide', label: 'Geniş' },
+                          { id: 'focus', label: 'Odak' },
+                        ] as const
+                      ).map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            onChangeWorkspaceMode(m.id);
+                            setSceneContextMenu(null);
+                          }}
+                          className={`px-2 py-0.5 rounded text-[10px] font-semibold cursor-pointer transition-colors ${
+                            workspaceMode === m.id
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {hiddenObjs.length > 0 && onBatchUpdateObjects && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onBatchUpdateObjects(
+                        hiddenObjs.map((o) => ({ id: o.id, patch: { hidden: false } })),
+                        true
+                      );
+                      setSceneContextMenu(null);
+                    }}
+                    className="w-full px-3 py-1.5 flex items-center gap-2 text-amber-700 hover:bg-amber-50 font-semibold transition-colors cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Gizli Nesneleri Göster ({hiddenObjs.length})</span>
+                  </button>
+                )}
+
+                {(onAddScene || onContinueScene) && (
+                  <>
+                    <div className="my-1 border-t border-slate-100" />
+                    {onAddScene && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onAddScene();
+                          setSceneContextMenu(null);
+                        }}
+                        className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-indigo-50 hover:text-indigo-700 transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Yeni Boş Sahne Ekle</span>
+                      </button>
+                    )}
+                    {onContinueScene && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onContinueScene();
+                          setSceneContextMenu(null);
+                        }}
+                        className="w-full px-3 py-1.5 flex items-center gap-2 hover:bg-emerald-50 hover:text-emerald-700 transition-colors cursor-pointer"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Bu Sahneden Devam Et</span>
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Arka Plan Seçici Alt Paneli */}
+              {sceneContextMenu.showBgPicker && onSelectBackground && (
+                <div className="w-64 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl p-2 space-y-2">
+                  <div className="text-[11px] font-bold text-slate-800 px-1">
+                    Sahne Arka Planını Seçin
+                  </div>
+                  <div className="max-h-72 overflow-y-auto grid grid-cols-2 gap-1.5 pr-0.5">
+                    {allBgs.map((bg) => {
+                      const isActive = scene.background.id === bg.id;
+                      return (
+                        <button
+                          key={bg.id}
+                          type="button"
+                          onClick={() => {
+                            onSelectBackground(bg);
+                            setSceneContextMenu(null);
+                          }}
+                          className={`rounded-lg border p-1 text-left transition-all cursor-pointer ${
+                            isActive
+                              ? 'border-indigo-500 ring-2 ring-indigo-200 bg-indigo-50/40'
+                              : 'border-slate-200 hover:border-indigo-300'
+                          }`}
+                        >
+                          <div
+                            style={
+                              bg.imageUrl
+                                ? {
+                                    backgroundImage: `url("${bg.imageUrl}")`,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                  }
+                                : bg.style.includes('gradient(')
+                                  ? { backgroundImage: bg.style }
+                                  : { backgroundColor: bg.style }
+                            }
+                            className="w-full h-10 rounded border border-slate-200/70 mb-1"
+                          />
+                          <div className="text-[10px] font-semibold text-slate-700 truncate">
+                            {bg.name}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>,
+            document.body
+          );
+        })()}
     </main>
   );
 };

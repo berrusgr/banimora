@@ -288,6 +288,97 @@ export function duplicateSelectedClipsInScene(
 }
 
 /**
+ * Tek şeritteki klipleri sürükleme/kırpma sırasında çakışmayacak şekilde
+ * yan yana yerleştirir; araya giren klip sağdaki klipleri iterek yer açar.
+ */
+function computeMagneticClipLayout<
+  T extends { id: string; startTime: number; duration: number },
+>(
+  trackClips: readonly T[],
+  anchorClipId: string,
+  nextStart: number,
+  nextDuration: number,
+  minDuration: number
+): Map<string, { startTime: number; duration: number }> {
+  const result = new Map<string, { startTime: number; duration: number }>();
+  const anchorOrig = trackClips.find((c) => c.id === anchorClipId);
+  if (!anchorOrig) {
+    for (const c of trackClips) {
+      result.set(c.id, { startTime: c.startTime, duration: c.duration });
+    }
+    return result;
+  }
+
+  const safeStart = Math.max(0, Number(nextStart.toFixed(2)));
+  const safeDur = Math.max(minDuration, Number(nextDuration.toFixed(2)));
+  const anchorCenter = safeStart + safeDur / 2;
+
+  const others = trackClips
+    .filter((c) => c.id !== anchorClipId)
+    .sort((a, b) => a.startTime - b.startTime);
+
+  const leftClips: T[] = [];
+  const rightClips: T[] = [];
+  for (const c of others) {
+    const cCenter = c.startTime + c.duration / 2;
+    if (cCenter <= anchorCenter) {
+      leftClips.push(c);
+    } else {
+      rightClips.push(c);
+    }
+  }
+
+  let leftCursor = 0;
+  for (const c of leftClips) {
+    const s = Math.max(leftCursor, c.startTime);
+    result.set(c.id, { startTime: Number(s.toFixed(2)), duration: c.duration });
+    leftCursor = s + c.duration;
+  }
+
+  const finalAnchorStart = Number(Math.max(leftCursor, safeStart).toFixed(2));
+  result.set(anchorClipId, { startTime: finalAnchorStart, duration: safeDur });
+
+  let rightCursor = finalAnchorStart + safeDur;
+  for (const c of rightClips) {
+    const s = Math.max(rightCursor, c.startTime);
+    result.set(c.id, { startTime: Number(s.toFixed(2)), duration: c.duration });
+    rightCursor = s + c.duration;
+  }
+
+  return result;
+}
+
+export function computeMagneticAudioLayout(
+  trackClips: readonly AudioClip[],
+  anchorClipId: string,
+  nextStart: number,
+  nextDuration: number
+): Map<string, { startTime: number; duration: number }> {
+  return computeMagneticClipLayout(
+    trackClips,
+    anchorClipId,
+    nextStart,
+    nextDuration,
+    MIN_CLIP_DURATION
+  );
+}
+
+export function computeMagneticMotionLayout(
+  trackClips: readonly { id: string; startTime: number; duration: number }[],
+  anchorClipId: string,
+  nextStart: number,
+  nextDuration: number
+): Map<string, { startTime: number; duration: number }> {
+  return computeMagneticClipLayout(
+    trackClips,
+    anchorClipId,
+    nextStart,
+    nextDuration,
+    MIN_MOTION_CLIP_DURATION
+  );
+}
+
+/**
  * Sürükleme/kırpma önizlemesini tek atomik sahne güncellemesi olarak uygular.
  */
 export function applyDragPreviewToScene(
@@ -318,6 +409,30 @@ export function applyDragPreviewToScene(
     };
   };
 
+  let nextAudioClips = scene.audioClips.map((clip) => {
+    if (!affected.has(clip.id)) return clip;
+    const next = applyTiming(clip.startTime, clip.duration);
+    return { ...clip, ...next };
+  });
+
+  // Tek bir ses klibi sürüklendiyse aynı şeritteki diğer seslerin arasından kayıp yer açsın
+  const anchorAudio = scene.audioClips.find((c) => c.id === preview.anchorClipId);
+  if (anchorAudio && preview.clipIds.length === 1) {
+    const isVoice = anchorAudio.type === 'custom';
+    const trackClips = scene.audioClips.filter((c) => (c.type === 'custom') === isVoice);
+    const updatedAnchor = nextAudioClips.find((c) => c.id === anchorAudio.id)!;
+    const layout = computeMagneticAudioLayout(
+      trackClips,
+      anchorAudio.id,
+      updatedAnchor.startTime,
+      updatedAnchor.duration
+    );
+    nextAudioClips = nextAudioClips.map((c) => {
+      const m = layout.get(c.id);
+      return m ? { ...c, startTime: m.startTime, duration: m.duration } : c;
+    });
+  }
+
   return {
     ...scene,
     objects: scene.objects.map((obj) => {
@@ -325,11 +440,7 @@ export function applyDragPreviewToScene(
       const next = applyTiming(obj.startTime, obj.duration);
       return { ...obj, ...next };
     }),
-    audioClips: scene.audioClips.map((clip) => {
-      if (!affected.has(clip.id)) return clip;
-      const next = applyTiming(clip.startTime, clip.duration);
-      return { ...clip, ...next };
-    }),
+    audioClips: nextAudioClips,
     camera: scene.camera
       ? {
           ...scene.camera,
@@ -391,15 +502,22 @@ export function applyMotionClipDragToScene(
       if (obj.id !== preview.characterId) return obj;
       const clips = obj.timelineData?.motionClips ?? [];
       if (!clips.some((c) => c.id === preview.clipId)) return obj;
+      const layout = computeMagneticMotionLayout(
+        clips,
+        preview.clipId,
+        preview.startTime,
+        preview.duration
+      );
       return {
         ...obj,
         timelineData: {
           ...obj.timelineData,
-          motionClips: clips.map((c) =>
-            c.id === preview.clipId
-              ? { ...c, startTime: preview.startTime, duration: preview.duration }
-              : c
-          ),
+          motionClips: clips
+            .map((c) => {
+              const m = layout.get(c.id);
+              return m ? { ...c, startTime: m.startTime, duration: m.duration } : c;
+            })
+            .sort((a, b) => a.startTime - b.startTime),
         },
       };
     }),

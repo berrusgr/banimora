@@ -40,6 +40,7 @@ interface TimelineToolbarProps {
   onAddScene: () => void;
   onContinueScene?: () => void;
   onDeleteScene: (id: string) => void;
+  onReorderScene?: (fromIndex: number, toIndex: number) => void;
   onChangeViewMode: (mode: TimelineViewMode) => void;
   onTogglePlay: () => void;
   onRestart: () => void;
@@ -73,6 +74,7 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
   onAddScene,
   onContinueScene,
   onDeleteScene,
+  onReorderScene,
   onChangeViewMode,
   onTogglePlay,
   onRestart,
@@ -89,6 +91,8 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
 }) => {
   const remainingSec = Math.max(0, Number((MAX_TOTAL_PROJECT_DURATION - totalProjectDuration).toFixed(1)));
   const canAddScene = remainingSec >= 1;
+  const [draggedSceneIndex, setDraggedSceneIndex] = React.useState<number | null>(null);
+  const [dropTargetSceneIndex, setDropTargetSceneIndex] = React.useState<number | null>(null);
 
   return (
     <>
@@ -102,14 +106,63 @@ export const TimelineToolbar: React.FC<TimelineToolbarProps> = ({
 
           {scenes.map((s, index) => {
             const isActive = s.id === activeSceneId;
+            const isDragging = draggedSceneIndex === index;
+            const isDropTarget =
+              dropTargetSceneIndex === index &&
+              draggedSceneIndex !== null &&
+              draggedSceneIndex !== index;
+            const canDragScene = scenes.length > 1 && Boolean(onReorderScene);
             return (
               <div
                 key={s.id}
+                draggable={canDragScene}
+                onDragStart={(e) => {
+                  if (!canDragScene) return;
+                  setDraggedSceneIndex(index);
+                  e.dataTransfer.effectAllowed = 'move';
+                  e.dataTransfer.setData('text/plain', String(index));
+                }}
+                onDragOver={(e) => {
+                  if (!canDragScene || draggedSceneIndex === null) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  if (dropTargetSceneIndex !== index) {
+                    setDropTargetSceneIndex(index);
+                  }
+                }}
+                onDragLeave={() => {
+                  if (dropTargetSceneIndex === index) {
+                    setDropTargetSceneIndex(null);
+                  }
+                }}
+                onDrop={(e) => {
+                  if (!canDragScene) return;
+                  e.preventDefault();
+                  const rawFrom = e.dataTransfer.getData('text/plain');
+                  const fromIdx =
+                    draggedSceneIndex !== null
+                      ? draggedSceneIndex
+                      : Number.isFinite(Number(rawFrom))
+                        ? Number(rawFrom)
+                        : -1;
+                  setDraggedSceneIndex(null);
+                  setDropTargetSceneIndex(null);
+                  if (fromIdx >= 0 && fromIdx !== index && onReorderScene) {
+                    onReorderScene(fromIdx, index);
+                  }
+                }}
+                onDragEnd={() => {
+                  setDraggedSceneIndex(null);
+                  setDropTargetSceneIndex(null);
+                }}
                 onClick={() => onSelectScene(s.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border text-xs font-semibold transition-colors cursor-pointer shrink-0 ${
+                title={canDragScene ? 'Sıralamayı değiştirmek için sürükleyip bırakın' : undefined}
+                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border text-xs font-semibold transition-all cursor-pointer shrink-0 ${
                   isActive
                     ? 'bg-indigo-600 border-indigo-600 text-white shadow-2xs'
                     : 'bg-white hover:bg-indigo-50/70 border-slate-200 text-slate-700'
+                } ${isDragging ? 'opacity-45 scale-95' : ''} ${
+                  isDropTarget ? 'ring-2 ring-amber-400 border-amber-400' : ''
                 }`}
               >
                 <span>Sahne {index + 1}</span>

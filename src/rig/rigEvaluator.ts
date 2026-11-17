@@ -1483,6 +1483,17 @@ export function evaluateCharacterRigForRenderer(
 
   const bodyBobY = evaluation.legacyJointAngles.bodyBobY;
 
+  // Aktif L1/L2 katmanlarından gelen dinamik el şekillerini (varsa) uygula
+  let resolvedLeftHandGesture = evaluation.leftHandGesture;
+  let resolvedRightHandGesture = evaluation.rightHandGesture;
+  const sortedGestureLayers = [...layers]
+    .filter((l) => l.enabled !== false && clamp01(l.weight) > 0.25 && l.stage !== 'L3_PROCEDURAL')
+    .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
+  for (const layer of sortedGestureLayers) {
+    if (layer.leftHandGesture) resolvedLeftHandGesture = layer.leftHandGesture;
+    if (layer.rightHandGesture) resolvedRightHandGesture = layer.rightHandGesture;
+  }
+
   return {
     profile,
     evaluation,
@@ -1498,8 +1509,8 @@ export function evaluateCharacterRigForRenderer(
     ankleLeveling,
     expression: evaluation.expression,
     headDirection: evaluation.headDirection,
-    leftHandGesture: evaluation.leftHandGesture,
-    rightHandGesture: evaluation.rightHandGesture,
+    leftHandGesture: resolvedLeftHandGesture,
+    rightHandGesture: resolvedRightHandGesture,
     activeHandProp: evaluation.activeHandProp,
     activePropSocket: evaluation.activePropSocket,
   };

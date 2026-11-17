@@ -20,7 +20,11 @@ import type {
   TimelineDragPreview,
   TimelineViewMode,
 } from './timelineTypes';
-import { timeToPixelX } from './timelineUtils';
+import {
+  computeMagneticAudioLayout,
+  computeMagneticMotionLayout,
+  timeToPixelX,
+} from './timelineUtils';
 import { TimelineTrack, type TrackClipDescriptor } from './TimelineTrack';
 
 interface SimpleTrackListProps {
@@ -369,128 +373,94 @@ export const SimpleTrackList: React.FC<SimpleTrackListProps> = ({
                               );
                             })()}
 
-                            {motionClips.map((clip) => {
-                              const isDraggingThis =
-                                motionDragPreview &&
-                                motionDragPreview.characterId === obj.id &&
-                                motionDragPreview.clipId === clip.id;
-                              const displayStart = isDraggingThis
-                                ? motionDragPreview.startTime
-                                : clip.startTime;
-                              const displayDur = isDraggingThis
-                                ? motionDragPreview.duration
-                                : clip.duration;
-                              const leftPx = timeToPixelX(displayStart, scrollTime, zoomPxPerSec);
-                              const widthPx = Math.max(24, displayDur * zoomPxPerSec);
-                              const isVisible = leftPx + widthPx >= 0 && leftPx <= viewportWidthPx;
-                              const isSelected = selectedMotionClipId === clip.id;
-                              const clipLabel = clip.name || clip.presetId;
-                              const isPoseClip =
-                                clip.clipKind === 'pose' || clip.poseBones !== undefined;
-                              const isMotionDragging =
-                                verticalDrag?.kind === 'motion-clip' &&
-                                verticalDrag.draggedId === clip.id;
-                              const motionDropPos =
-                                verticalDrag?.kind === 'motion-clip' &&
-                                verticalDrag.scopeId === obj.id &&
-                                verticalDrag.targetId === clip.id
-                                  ? verticalDrag.position
+                            {motionClips.length > 0 &&
+                              (() => {
+                                const isDraggingInThisChar =
+                                  motionDragPreview &&
+                                  motionDragPreview.characterId === obj.id;
+                                const layout = isDraggingInThisChar
+                                  ? computeMagneticMotionLayout(
+                                      motionClips,
+                                      motionDragPreview.clipId,
+                                      motionDragPreview.startTime,
+                                      motionDragPreview.duration
+                                    )
                                   : null;
 
-                              return (
-                                <div
-                                  key={clip.id}
-                                  data-reorder-motion-id={clip.id}
-                                  className={`flex items-stretch border-b border-slate-100 last:border-b-0 h-7 relative ${
-                                    isMotionDragging
-                                      ? 'bg-indigo-100/70 opacity-75 ring-1 ring-indigo-400'
-                                      : 'hover:bg-indigo-50/25'
-                                  }`}
-                                >
-                                  {motionDropPos === 'above' && (
-                                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-indigo-600 z-30 pointer-events-none" />
-                                  )}
-                                  {motionDropPos === 'below' && (
-                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 z-30 pointer-events-none" />
-                                  )}
-                                  <div
-                                    onPointerDown={(e) =>
-                                      startVerticalReorderDrag(
-                                        e,
-                                        'motion-clip',
-                                        obj.id,
-                                        clip.id,
-                                        motionClips.map((c) => c.id)
-                                      )
-                                    }
-                                    title="Üstteki animasyon/poz alttakini bastırır — sıralamak için basılı tutup yukarı veya aşağı sürükleyin"
-                                    className={`w-56 shrink-0 border-r border-slate-200 pl-4 pr-2 flex items-center justify-between gap-1 bg-white select-none ${
-                                      motionClips.length > 1 && onReorderMotionClip
-                                        ? 'cursor-ns-resize'
-                                        : ''
-                                    }`}
-                                  >
-                                    {motionClips.length > 1 && onReorderMotionClip && (
-                                      <GripVertical className="w-3 h-3 text-slate-300 hover:text-slate-500 shrink-0" />
-                                    )}
-                                    {isPoseClip && (
-                                      <span className="px-1 py-0.2 rounded bg-teal-100 text-teal-800 text-[8.5px] font-bold shrink-0">
-                                        Poz
+                                return (
+                                  <div className="flex items-stretch border-b border-slate-100 last:border-b-0 h-8 hover:bg-indigo-50/20">
+                                    <div className="w-56 shrink-0 border-r border-slate-200 pl-7 pr-2 flex items-center justify-between gap-1 bg-white">
+                                      <span className="text-[10px] font-semibold text-slate-700 truncate">
+                                        Hareket & Pozlar
                                       </span>
-                                    )}
-                                    <span
-                                      className={`text-[10px] font-medium truncate flex-1 ${
-                                        isPoseClip ? 'text-teal-900' : 'text-slate-700'
-                                      }`}
-                                    >
-                                      {clipLabel}
-                                    </span>
-                                    <span className="text-[9px] font-mono text-slate-400 shrink-0">
-                                      {displayStart.toFixed(1)}–{(displayStart + displayDur).toFixed(1)}s
-                                    </span>
+                                      <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 font-semibold shrink-0">
+                                        {motionClips.length}
+                                      </span>
+                                    </div>
+                                    <div className="flex-1 relative overflow-hidden bg-white">
+                                      {motionClips.map((clip) => {
+                                        const mapped = layout?.get(clip.id);
+                                        const displayStart = mapped ? mapped.startTime : clip.startTime;
+                                        const displayDur = mapped ? mapped.duration : clip.duration;
+                                        const leftPx = timeToPixelX(
+                                          displayStart,
+                                          scrollTime,
+                                          zoomPxPerSec
+                                        );
+                                        const widthPx = Math.max(24, displayDur * zoomPxPerSec);
+                                        const isVisible =
+                                          leftPx + widthPx >= 0 && leftPx <= viewportWidthPx;
+                                        if (!isVisible) return null;
+
+                                        const isSelected = selectedMotionClipId === clip.id;
+                                        const clipLabel = clip.name || clip.presetId;
+                                        const isPoseClip =
+                                          clip.clipKind === 'pose' ||
+                                          clip.poseBones !== undefined;
+
+                                        return (
+                                          <div
+                                            key={clip.id}
+                                            data-simple-motion-clip-id={clip.id}
+                                            data-selected={isSelected ? 'true' : 'false'}
+                                            onPointerDown={(e) =>
+                                              onStartMotionClipDrag?.(e, obj, clip, 'move')
+                                            }
+                                            style={{
+                                              transform: `translate3d(${leftPx}px, 0, 0)`,
+                                              width: `${widthPx}px`,
+                                            }}
+                                            className={`absolute top-1 bottom-1 rounded px-2 flex items-center justify-between gap-1 text-[9.5px] font-semibold text-white cursor-grab select-none shadow-xs ${
+                                              isPoseClip ? 'bg-teal-600' : 'bg-indigo-500'
+                                            } ${
+                                              clip.enabled === false ? 'opacity-45' : 'opacity-95'
+                                            } ${isSelected ? 'ring-2 ring-slate-900 z-10' : ''}`}
+                                            title={`${isPoseClip ? 'Poz: ' : ''}${clipLabel} (${displayStart.toFixed(1)}s – ${(
+                                              displayStart + displayDur
+                                            ).toFixed(1)}s)`}
+                                          >
+                                            <div
+                                              data-trim-handle="left"
+                                              onPointerDown={(e) =>
+                                                onStartMotionClipDrag?.(e, obj, clip, 'trim-left')
+                                              }
+                                              className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-white/40 rounded-l"
+                                            />
+                                            <span className="truncate">{clipLabel}</span>
+                                            <div
+                                              data-trim-handle="right"
+                                              onPointerDown={(e) =>
+                                                onStartMotionClipDrag?.(e, obj, clip, 'trim-right')
+                                              }
+                                              className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-white/40 rounded-r"
+                                            />
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
-                                  <div className="flex-1 relative overflow-hidden bg-white">
-                                    {isVisible && (
-                                      <div
-                                        data-simple-motion-clip-id={clip.id}
-                                        data-selected={isSelected ? 'true' : 'false'}
-                                        onPointerDown={(e) =>
-                                          onStartMotionClipDrag?.(e, obj, clip, 'move')
-                                        }
-                                        style={{
-                                          transform: `translate3d(${leftPx}px, 0, 0)`,
-                                          width: `${widthPx}px`,
-                                        }}
-                                        className={`absolute top-1 bottom-1 rounded px-2 flex items-center justify-between text-[9.5px] font-semibold text-white cursor-grab select-none shadow-xs ${
-                                          isPoseClip ? 'bg-teal-600' : 'bg-indigo-500'
-                                        } ${
-                                          clip.enabled === false ? 'opacity-45' : 'opacity-95'
-                                        } ${isSelected ? 'ring-2 ring-slate-900' : ''}`}
-                                        title={`${isPoseClip ? 'Poz: ' : ''}${clipLabel} (${displayStart.toFixed(1)}s – ${(
-                                          displayStart + displayDur
-                                        ).toFixed(1)}s)`}
-                                      >
-                                        <div
-                                          data-trim-handle="left"
-                                          onPointerDown={(e) =>
-                                            onStartMotionClipDrag?.(e, obj, clip, 'trim-left')
-                                          }
-                                          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-white/40 rounded-l"
-                                        />
-                                        <span className="truncate">{clipLabel}</span>
-                                        <div
-                                          data-trim-handle="right"
-                                          onPointerDown={(e) =>
-                                            onStartMotionClipDrag?.(e, obj, clip, 'trim-right')
-                                          }
-                                          className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-white/40 rounded-r"
-                                        />
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })()}
                           </div>
                         )}
                       </React.Fragment>
@@ -630,30 +600,56 @@ export const SimpleTrackList: React.FC<SimpleTrackListProps> = ({
                     Konuşma / ses kaydı yok.
                   </div>
                 ) : (
-                  voiceClips.map((clip) => (
-                    <TimelineTrack
-                      key={clip.id}
-                      rowId={clip.id}
-                      title={clip.name}
-                      icon={<Mic className="w-3.5 h-3.5 text-sky-600" />}
-                      clips={[
-                        {
+                  (() => {
+                    const draggedVoice =
+                      dragPreview && dragPreview.clipIds.length === 1
+                        ? voiceClips.find((c) => c.id === dragPreview.anchorClipId)
+                        : undefined;
+                    let displayVoice = voiceClips;
+                    if (draggedVoice && dragPreview) {
+                      const nextStart =
+                        dragPreview.mode === 'move' || dragPreview.mode === 'resize-start'
+                          ? Math.max(0, draggedVoice.startTime + dragPreview.deltaStart)
+                          : draggedVoice.startTime;
+                      const nextDur =
+                        dragPreview.mode === 'resize-end'
+                          ? draggedVoice.duration + dragPreview.deltaDuration
+                          : dragPreview.mode === 'resize-start'
+                            ? draggedVoice.startTime + draggedVoice.duration - nextStart
+                            : draggedVoice.duration;
+                      const layout = computeMagneticAudioLayout(
+                        voiceClips,
+                        draggedVoice.id,
+                        nextStart,
+                        nextDur
+                      );
+                      displayVoice = voiceClips.map((c) => {
+                        const m = layout.get(c.id);
+                        return m ? { ...c, startTime: m.startTime, duration: m.duration } : c;
+                      });
+                    }
+                    return (
+                      <TimelineTrack
+                        rowId="voice-track"
+                        title={`Konuşma / Sesler (${voiceClips.length})`}
+                        icon={<Mic className="w-3.5 h-3.5 text-sky-600" />}
+                        clips={displayVoice.map((clip) => ({
                           id: clip.id,
                           kind: 'audio',
                           label: clip.name,
                           startTime: clip.startTime,
                           duration: clip.duration,
-                        },
-                      ]}
-                      scrollTime={scrollTime}
-                      zoomPxPerSec={zoomPxPerSec}
-                      viewportWidthPx={viewportWidthPx}
-                      selectedClipIds={selectedClipIds}
-                      dragPreview={dragPreview}
-                      onSelectClip={onSelectClip}
-                      onStartClipDrag={onStartClipDrag}
-                    />
-                  ))
+                        }))}
+                        scrollTime={scrollTime}
+                        zoomPxPerSec={zoomPxPerSec}
+                        viewportWidthPx={viewportWidthPx}
+                        selectedClipIds={selectedClipIds}
+                        dragPreview={draggedVoice ? null : dragPreview}
+                        onSelectClip={onSelectClip}
+                        onStartClipDrag={onStartClipDrag}
+                      />
+                    );
+                  })()
                 )}
               </>
             )}
@@ -665,30 +661,56 @@ export const SimpleTrackList: React.FC<SimpleTrackListProps> = ({
                     Müzik veya ses efekti yok.
                   </div>
                 ) : (
-                  musicSfxClips.map((clip) => (
-                    <TimelineTrack
-                      key={clip.id}
-                      rowId={clip.id}
-                      title={clip.name}
-                      icon={<Music className="w-3.5 h-3.5 text-violet-600" />}
-                      clips={[
-                        {
+                  (() => {
+                    const draggedSfx =
+                      dragPreview && dragPreview.clipIds.length === 1
+                        ? musicSfxClips.find((c) => c.id === dragPreview.anchorClipId)
+                        : undefined;
+                    let displaySfx = musicSfxClips;
+                    if (draggedSfx && dragPreview) {
+                      const nextStart =
+                        dragPreview.mode === 'move' || dragPreview.mode === 'resize-start'
+                          ? Math.max(0, draggedSfx.startTime + dragPreview.deltaStart)
+                          : draggedSfx.startTime;
+                      const nextDur =
+                        dragPreview.mode === 'resize-end'
+                          ? draggedSfx.duration + dragPreview.deltaDuration
+                          : dragPreview.mode === 'resize-start'
+                            ? draggedSfx.startTime + draggedSfx.duration - nextStart
+                            : draggedSfx.duration;
+                      const layout = computeMagneticAudioLayout(
+                        musicSfxClips,
+                        draggedSfx.id,
+                        nextStart,
+                        nextDur
+                      );
+                      displaySfx = musicSfxClips.map((c) => {
+                        const m = layout.get(c.id);
+                        return m ? { ...c, startTime: m.startTime, duration: m.duration } : c;
+                      });
+                    }
+                    return (
+                      <TimelineTrack
+                        rowId="music-sfx-track"
+                        title={`Müzik & Efektler (${musicSfxClips.length})`}
+                        icon={<Music className="w-3.5 h-3.5 text-violet-600" />}
+                        clips={displaySfx.map((clip) => ({
                           id: clip.id,
                           kind: 'audio',
                           label: clip.name,
                           startTime: clip.startTime,
                           duration: clip.duration,
-                        },
-                      ]}
-                      scrollTime={scrollTime}
-                      zoomPxPerSec={zoomPxPerSec}
-                      viewportWidthPx={viewportWidthPx}
-                      selectedClipIds={selectedClipIds}
-                      dragPreview={dragPreview}
-                      onSelectClip={onSelectClip}
-                      onStartClipDrag={onStartClipDrag}
-                    />
-                  ))
+                        }))}
+                        scrollTime={scrollTime}
+                        zoomPxPerSec={zoomPxPerSec}
+                        viewportWidthPx={viewportWidthPx}
+                        selectedClipIds={selectedClipIds}
+                        dragPreview={draggedSfx ? null : dragPreview}
+                        onSelectClip={onSelectClip}
+                        onStartClipDrag={onStartClipDrag}
+                      />
+                    );
+                  })()
                 )}
               </>
             )}

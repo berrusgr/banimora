@@ -728,6 +728,32 @@ export function App() {
     }
   };
 
+  // Reorder Scenes via Drag & Drop with confirmation
+  const handleReorderScene = (fromIndex: number, toIndex: number) => {
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= scenes.length ||
+      toIndex >= scenes.length
+    ) {
+      return;
+    }
+    const sourceLabel = `Sahne ${fromIndex + 1}`;
+    const targetLabel = `Sahne ${toIndex + 1}`;
+    const confirmed = window.confirm(
+      `${sourceLabel} ile ${targetLabel} yer değiştirecek (${sourceLabel} → ${toIndex + 1}. sıraya taşınacak). Emin misiniz?`
+    );
+    if (!confirmed) return;
+    updateScenesState((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      if (!moved) return prev;
+      next.splice(toIndex, 0, moved);
+      return next;
+    }, true);
+  };
+
   // Update Scene Properties (name, duration clamped to 10-min total cap, background)
   const handleUpdateScene = (patch: Partial<Scene>) => {
     const clampedPatch = { ...patch };
@@ -1435,19 +1461,38 @@ export function App() {
     setIsPlaying(true);
   };
 
-  // Add Audio Clip to Scene
+  // Add Audio Clip to Scene (placed sequentially side-by-side on its track without overlapping)
   const handleAddAudioClip = (clip: AudioClip) => {
-    const newClip: AudioClip = {
-      ...clip,
-      id: `audio-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    };
+    const isVoice = clip.type === 'custom';
     updateScenesState(
       (prev) =>
-        prev.map((s) =>
-          s.id === activeScene.id
-            ? { ...s, audioClips: [...s.audioClips, newClip] }
-            : s
-        ),
+        prev.map((s) => {
+          if (s.id !== activeScene.id) return s;
+          const sameTrack = s.audioClips.filter((c) => (c.type === 'custom') === isVoice);
+          const nextStart =
+            sameTrack.length > 0
+              ? Number(
+                  Math.max(
+                    ...sameTrack.map((c) => c.startTime + c.duration)
+                  ).toFixed(2)
+                )
+              : clip.startTime;
+          const newClip: AudioClip = {
+            ...clip,
+            id: `audio-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            startTime: nextStart,
+          };
+          const neededEnd = newClip.startTime + newClip.duration;
+          const nextDuration =
+            neededEnd > s.duration
+              ? Math.min(Math.ceil(neededEnd), maxAllowedSceneDuration)
+              : s.duration;
+          return {
+            ...s,
+            duration: Math.max(s.duration, nextDuration),
+            audioClips: [...s.audioClips, newClip],
+          };
+        }),
       true
     );
   };
@@ -3405,6 +3450,12 @@ export function App() {
           onDropLibraryAsset={(item, pos) => handleAddAsset(item, pos)}
           onDropExternalFile={(file, pos) => handleUploadObjectFile(file, pos)}
           onEditCharacterInStudio={handleEditCanvasCharacter}
+          customCharacters={customCharacters}
+          customBackgrounds={customBackgrounds}
+          onSelectBackground={handleSelectBackground}
+          onAddScene={handleAddScene}
+          onContinueScene={handleContinueScene}
+          onTriggerTransitionPreview={handleTriggerTransitionPreview}
           currentTime={currentTime}
           isPlaying={isPlaying}
           stageMotionPreview={stageMotionPreview}
@@ -3565,6 +3616,7 @@ export function App() {
         onAddScene={handleAddScene}
         onContinueScene={handleContinueScene}
         onDeleteScene={handleDeleteScene}
+        onReorderScene={handleReorderScene}
         totalProjectDuration={totalProjectDuration}
         fps={projectFps}
         onFpsChange={setProjectFps}

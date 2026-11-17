@@ -7,6 +7,7 @@ export interface DicebearOptionItem {
   id: string;
   label: string;
   gender?: 'female' | 'male' | 'unisex';
+  group?: 'anatomical' | 'decal';
 }
 
 export const DICEBEAR_TOP_OPTIONS: DicebearOptionItem[] = [
@@ -46,32 +47,34 @@ export const DICEBEAR_TOP_OPTIONS: DicebearOptionItem[] = [
 ];
 
 export const DICEBEAR_EYE_OPTIONS: DicebearOptionItem[] = [
-  { id: 'iris-natural', label: 'İrisli Doğal' },
-  { id: 'iris-bright', label: 'Parlak Büyük İris' },
-  { id: 'iris-lashes', label: 'Kirpikli İris' },
-  { id: 'iris-focused', label: 'Odaklı Bakış' },
-  { id: 'iris-side', label: 'Yana Bakan İris' },
-  { id: 'default', label: 'Nokta (Klasik)' },
-  { id: 'happy', label: 'Mutlu / Gülen' },
-  { id: 'wink', label: 'Göz Kırpan' },
-  { id: 'winkWacky', label: 'Neşeli Kırpma' },
-  { id: 'surprised', label: 'Şaşkın' },
-  { id: 'side', label: 'Yana Bakan (Nokta)' },
-  { id: 'squint', label: 'Kısık Bakış' },
-  { id: 'closed', label: 'Kapalı' },
-  { id: 'hearts', label: 'Kalpli' },
-  { id: 'eyeRoll', label: 'Göz Deviren' },
+  // Anatomik Göz Formları
+  { id: 'default', label: 'Nokta (Klasik)', group: 'anatomical' },
+  { id: 'iris-natural', label: 'Badem (Doğal)', group: 'anatomical' },
+  { id: 'iris-bright', label: 'Yuvarlak / İri', group: 'anatomical' },
+  { id: 'iris-slanted', label: 'Çekik (Kısık)', group: 'anatomical' },
+  { id: 'iris-hooded', label: 'Düşük Göz Kapağı', group: 'anatomical' },
+  { id: 'iris-lashes', label: 'Belirgin Kirpikli', group: 'anatomical' },
+  // Sembolik / Komedik İfadeler (Decal Eyes)
+  { id: 'iris-hearts', label: 'Kalpli', group: 'decal' },
+  { id: 'iris-stars', label: 'Yıldızlı', group: 'decal' },
+  { id: 'iris-x', label: 'X İşareti', group: 'decal' },
+  { id: 'iris-spiral', label: 'Spiraller', group: 'decal' },
+  { id: 'iris-tears', label: 'Gözyaşı Şelalesi', group: 'decal' },
 ];
 
 export const DICEBEAR_EYEBROW_OPTIONS: DicebearOptionItem[] = [
-  { id: 'defaultNatural', label: 'Doğal Kaş' },
-  { id: 'raisedExcitedNatural', label: 'Kalkık İfade' },
-  { id: 'flatNatural', label: 'Düz Kaş' },
-  { id: 'frownNatural', label: 'Çatık Kaş' },
-  { id: 'sadConcernedNatural', label: 'Üzgün / Endişeli' },
-  { id: 'angryNatural', label: 'Kızgın Kaş' },
-  { id: 'upDownNatural', label: 'Asimetrik' },
-  { id: 'unibrowNatural', label: 'Kalın Birleşik' },
+  { id: 'shape-thin-arched', label: 'İnce Kalkık' },
+  { id: 'shape-thick', label: 'Kalın' },
+  { id: 'shape-thick-short', label: 'Kalın Kısa' },
+  { id: 'shape-thin-short', label: 'İnce Kısa' },
+  { id: 'shape-close-set', label: 'Birbirine Yakın' },
+  { id: 'shape-wide-set', label: 'Ayrık' },
+  { id: 'shape-flat', label: 'Düz' },
+  { id: 'shape-soft-curved', label: 'Hafif Kavisli' },
+  { id: 'shape-sharp-angled', label: 'Keskin Açılı' },
+  { id: 'shape-rounded', label: 'Yuvarlak' },
+  { id: 'shape-thick-bushy', label: 'Kalın ve Gür' },
+  { id: 'shape-low-set', label: 'Düşük' },
 ];
 
 export const DICEBEAR_MOUTH_OPTIONS: DicebearOptionItem[] = [
@@ -182,13 +185,16 @@ export function mapEyeStyleToDicebear(eyeStyle: string): string {
 
 export function mapEyebrowStyleToDicebear(browStyle: string): string {
   const map: Record<string, string> = {
-    'arched': 'defaultNatural',
-    'thick': 'flatNatural',
-    'thin': 'default',
-    'raised': 'raisedExcitedNatural',
-    'serious': 'frownNatural',
+    natural: 'shape-soft-curved',
+    arched: 'shape-soft-curved',
+    thick: 'shape-thick',
+    'soft-thin': 'shape-thin-short',
+    thin: 'shape-thin-short',
+    raised: 'shape-thin-arched',
+    confident: 'shape-sharp-angled',
+    serious: 'shape-low-set',
   };
-  return map[browStyle] || 'defaultNatural';
+  return map[browStyle] || 'shape-soft-curved';
 }
 
 export function mapMouthStyleToDicebear(mouthStyle: string): { mouth: string; facialHair?: string } {
@@ -369,7 +375,8 @@ export function resolveDicebearOptions(
 
   // Expression overrides
   if (resolvedExpression === 'happy') {
-    if (!isBlinking) eyesVal = 'happy';
+    // Keep the character's chosen open eyes (do not force closed ^ ^ happy arcs)
+    if (!isBlinking && eyesVal === 'closed') eyesVal = 'default';
     eyebrowsVal = 'defaultNatural';
     mouthVal = 'smile';
   } else if (resolvedExpression === 'excited') {
@@ -415,6 +422,8 @@ export function resolveDicebearOptions(
 
   const customIrisStyle = !isBlinking && eyesVal.startsWith('iris-') ? eyesVal : undefined;
   const avataaarsEye = customIrisStyle ? 'default' : eyesVal;
+  const customEyebrowStyle = eyebrowsVal.startsWith('shape-') ? eyebrowsVal : undefined;
+  const avataaarsEyebrow = customEyebrowStyle ? 'defaultNatural' : eyebrowsVal;
 
   // 6-Viseme Lip-sync animation while speaking
   if (config.lipSyncEnabled) {
@@ -477,7 +486,7 @@ export function resolveDicebearOptions(
     top: isBald ? undefined : ([topVal] as any),
     topProbability: isBald ? 0 : 100,
     eyes: [avataaarsEye] as any,
-    eyebrows: [eyebrowsVal] as any,
+    eyebrows: [avataaarsEyebrow] as any,
     mouth: [mouthVal] as any,
     accessories: accVal ? ([accVal] as any) : undefined,
     accessoriesColor: [accColorHex],
@@ -485,6 +494,7 @@ export function resolveDicebearOptions(
     facialHair: facialHairVal ? ([facialHairVal] as any) : undefined,
     facialHairProbability: facialHairVal ? 100 : 0,
     _customIrisStyle: customIrisStyle,
+    _customEyebrowStyle: customEyebrowStyle,
   };
 }
 
@@ -498,17 +508,24 @@ function renderCustomIrisEyesInner(
   const skinColor = `#${stripHash(skinToneHex, 'f1c27d')}`;
   const isBright = irisStyle === 'iris-bright';
   const isLashes = irisStyle === 'iris-lashes';
+  const isSlanted = irisStyle === 'iris-slanted';
+  const isHooded = irisStyle === 'iris-hooded';
   const isFocused = irisStyle === 'iris-focused';
   const isSide = irisStyle === 'iris-side';
   const isWink = irisStyle === 'iris-wink';
   const isSleepy = irisStyle === 'iris-sleepy';
   const isWorried = irisStyle === 'iris-worried';
   const isSerious = irisStyle === 'iris-serious';
+  const isHearts = irisStyle === 'iris-hearts';
+  const isStars = irisStyle === 'iris-stars';
+  const isX = irisStyle === 'iris-x';
+  const isSpiral = irisStyle === 'iris-spiral';
+  const isTears = irisStyle === 'iris-tears';
 
-  const rx = isBright ? 10.5 : 10;
-  const ry = isBright ? 9.2 : isFocused || isSerious ? 6.2 : 7.4;
-  const irisR = isBright ? 6.2 : isFocused || isSerious ? 4.8 : 5.3;
-  const pupilR = isBright ? 3.0 : 2.5;
+  const rx = isBright ? 10.8 : isSlanted ? 10.5 : 10;
+  const ry = isBright ? 9.6 : isSlanted ? 5.2 : isFocused || isSerious ? 6.2 : 7.2;
+  const irisR = isBright ? 6.4 : isSlanted ? 4.4 : isFocused || isSerious ? 4.8 : 5.2;
+  const pupilR = isBright ? 3.1 : isSlanted ? 2.1 : 2.4;
   const gazeShiftX = isSide
     ? headDirection === 'left'
       ? -3.2
@@ -521,14 +538,62 @@ function renderCustomIrisEyesInner(
 
   const drawSingleEye = (cx: number, isRightEye: boolean) => {
     const cy = 22;
+
+    // Symbolic / Comedic Decal Eyes
+    if (isHearts) {
+      return (
+        `<g transform="translate(${cx}, ${cy})">` +
+        `<path d="M0 9.5 C-11 2 -12 -7.5 -5.5 -9.5 C-2 -10.5 0 -7 0 -5 C0 -7 2 -10.5 5.5 -9.5 C12 -7.5 11 2 0 9.5 Z" fill="#e11d48" stroke="#9f1239" stroke-width="0.9"/>` +
+        `<path d="M-6.2 -5.8 Q-4.2 -7.6 -2.4 -5.8" stroke="#fda4af" stroke-width="1.6" stroke-linecap="round" fill="none"/>` +
+        `</g>`
+      );
+    }
+    if (isStars) {
+      return (
+        `<g transform="translate(${cx}, ${cy})">` +
+        `<polygon points="0,-11 3.1,-3.6 11,-3.2 4.8,1.8 6.9,9.6 0,5.2 -6.9,9.6 -4.8,1.8 -11,-3.2 -3.1,-3.6" fill="#f59e0b" stroke="#b45309" stroke-width="1" stroke-linejoin="round"/>` +
+        `<polygon points="0,-6.5 1.7,-2 6.2,-1.8 2.7,1 3.8,5.4 0,3 -3.8,5.4 -2.7,1 -6.2,-1.8 -1.7,-2" fill="#fef08a"/>` +
+        `</g>`
+      );
+    }
+    if (isX) {
+      return (
+        `<g stroke="#1e293b" stroke-width="3.6" stroke-linecap="round">` +
+        `<line x1="${cx - 7.5}" y1="${cy - 7.5}" x2="${cx + 7.5}" y2="${cy + 7.5}"/>` +
+        `<line x1="${cx + 7.5}" y1="${cy - 7.5}" x2="${cx - 7.5}" y2="${cy + 7.5}"/>` +
+        `</g>`
+      );
+    }
+    if (isSpiral) {
+      return (
+        `<g transform="translate(${cx}, ${cy})">` +
+        `<circle cx="0" cy="0" r="10.2" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.8"/>` +
+        `<path d="M0 0 C2 0 2.5 -2.5 0 -3.2 C-3.5 -4 -4.8 1.5 -1 4 C4.2 6.8 7.5 -1.5 3.5 -6.2 C-1.8 -10.5 -9.2 -5 -8.5 2.5 C-7.8 8.8 1 11 7 7" fill="none" stroke="#1e293b" stroke-width="2.1" stroke-linecap="round"/>` +
+        `</g>`
+      );
+    }
+    if (isTears) {
+      return (
+        `<g>` +
+        `<path d="M${cx - 6.5} ${cy + 2} L${cx - 8.5} ${cy + 34} L${cx + 8.5} ${cy + 34} L${cx + 6.5} ${cy + 2} Z" fill="#38bdf8" opacity="0.82"/>` +
+        `<path d="M${cx - 3} ${cy + 4} L${cx - 4.2} ${cy + 31} M${cx + 2.5} ${cy + 5} L${cx + 3.5} ${cy + 30}" stroke="#bae6fd" stroke-width="1.8" stroke-linecap="round"/>` +
+        `<circle cx="${cx - 9}" cy="${cy + 36}" r="2.2" fill="#38bdf8" opacity="0.85"/>` +
+        `<circle cx="${cx + 8}" cy="${cy + 37}" r="1.8" fill="#7dd3fc" opacity="0.85"/>` +
+        `<path d="M${cx - 9.5} ${cy - 1.5} Q${cx} ${cy + 4.5} ${cx + 9.5} ${cy - 1.5}" stroke="#1e293b" stroke-width="2.8" stroke-linecap="round" fill="none"/>` +
+        `</g>`
+      );
+    }
+
     if (isWink && isRightEye) {
       return `<path d="M${cx - 9.5} ${cy + 1.5} Q${cx} ${cy - 6} ${cx + 9.5} ${cy + 1.5}" stroke="#1e293b" stroke-width="3.0" stroke-linecap="round" fill="none"/>`;
     }
 
     const lashesSvg = isLashes
       ? isRightEye
-        ? `<path d="M${cx + 7.5} ${cy - 4.5} L${cx + 12} ${cy - 7} M${cx + 9} ${cy - 2} L${cx + 13} ${cy - 3.2}" stroke="#1e293b" stroke-width="1.6" stroke-linecap="round"/>`
-        : `<path d="M${cx - 7.5} ${cy - 4.5} L${cx - 12} ${cy - 7} M${cx - 9} ${cy - 2} L${cx - 13} ${cy - 3.2}" stroke="#1e293b" stroke-width="1.6" stroke-linecap="round"/>`
+        ? `<path d="M${cx + 5.5} ${cy - 5.5} L${cx + 10.5} ${cy - 9} M${cx + 8} ${cy - 3.5} L${cx + 13} ${cy - 5.8} M${cx + 9.5} ${cy - 1} L${cx + 14} ${cy - 1.8}" stroke="#1e293b" stroke-width="1.7" stroke-linecap="round"/>` +
+          `<path d="M${cx + 6.5} ${cy + 5.5} L${cx + 10} ${cy + 8.2} M${cx + 2.5} ${cy + 6.8} L${cx + 4.2} ${cy + 9.5}" stroke="#1e293b" stroke-width="1.3" stroke-linecap="round"/>`
+        : `<path d="M${cx - 5.5} ${cy - 5.5} L${cx - 10.5} ${cy - 9} M${cx - 8} ${cy - 3.5} L${cx - 13} ${cy - 5.8} M${cx - 9.5} ${cy - 1} L${cx - 14} ${cy - 1.8}" stroke="#1e293b" stroke-width="1.7" stroke-linecap="round"/>` +
+          `<path d="M${cx - 6.5} ${cy + 5.5} L${cx - 10} ${cy + 8.2} M${cx - 2.5} ${cy + 6.8} L${cx - 4.2} ${cy + 9.5}" stroke="#1e293b" stroke-width="1.3" stroke-linecap="round"/>`
       : '';
 
     let lidOverlay = '';
@@ -536,6 +601,11 @@ function renderCustomIrisEyesInner(
       lidOverlay =
         `<path d="M${cx - rx - 0.5} ${cy + 1} Q${cx} ${cy - 1.5} ${cx + rx + 0.5} ${cy + 1} L${cx + rx + 0.5} ${cy - ry - 2} L${cx - rx - 0.5} ${cy - ry - 2} Z" fill="${skinColor}"/>` +
         `<path d="M${cx - rx} ${cy + 1} Q${cx} ${cy - 1.5} ${cx + rx} ${cy + 1}" stroke="#1e293b" stroke-width="2.4" stroke-linecap="round" fill="none"/>`;
+    } else if (isHooded) {
+      lidOverlay =
+        `<path d="M${cx - rx - 0.5} ${cy - 1.2} Q${cx} ${cy - 4.2} ${cx + rx + 0.5} ${cy - 1.2} L${cx + rx + 0.5} ${cy - ry - 2} L${cx - rx - 0.5} ${cy - ry - 2} Z" fill="${skinColor}"/>` +
+        `<path d="M${cx - rx} ${cy - 1.2} Q${cx} ${cy - 4.2} ${cx + rx} ${cy - 1.2}" stroke="#1e293b" stroke-width="2.2" stroke-linecap="round" fill="none"/>` +
+        `<path d="M${cx - rx * 0.78} ${cy - 5.2} Q${cx} ${cy - 7.8} ${cx + rx * 0.78} ${cy - 5.2}" stroke="#1e293b" stroke-width="1.1" opacity="0.4" stroke-linecap="round" fill="none"/>`;
     } else if (isWorried) {
       const innerY = cy - 4.5;
       const outerY = cy + 0.5;
@@ -548,21 +618,30 @@ function renderCustomIrisEyesInner(
       lidOverlay =
         `<rect x="${cx - rx - 0.5}" y="${cy - ry - 2}" width="${(rx + 0.5) * 2}" height="${ry - 1.5}" fill="${skinColor}"/>` +
         `<line x1="${cx - rx}" y1="${cy - 3.5}" x2="${cx + rx}" y2="${cy - 3.5}" stroke="#1e293b" stroke-width="2.3" stroke-linecap="round"/>`;
+    } else if (isSlanted) {
+      lidOverlay =
+        `<path d="M${cx - rx - 1} ${cy - 0.5} Q${cx} ${cy - ry * 1.15} ${cx + rx + 1.5} ${cy - 1.2}" stroke="#1e293b" stroke-width="2.3" stroke-linecap="round" fill="none"/>`;
     } else {
       lidOverlay = isFocused
         ? `<path d="M${cx - rx} ${cy - 2.5} Q${cx} ${cy - ry * 0.7} ${cx + rx} ${cy - 2.5}" stroke="#1e293b" stroke-width="2.1" stroke-linecap="round" fill="none"/>`
         : `<path d="M${cx - rx} ${cy - 1} Q${cx} ${cy - ry * 1.15} ${cx + rx} ${cy - 1}" stroke="#1e293b" stroke-width="1.8" stroke-linecap="round" fill="none"/>`;
     }
 
-    return [
+    const eyeInner = [
       `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.9"/>`,
-      `<circle cx="${cx + gazeShiftX}" cy="${isSleepy ? cy + 2 : cy}" r="${irisR}" fill="${irisColor}"/>`,
-      `<circle cx="${cx + gazeShiftX}" cy="${isSleepy ? cy + 2 : cy}" r="${pupilR}" fill="#0f172a"/>`,
+      `<circle cx="${cx + gazeShiftX}" cy="${isSleepy ? cy + 2 : isHooded ? cy + 0.8 : cy}" r="${irisR}" fill="${irisColor}"/>`,
+      `<circle cx="${cx + gazeShiftX}" cy="${isSleepy ? cy + 2 : isHooded ? cy + 0.8 : cy}" r="${pupilR}" fill="#0f172a"/>`,
       `<circle cx="${cx + gazeShiftX - 1.7}" cy="${cy - 1.8}" r="${isBright ? 1.7 : 1.35}" fill="#ffffff"/>`,
       isBright ? `<circle cx="${cx + gazeShiftX + 1.8}" cy="${cy + 1.6}" r="0.85" fill="#ffffff" opacity="0.85"/>` : '',
       lidOverlay,
       lashesSvg,
     ].join('');
+
+    if (isSlanted) {
+      const tiltDeg = isRightEye ? -11 : 11;
+      return `<g transform="rotate(${tiltDeg} ${cx} ${cy})">${eyeInner}</g>`;
+    }
+    return eyeInner;
   };
 
   return `${drawSingleEye(30, false)}${drawSingleEye(82, true)}`;
@@ -798,13 +877,103 @@ function applyCustomNoseToSvg(
   );
 }
 
+function applyCustomEyebrowsToSvg(
+  svg: string,
+  customEyebrowStyle: string | undefined,
+  hairColor?: string,
+  hairStyle?: string
+): string {
+  if (!customEyebrowStyle) return svg;
+
+  // Use a crisp, natural brow tone that stays legible even on light/silver hair
+  const rawHex = stripHash(hairStyle === 'senior-silver' ? '94a3b8' : hairColor, '2c1b18');
+  const r = parseInt(rawHex.slice(0, 2), 16) || 44;
+  const g = parseInt(rawHex.slice(2, 4), 16) || 27;
+  const b = parseInt(rawHex.slice(4, 6), 16) || 24;
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  const browColor =
+    luminance > 0.65
+      ? '#475569'
+      : `#${[r, g, b].map((v) => Math.max(12, Math.round(v * 0.68)).toString(16).padStart(2, '0')).join('')}`;
+
+  let inner = '';
+  switch (customEyebrowStyle) {
+    case 'shape-thin-arched':
+      inner =
+        `<path d="M14 12.5 Q29 1.5 43 9.5" stroke="${browColor}" stroke-width="2.5" stroke-linecap="round" fill="none"/>` +
+        `<path d="M69 9.5 Q83 1.5 98 12.5" stroke="${browColor}" stroke-width="2.5" stroke-linecap="round" fill="none"/>`;
+      break;
+    case 'shape-thick':
+      inner =
+        `<path d="M13 13 C19 7.5, 34 7, 44 10 C45 12, 44 14.5, 42 14.5 C33 12.5, 21 13.5, 14 15.5 Z" fill="${browColor}"/>` +
+        `<path d="M99 13 C93 7.5, 78 7, 68 10 C67 12, 68 14.5, 70 14.5 C79 12.5, 91 13.5, 98 15.5 Z" fill="${browColor}"/>`;
+      break;
+    case 'shape-thick-short':
+      inner =
+        `<path d="M20 12.5 C24 8.5, 34 8.5, 41 10.5 C42 12.5, 41 14.5, 39 14.5 C33 13.2, 25 13.5, 21 15 Z" fill="${browColor}"/>` +
+        `<path d="M92 12.5 C88 8.5, 78 8.5, 71 10.5 C70 12.5, 71 14.5, 73 14.5 C79 13.2, 87 13.5, 91 15 Z" fill="${browColor}"/>`;
+      break;
+    case 'shape-thin-short':
+      inner =
+        `<path d="M21 12.5 Q30.5 8.5 40 11" stroke="${browColor}" stroke-width="2.2" stroke-linecap="round" fill="none"/>` +
+        `<path d="M72 11 Q81.5 8.5 91 12.5" stroke="${browColor}" stroke-width="2.2" stroke-linecap="round" fill="none"/>`;
+      break;
+    case 'shape-close-set':
+      inner =
+        `<path d="M18 12.5 Q34 8 49 11.5" stroke="${browColor}" stroke-width="3.5" stroke-linecap="round" fill="none"/>` +
+        `<path d="M63 11.5 Q78 8 94 12.5" stroke="${browColor}" stroke-width="3.5" stroke-linecap="round" fill="none"/>`;
+      break;
+    case 'shape-wide-set':
+      inner =
+        `<path d="M9 12.5 Q22 7.5 35 11" stroke="${browColor}" stroke-width="3.4" stroke-linecap="round" fill="none"/>` +
+        `<path d="M77 11 Q90 7.5 103 12.5" stroke="${browColor}" stroke-width="3.4" stroke-linecap="round" fill="none"/>`;
+      break;
+    case 'shape-flat':
+      inner =
+        `<path d="M14 11.5 L44 11.5" stroke="${browColor}" stroke-width="3.8" stroke-linecap="round" fill="none"/>` +
+        `<path d="M68 11.5 L98 11.5" stroke="${browColor}" stroke-width="3.8" stroke-linecap="round" fill="none"/>`;
+      break;
+    case 'shape-sharp-angled':
+      inner =
+        `<path d="M14 13.5 L34 6 L45 11.5" stroke="${browColor}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>` +
+        `<path d="M67 11.5 L78 6 L98 13.5" stroke="${browColor}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
+      break;
+    case 'shape-rounded':
+      inner =
+        `<path d="M14 14 Q29 4 44 14" stroke="${browColor}" stroke-width="3.4" stroke-linecap="round" fill="none"/>` +
+        `<path d="M68 14 Q83 4 98 14" stroke="${browColor}" stroke-width="3.4" stroke-linecap="round" fill="none"/>`;
+      break;
+    case 'shape-thick-bushy':
+      inner =
+        `<path d="M11 13.5 C16 6.5, 31 5.5, 45 9.5 C46.5 12, 45.5 15.5, 43 15.5 C33 13.2, 20 14, 13 16 Z" fill="${browColor}"/>` +
+        `<path d="M101 13.5 C96 6.5, 81 5.5, 67 9.5 C65.5 12, 66.5 15.5, 69 15.5 C79 13.2, 92 14, 99 16 Z" fill="${browColor}"/>`;
+      break;
+    case 'shape-low-set':
+      inner =
+        `<path d="M14 16 Q29 14.5 44 16" stroke="${browColor}" stroke-width="3.8" stroke-linecap="round" fill="none"/>` +
+        `<path d="M68 16 Q83 14.5 98 16" stroke="${browColor}" stroke-width="3.8" stroke-linecap="round" fill="none"/>`;
+      break;
+    case 'shape-soft-curved':
+    default:
+      inner =
+        `<path d="M14 12.5 Q29 7.5 44 11" stroke="${browColor}" stroke-width="3.2" stroke-linecap="round" fill="none"/>` +
+        `<path d="M68 11 Q83 7.5 98 12.5" stroke="${browColor}" stroke-width="3.2" stroke-linecap="round" fill="none"/>`;
+      break;
+  }
+
+  return svg.replace(
+    /<g transform="translate\(76 82\)">[\s\S]*?<\/g>/,
+    `<g transform="translate(76 82)">${inner}</g>`
+  );
+}
+
 export function buildDicebearHeadInnerSvg(
   config: Partial<CharacterConfig>,
   resolvedExpression?: CharacterExpressionType,
   animTime = 0,
   forceBlink = false
 ): string {
-  const { _customIrisStyle, ...opts } = resolveDicebearOptions(
+  const { _customIrisStyle, _customEyebrowStyle, ...opts } = resolveDicebearOptions(
     config,
     resolvedExpression,
     animTime,
@@ -818,6 +987,12 @@ export function buildDicebearHeadInnerSvg(
     config.eyeColor,
     config.headDirection,
     config.skinTone
+  );
+  svg = applyCustomEyebrowsToSvg(
+    svg,
+    _customEyebrowStyle,
+    config.hairColor,
+    config.hairStyle
   );
   svg = applyAnatomicalMouthToSvg(svg, config, animTime, resolvedExpression);
   svg = applyCustomNoseToSvg(svg, config.noseStyle, config.headDirection);

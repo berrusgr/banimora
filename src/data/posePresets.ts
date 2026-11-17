@@ -71,7 +71,9 @@ function makeBuiltInPose(
 
 export const BUILT_IN_POSES: readonly SavedCharacterPose[] = [
   makeBuiltInPose('pose-neutral-ready', 'Hazır Duruş (Nötr)', 'posture', 'Dengeli ve doğal başlangıç duruşu.', {
-    leftShoulder: 6, leftElbow: -8, rightShoulder: -6, rightElbow: 8,
+    leftShoulder: 5.5, leftElbow: -7, leftWrist: -2,
+    rightShoulder: -5.5, rightElbow: 7, rightWrist: 2,
+    leftHip: -1.2, rightHip: 1.2,
   }, { expression: 'neutral' }),
 
   makeBuiltInPose('pose-teach-explain-right', 'Sağ Elle Anlatma', 'teaching', 'Sağ el açık, öğrencilere konuyu açıklarken.', {

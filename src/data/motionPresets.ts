@@ -7,6 +7,7 @@ import type {
   PropSocketId,
   RigBodyMaskId,
   RigLayerStage,
+  ExtendedHandGestureType,
 } from '../types/rigStandard.ts';
 import type { MotionPresetSample } from '../rig/motionRetarget.ts';
 
@@ -38,6 +39,190 @@ const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const bell = (p: number) => Math.sin(clamp01(p) * Math.PI);
 const osc = (p: number) => Math.sin(p * TAU);
 const oscCos = (p: number) => Math.cos(p * TAU);
+
+interface WalkCycleFrame {
+  pelvis: number;
+  leftHip: number;
+  leftKnee: number;
+  leftAnkle: number;
+  rightHip: number;
+  rightKnee: number;
+  rightAnkle: number;
+  leftShoulder: number;
+  leftElbow: number;
+  rightShoulder: number;
+  rightElbow: number;
+  bodyBobY: number;
+}
+
+/**
+ * Klasik 8 karelik yürüyüş döngüsü (Contact -> Down -> Passing -> Up, sağ ve sol adım).
+ */
+const EIGHT_FRAME_WALK_CYCLE: readonly WalkCycleFrame[] = [
+  // 0: Ön bacak (x=89, leftHip) öne uzanıyor, arka bacak (x=119, rightHip) itiyor
+  {
+    pelvis: 1.2,
+    leftHip: -16,
+    leftKnee: 2,
+    leftAnkle: -10,
+    rightHip: 14,
+    rightKnee: 8,
+    rightAnkle: 12,
+    leftShoulder: 13,
+    leftElbow: -8,
+    rightShoulder: -12,
+    rightElbow: -12,
+    bodyBobY: 0,
+  },
+  // 1: Çöküş (Down)
+  {
+    pelvis: 1.8,
+    leftHip: -10,
+    leftKnee: 12,
+    leftAnkle: 0,
+    rightHip: 10,
+    rightKnee: 22,
+    rightAnkle: 14,
+    leftShoulder: 9,
+    leftElbow: -8,
+    rightShoulder: -8,
+    rightElbow: -12,
+    bodyBobY: 2.8,
+  },
+  // 2: Geçiş (Passing - arka bacak öne geçiyor)
+  {
+    pelvis: 0,
+    leftHip: 0,
+    leftKnee: 4,
+    leftAnkle: 0,
+    rightHip: -8,
+    rightKnee: 28,
+    rightAnkle: 8,
+    leftShoulder: 0,
+    leftElbow: -8,
+    rightShoulder: 0,
+    rightElbow: -8,
+    bodyBobY: 0.4,
+  },
+  // 3: Yükseliş (High-Point - arka bacak öne uzanıyor, arka kol gövde+kalça arkasına gidiyor)
+  {
+    pelvis: -1.2,
+    leftHip: 10,
+    leftKnee: 4,
+    leftAnkle: 6,
+    rightHip: -18,
+    rightKnee: 8,
+    rightAnkle: -8,
+    leftShoulder: -12,
+    leftElbow: -14,
+    rightShoulder: 13,
+    rightElbow: -6,
+    bodyBobY: -2.8,
+  },
+  // 4: Arka bacak (x=119, rightHip) önde temas, ön bacak (x=89, leftHip) arkada itiyor
+  {
+    pelvis: -1.2,
+    leftHip: 14,
+    leftKnee: 8,
+    leftAnkle: 12,
+    rightHip: -16,
+    rightKnee: 2,
+    rightAnkle: -10,
+    leftShoulder: -12,
+    leftElbow: -12,
+    rightShoulder: 13,
+    rightElbow: -8,
+    bodyBobY: 0,
+  },
+  // 5: Çöküş (Down)
+  {
+    pelvis: -1.8,
+    leftHip: 10,
+    leftKnee: 22,
+    leftAnkle: 14,
+    rightHip: -10,
+    rightKnee: 12,
+    rightAnkle: 0,
+    leftShoulder: -8,
+    leftElbow: -12,
+    rightShoulder: 9,
+    rightElbow: -8,
+    bodyBobY: 2.8,
+  },
+  // 6: Geçiş (Passing - ön bacak öne geçiyor)
+  {
+    pelvis: 0,
+    leftHip: -8,
+    leftKnee: 28,
+    leftAnkle: 8,
+    rightHip: 0,
+    rightKnee: 4,
+    rightAnkle: 0,
+    leftShoulder: 0,
+    leftElbow: -8,
+    rightShoulder: 0,
+    rightElbow: -8,
+    bodyBobY: 0.4,
+  },
+  // 7: Yükseliş (High-Point - ön bacak öne uzanıyor)
+  {
+    pelvis: 1.2,
+    leftHip: -18,
+    leftKnee: 8,
+    leftAnkle: -8,
+    rightHip: 10,
+    rightKnee: 4,
+    rightAnkle: 6,
+    leftShoulder: 13,
+    leftElbow: -6,
+    rightShoulder: -12,
+    rightElbow: -14,
+    bodyBobY: -2.8,
+  },
+];
+
+export function sampleEightFrameWalkCycle(
+  phase01: number,
+  intensity = 1,
+  options?: { strideScale?: number; bobScale?: number; reverse?: boolean }
+): MotionPresetSample {
+  const stride = options?.strideScale ?? 1;
+  const bobScale = options?.bobScale ?? 1;
+  const wrapped = ((phase01 % 1) + 1) % 1;
+  const directed = options?.reverse ? (1 - wrapped) % 1 : wrapped;
+  const scaled = directed * EIGHT_FRAME_WALK_CYCLE.length;
+  const idxA = Math.floor(scaled) % EIGHT_FRAME_WALK_CYCLE.length;
+  const idxB = (idxA + 1) % EIGHT_FRAME_WALK_CYCLE.length;
+  const rawFrac = scaled - Math.floor(scaled);
+  // Kosinüs yumuşatması ile kareler arası akıcı geçiş
+  const u = 0.5 - 0.5 * Math.cos(rawFrac * Math.PI);
+  const a = EIGHT_FRAME_WALK_CYCLE[idxA];
+  const b = EIGHT_FRAME_WALK_CYCLE[idxB];
+  const lerp = (va: number, vb: number) => (va + (vb - va) * u) * intensity;
+  // Kol ve gövde hareketinin arkasından ~%10 faz gecikmeli bilek ve kafa takibi (follow-through)
+  const lagPhase = (directed - 0.1 + 1) % 1;
+  const lagWave = Math.sin(lagPhase * TAU) * intensity;
+
+  return {
+    boneAngles: {
+      pelvis: lerp(a.pelvis, b.pelvis) * stride,
+      head: lagWave * 1.1 * stride,
+      leftHip: lerp(a.leftHip, b.leftHip) * stride,
+      leftKnee: lerp(a.leftKnee, b.leftKnee) * stride,
+      leftAnkle: lerp(a.leftAnkle, b.leftAnkle) * stride,
+      rightHip: lerp(a.rightHip, b.rightHip) * stride,
+      rightKnee: lerp(a.rightKnee, b.rightKnee) * stride,
+      rightAnkle: lerp(a.rightAnkle, b.rightAnkle) * stride,
+      leftShoulder: lerp(a.leftShoulder, b.leftShoulder) * stride,
+      leftElbow: lerp(a.leftElbow, b.leftElbow),
+      leftWrist: -lagWave * 5 * stride,
+      rightShoulder: lerp(a.rightShoulder, b.rightShoulder) * stride,
+      rightElbow: lerp(a.rightElbow, b.rightElbow),
+      rightWrist: lagWave * 5 * stride,
+    },
+    bodyBobY: lerp(a.bodyBobY, b.bodyBobY) * bobScale,
+  };
+}
 
 interface LocomotionSpec {
   id: string;
@@ -142,8 +327,53 @@ interface ArmPoseSpec {
   mode?: 'osc' | 'bell' | 'hold';
   requiredSocket?: PropSocketId;
   expressionHint?: CharacterExpressionType;
+  leftHandGesture?: ExtendedHandGestureType;
+  rightHandGesture?: ExtendedHandGestureType;
   bobAmp?: number;
   tags?: string[];
+}
+
+function inferDefaultArmGestures(spec: ArmPoseSpec): {
+  leftHandGesture?: ExtendedHandGestureType;
+  rightHandGesture?: ExtendedHandGestureType;
+} {
+  let left = spec.leftHandGesture;
+  let right = spec.rightHandGesture;
+  const id = spec.id;
+  if (!right && !left) {
+    if (id.includes('point')) {
+      if (spec.side === 'left') left = 'point';
+      else right = 'point';
+    } else if (id.includes('wave')) {
+      if (spec.side === 'left') left = 'wave';
+      else if (spec.side === 'both') {
+        left = 'wave';
+        right = 'wave';
+      } else right = 'wave';
+    } else if (id.includes('thumbs-up')) {
+      if (spec.side === 'left') left = 'thumbs-up';
+      else right = 'thumbs-up';
+    } else if (id.includes('peace')) {
+      if (spec.side === 'left') left = 'peace';
+      else right = 'peace';
+    } else if (id.includes('fist') || id.includes('punch')) {
+      if (spec.side === 'left') left = 'fist';
+      else right = 'fist';
+    } else if (id.includes('hold') || id.includes('carry') || id.includes('tablet') || id.includes('book')) {
+      if (spec.side === 'left') left = 'hold';
+      else if (spec.side === 'both') {
+        left = 'hold';
+        right = 'hold';
+      } else right = 'hold';
+    } else if (id.includes('explain') || id.includes('celebrate') || id.includes('cheer') || id.includes('clap')) {
+      if (spec.side === 'left') left = 'open';
+      else if (spec.side === 'both') {
+        left = 'open';
+        right = 'open';
+      } else right = 'open';
+    }
+  }
+  return { leftHandGesture: left, rightHandGesture: right };
 }
 
 function makeArmOrBodyPose(spec: ArmPoseSpec): MotionPresetDefinition {
@@ -205,18 +435,25 @@ function makeArmOrBodyPose(spec: ArmPoseSpec): MotionPresetDefinition {
       const sp = evalPair(spec.spine);
       const ch = evalPair(spec.chest);
 
+      const followLag = osc(phase01 - 0.08) * 6 * intensity;
+
       if (rs !== undefined) boneAngles.rightShoulder = rs;
       if (re !== undefined) boneAngles.rightElbow = re;
       if (rw !== undefined) boneAngles.rightWrist = rw;
+      else if (rs !== undefined || re !== undefined) boneAngles.rightWrist = followLag;
       if (ls !== undefined) boneAngles.leftShoulder = ls;
       if (le !== undefined) boneAngles.leftElbow = le;
       if (lw !== undefined) boneAngles.leftWrist = lw;
+      else if (ls !== undefined || le !== undefined) boneAngles.leftWrist = -followLag;
       if (hd !== undefined) boneAngles.head = hd;
       if (sp !== undefined) boneAngles.spine = sp;
       if (ch !== undefined) boneAngles.chest = ch;
 
+      const gestures = inferDefaultArmGestures(spec);
+
       return {
         boneAngles,
+        ...gestures,
         bodyBobY: spec.bobAmp ? -Math.abs(osc(phase01)) * spec.bobAmp * intensity : undefined,
       };
     },
@@ -315,42 +552,59 @@ function makeFullOrTorsoPose(spec: PostureSpec): MotionPresetDefinition {
 // 1. YÜRÜME, KOŞMA VE HAREKET (18 preset)
 // ============================================================================
 const LOCOMOTION_PRESETS: MotionPresetDefinition[] = [
-  makeLocomotion({
+  {
     id: 'walk',
     name: 'Normal Yürüme',
-    description: 'Dengeli ve doğal yürüyüş döngüsü.',
-    hipAmp: 15,
-    kneeAmp: 20,
-    ankleAmp: 6,
-    pelvisAmp: 2,
-    bobAmp: 2.5,
-    cyclesPerSec: 1.25,
+    category: 'locomotion',
+    description: '8 karelik (temas-çöküş-geçiş-yükseliş) doğal yürüyüş döngüsü.',
+    tags: ['hareket', 'bacak', 'yürüme', '8-kare'],
+    defaultChannelId: 'leftLeg',
+    stage: 'L1_LOCOMOTION',
+    mask: 'full',
+    lockProcedural: false,
     defaultDuration: 3.0,
-  }),
-  makeLocomotion({
+    cyclesPerSec: 1.15,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    sample: (phase01, intensity) => sampleEightFrameWalkCycle(phase01, intensity),
+  },
+  {
     id: 'walk-slow',
     name: 'Yavaş Yürüme',
-    description: 'Sakin, düşünceli ve yavaş adımlarla yürüme.',
-    hipAmp: 9,
-    kneeAmp: 11,
-    ankleAmp: 4,
-    pelvisAmp: 1,
-    bobAmp: 1.5,
-    cyclesPerSec: 0.75,
+    category: 'locomotion',
+    description: 'Sakin, düşünceli ve yavaş adımlarla 8 karelik yürüme.',
+    tags: ['hareket', 'bacak', 'yürüme'],
+    defaultChannelId: 'leftLeg',
+    stage: 'L1_LOCOMOTION',
+    mask: 'full',
+    lockProcedural: false,
     defaultDuration: 4.0,
-  }),
-  makeLocomotion({
+    cyclesPerSec: 0.75,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    sample: (phase01, intensity) =>
+      sampleEightFrameWalkCycle(phase01, intensity, { strideScale: 0.8, bobScale: 0.75 }),
+  },
+  {
     id: 'walk-fast',
     name: 'Hızlı Yürüme',
-    description: 'Enerjik ve tempolu hızlı yürüyüş.',
-    hipAmp: 14,
-    kneeAmp: 18,
-    ankleAmp: 6,
-    pelvisAmp: 2,
-    bobAmp: 2.8,
-    cyclesPerSec: 1.75,
+    category: 'locomotion',
+    description: 'Enerjik ve tempolu 8 karelik hızlı yürüyüş.',
+    tags: ['hareket', 'bacak', 'yürüme'],
+    defaultChannelId: 'leftLeg',
+    stage: 'L1_LOCOMOTION',
+    mask: 'full',
+    lockProcedural: false,
     defaultDuration: 2.5,
-  }),
+    cyclesPerSec: 1.6,
+    supportsMirroring: true,
+    defaultBlendInSec: 0.2,
+    defaultBlendOutSec: 0.2,
+    sample: (phase01, intensity) =>
+      sampleEightFrameWalkCycle(phase01, intensity, { strideScale: 1.12, bobScale: 1.1 }),
+  },
   makeLocomotion({
     id: 'walk-confident',
     name: 'Kendinden Emin Yürüme',

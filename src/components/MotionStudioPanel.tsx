@@ -710,9 +710,18 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
 
     const activePath = selectedObject.motionPath?.enabled ? selectedObject.motionPath : null;
     const matchPath = Boolean(activePath && preset.category === 'locomotion' && !preset.oneShot);
+    const existingClips = selectedObject.timelineData?.motionClips ?? [];
+    const curOverlaps = existingClips.some(
+      (c) => currentTime >= c.startTime - 0.05 && currentTime < c.startTime + c.duration - 0.05
+    );
+    const seqEnd =
+      existingClips.length > 0
+        ? Math.max(...existingClips.map((c) => c.startTime + c.duration))
+        : currentTime;
+    const preferredStart = curOverlaps ? seqEnd : currentTime;
     const start = matchPath && activePath
       ? Math.max(0, Math.min(sceneDuration - 0.3, Number(activePath.startTime.toFixed(2))))
-      : Math.max(0, Math.min(sceneDuration - 0.3, Number(currentTime.toFixed(2))));
+      : Math.max(0, Math.min(sceneDuration - 0.3, Number(preferredStart.toFixed(2))));
     const rawDur = matchPath && activePath
       ? activePath.duration
       : (durationPreset || preset.defaultDuration);
@@ -1555,11 +1564,25 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
                         type="button"
                         disabled={compat.status === 'unsupported'}
                         onClick={() => {
+                          const existingClips = selectedObject.timelineData?.motionClips ?? [];
+                          const curOverlaps = existingClips.some(
+                            (c) =>
+                              currentTime >= c.startTime - 0.05 &&
+                              currentTime < c.startTime + c.duration - 0.05
+                          );
+                          const seqEnd =
+                            existingClips.length > 0
+                              ? Math.max(...existingClips.map((c) => c.startTime + c.duration))
+                              : currentTime;
+                          const start = Math.max(
+                            0,
+                            Math.min(sceneDuration - 0.4, Number((curOverlaps ? seqEnd : currentTime).toFixed(2)))
+                          );
                           const dur = Math.max(
                             0.5,
-                            Math.min(sceneDuration - currentTime, durationPreset || 2.0)
+                            Math.min(sceneDuration - start, durationPreset || 2.0)
                           );
-                          const poseClip = buildPoseMotionClip(pose, currentTime, dur, rigProfile, {
+                          const poseClip = buildPoseMotionClip(pose, start, dur, rigProfile, {
                             blendSec: blendSecPreset,
                             mirrored: mirroredPreset,
                           });
@@ -1583,7 +1606,7 @@ export const MotionStudioPanel: React.FC<MotionStudioPanelProps> = ({
                           });
                           onSelectMotionClip?.(poseClip.id);
                           setPoseFeedback(
-                            `"${pose.name}" pozu ${currentTime.toFixed(1)}s konumuna (${dur.toFixed(1)}s) eklendi.`
+                            `"${pose.name}" pozu ${start.toFixed(1)}s konumuna (${dur.toFixed(1)}s) eklendi.`
                           );
                         }}
                         className="px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white text-[10px] font-semibold flex items-center gap-0.5"

@@ -729,7 +729,9 @@ export const CharacterStudioModal: React.FC<CharacterStudioModalProps> = ({
       (t) => t.gender === (isFemale ? 'female' : 'male') || t.gender === 'unisex'
     );
     const pickedDbTop = pick(dicebearTopPool).id;
-    const pickedDbEyes = pick(DICEBEAR_EYE_OPTIONS.filter((e) => e.id !== 'closed' && e.id !== 'xDizzy')).id;
+    const pickedDbEyes = pick(
+      DICEBEAR_EYE_OPTIONS.filter((e) => e.group !== 'decal' && e.id !== 'closed' && e.id !== 'xDizzy')
+    ).id;
     const pickedDbBrows = pick(DICEBEAR_EYEBROW_OPTIONS).id;
     const pickedDbMouth = pick(['smile', 'default', 'twinkle', 'serious']);
     const pickedDbAcc = Math.random() < 0.3 ? pick(DICEBEAR_ACCESSORIES_OPTIONS).id : 'none';
@@ -1732,34 +1734,54 @@ export const CharacterStudioModal: React.FC<CharacterStudioModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2">
-                      {DICEBEAR_EYE_OPTIONS.map((eye) => {
-                        const activeEye =
-                          config.dicebearEyes || mapEyeStyleToDicebear(config.eyeStyle);
-                        const isSelected = activeEye === eye.id;
-                        const thumbUri = buildDicebearThumbnailUri(config, {
-                          dicebearEyes: eye.id,
-                        });
-                        return (
-                          <button
-                            key={eye.id}
-                            onClick={() =>
-                              updateConfig({ useDicebearHead: true, dicebearEyes: eye.id })
-                            }
-                            className={`p-2 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
-                              isSelected
-                                ? 'bg-indigo-50 border-indigo-500 text-slate-900 font-semibold'
-                                : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                            }`}
-                          >
-                            <div className="w-full h-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden">
-                              <img src={thumbUri} alt={eye.label} className="w-14 h-14 object-contain" />
-                            </div>
-                            <span className="text-[11px] font-medium">{eye.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {(
+                      [
+                        {
+                          key: 'anatomical',
+                          title: 'Anatomik Göz Formları',
+                          items: DICEBEAR_EYE_OPTIONS.filter((e) => e.group !== 'decal'),
+                        },
+                        {
+                          key: 'decal',
+                          title: 'Sembolik / Komedik İfadeler (Decal Eyes)',
+                          items: DICEBEAR_EYE_OPTIONS.filter((e) => e.group === 'decal'),
+                        },
+                      ] as const
+                    ).map((section) => (
+                      <div key={section.key} className="mb-3 last:mb-0">
+                        <div className="text-[11px] font-semibold text-slate-500 mb-1.5">
+                          {section.title}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {section.items.map((eye) => {
+                            const activeEye =
+                              config.dicebearEyes || mapEyeStyleToDicebear(config.eyeStyle);
+                            const isSelected = activeEye === eye.id;
+                            const thumbUri = buildDicebearThumbnailUri(config, {
+                              dicebearEyes: eye.id,
+                            });
+                            return (
+                              <button
+                                key={eye.id}
+                                onClick={() =>
+                                  updateConfig({ useDicebearHead: true, dicebearEyes: eye.id })
+                                }
+                                className={`p-2 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-indigo-50 border-indigo-500 text-slate-900 font-semibold'
+                                    : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                                }`}
+                              >
+                                <div className="w-full h-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden">
+                                  <img src={thumbUri} alt={eye.label} className="w-14 h-14 object-contain" />
+                                </div>
+                                <span className="text-[11px] font-medium text-center">{eye.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
 

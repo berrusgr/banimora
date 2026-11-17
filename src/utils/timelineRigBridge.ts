@@ -66,6 +66,11 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
+function smoothstep01(value: number): number {
+  const u = clamp01(value);
+  return u * u * (3 - 2 * u);
+}
+
 export function applyKeyframeInterpolation(
   t: number,
   interpolation: KeyframeInterpolation
@@ -198,10 +203,10 @@ function computeClipEnvelopeWeight(clip: CharacterMotionClip, localTime: number)
   const dur = Math.max(0.05, clip.duration);
   let w = typeof clip.weight === 'number' && Number.isFinite(clip.weight) ? clamp01(clip.weight) : 1;
   if (clip.blendInSec && clip.blendInSec > 0 && localTime < clip.blendInSec) {
-    w = Math.min(w, w * clamp01(localTime / clip.blendInSec));
+    w = Math.min(w, w * smoothstep01(localTime / clip.blendInSec));
   }
   if (clip.blendOutSec && clip.blendOutSec > 0 && localTime > dur - clip.blendOutSec) {
-    w = Math.min(w, w * clamp01((dur - localTime) / clip.blendOutSec));
+    w = Math.min(w, w * smoothstep01((dur - localTime) / clip.blendOutSec));
   }
   return clamp01(w);
 }
@@ -217,7 +222,7 @@ function computeClipPhase01(
   const mode = clip.repeatMode ?? (oneShot ? 'once' : 'loop');
 
   if (mode === 'once') {
-    return clamp01((localTime / dur) * speed);
+    return smoothstep01((localTime / dur) * speed);
   }
   if (mode === 'count') {
     const maxCycles = Math.max(1, clip.repeatCount ?? 1);
@@ -342,10 +347,53 @@ export function evaluateMotionClipsToRigLayers(
       lockProcedural: isPoseClip ? true : preset!.lockProcedural,
       boneAngles: retargeted.boneAngles,
       bodyBobY: retargeted.bodyBobY,
+      leftHandGesture: retargeted.leftHandGesture,
+      rightHandGesture: retargeted.rightHandGesture,
     });
   }
 
   return layers;
+}
+
+/**
+ * Karakter konuşurken veya beklerken L3_PROCEDURAL katmanında ince mikro-canlılık üretir.
+ * Aktif bir L2 klibi (`lockProcedural: true`) varsa o klibin kullandığı kemikler otomatik kilitlenir;
+ * yalnızca boşta kalan baş ve el/kol kemiklerine uygulanır.
+ */
+export function buildProceduralMicroLifeLayer(
+  currentTime: number,
+  isTalking: boolean
+): RigAnimationLayerInput {
+  if (isTalking) {
+    return {
+      id: 'procedural-micro-life-talking',
+      stage: 'L3_PROCEDURAL',
+      mask: 'upper-body',
+      enabled: true,
+      weight: 0.85,
+      priority: 5,
+      boneAngles: {
+        head: Math.sin(currentTime * 4.2) * 2.2,
+        leftElbow: -2 + Math.sin(currentTime * 2.8) * 2.5,
+        leftWrist: Math.sin(currentTime * 3.1) * 4.5,
+        rightElbow: 2 - Math.cos(currentTime * 2.8) * 2.5,
+        rightWrist: Math.cos(currentTime * 3.4) * 4.5,
+      },
+    };
+  }
+  return {
+    id: 'procedural-micro-life-idle',
+    stage: 'L3_PROCEDURAL',
+    mask: 'upper-body',
+    enabled: true,
+    weight: 0.6,
+    priority: 5,
+    boneAngles: {
+      head: Math.sin(currentTime * 1.1) * 0.9,
+      leftWrist: Math.sin(currentTime * 1.6) * 1.5,
+      rightWrist: -Math.sin(currentTime * 1.6) * 1.5,
+    },
+  };
 }
 
 const BONE_CHANNELS: readonly CharacterChannelId[] = [
@@ -387,6 +435,10 @@ export function buildMotionPathWalkClip(
   const mpDur = Math.max(0.2, mp.duration || 3.0);
   const blend = Math.min(0.15, mpDur * 0.1);
 
+  const isWalkingLeft =
+    !mp.autoFlipX &&
+    (mp.endX < (obj.x ?? 0) - 5 || obj.characterConfig?.headDirection === 'left');
+
   return {
     id: 'motion-path-walk',
     presetId: 'walk',
@@ -408,6 +460,7 @@ export function buildMotionPathWalkClip(
     blendInSec: blend,
     blendOutSec: blend,
     repeatMode: 'loop',
+    mirrored: isWalkingLeft,
     enabled: true,
   };
 }

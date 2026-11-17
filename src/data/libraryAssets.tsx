@@ -20,7 +20,10 @@ import {
   ArticulatedCharacterRig,
   DEFAULT_CHARACTER_CONFIGS,
 } from '../components/ArticulatedCharacterRig';
-import type { TimelineRigBridgeResult } from '../utils/timelineRigBridge';
+import {
+  buildProceduralMicroLifeLayer,
+  type TimelineRigBridgeResult,
+} from '../utils/timelineRigBridge';
 import {
   ComputedMathAssetState,
   MATH_ASSET_REGISTRY,
@@ -1310,6 +1313,13 @@ export const SCENE_BACKGROUNDS: SceneBackground[] = [
     style: 'url("./backgrounds/sehir-manzarali-ofis.jpg") center / cover no-repeat',
     darkCanvas: false,
   },
+  {
+    id: 'bg-galeri-sunum-odasi',
+    name: 'Galeri Sunum Odası',
+    imageUrl: './backgrounds/galeri-sunum-odasi.jpg',
+    style: 'url("./backgrounds/galeri-sunum-odasi.jpg") center / cover no-repeat',
+    darkCanvas: false,
+  },
 ];
 
 export const ANIMATION_COMBO_PRESETS: AnimationComboPreset[] = [
@@ -1530,6 +1540,13 @@ export const VectorAssetRenderer: React.FC<VectorRendererProps> = ({
             ? Boolean(resolvedCharConfig.lipSyncEnabled || timelineRig.lipSyncTalkingOverride)
             : resolvedCharConfig.lipSyncEnabled,
       };
+      const microLifeLayer = showJointPins
+        ? null
+        : buildProceduralMicroLifeLayer(animTime, Boolean(syncedConfig.lipSyncEnabled));
+      const combinedRigLayers = microLifeLayer
+        ? [...(timelineRig?.layers ?? []), microLifeLayer]
+        : timelineRig?.layers;
+
       return (
         <ArticulatedCharacterRig
           config={syncedConfig}
@@ -1541,7 +1558,7 @@ export const VectorAssetRenderer: React.FC<VectorRendererProps> = ({
           selectedJoint={selectedJoint}
           onSelectJoint={onSelectJoint}
           onChangeJointAngles={onChangeJointAngles}
-          rigLayers={timelineRig?.layers}
+          rigLayers={combinedRigLayers}
           canonicalBoneAngles={timelineRig?.userCanonicalBoneOverrides}
           userBodyBobYOverride={timelineRig?.userBodyBobYOverride}
           leftArmIK={timelineRig?.leftArmIK}

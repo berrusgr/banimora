@@ -347,6 +347,9 @@ export interface RigAnimationLayerInput {
   boneAngles: Partial<Record<CanonicalBoneId, number>>;
   /** Açık dikey gövde/pelvis ofseti (SVG birimi) */
   bodyBobY?: number;
+  /** Katmanın aktif olduğu anda önerilen sol/sağ el şekli */
+  leftHandGesture?: ExtendedHandGestureType;
+  rightHandGesture?: ExtendedHandGestureType;
 }
 
 /**

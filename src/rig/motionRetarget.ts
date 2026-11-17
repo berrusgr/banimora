@@ -2,6 +2,7 @@ import type { CharacterMotionClip, MotionCategoryId } from '../types/studio.ts';
 import type {
   CanonicalBoneId,
   CharacterRigProfile,
+  ExtendedHandGestureType,
   RigBodyMaskId,
   RigLayerStage,
 } from '../types/rigStandard.ts';
@@ -10,6 +11,8 @@ import { RIG_BODY_MASK_BONES, RIG_BODY_MASK_SPECIFICITY } from './rigEvaluator.t
 export interface MotionPresetSample {
   boneAngles: Partial<Record<CanonicalBoneId, number>>;
   bodyBobY?: number;
+  leftHandGesture?: ExtendedHandGestureType;
+  rightHandGesture?: ExtendedHandGestureType;
 }
 
 export interface MotionCompatibilityResult {
@@ -141,6 +144,8 @@ export function retargetMotionSample(
   return {
     boneAngles: filtered,
     bodyBobY: retargetedBobY,
+    leftHandGesture: options?.mirrored ? sample.rightHandGesture : sample.leftHandGesture,
+    rightHandGesture: options?.mirrored ? sample.leftHandGesture : sample.rightHandGesture,
   };
 }
 

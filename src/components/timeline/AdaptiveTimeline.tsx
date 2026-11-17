@@ -46,6 +46,7 @@ export interface AdaptiveTimelineProps {
   onAddScene: () => void;
   onContinueScene: () => void;
   onDeleteScene: (sceneId: string) => void;
+  onReorderScene?: (fromIndex: number, toIndex: number) => void;
   totalProjectDuration: number;
   scene: Scene;
   selectedObjectId: string | null;
@@ -102,6 +103,7 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
   onAddScene,
   onContinueScene,
   onDeleteScene,
+  onReorderScene,
   totalProjectDuration,
   scene,
   selectedObjectId,
@@ -159,6 +161,8 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
 
   const trackViewportRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
+  const scrollTimeRef = useRef(scrollTime);
+  scrollTimeRef.current = scrollTime;
 
   // Sahne veya dışarıdan seçilen nesne değişince seçimi senkronize tut
   useEffect(() => {
@@ -318,6 +322,62 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
     [scene]
   );
 
+  // Kenar yaklaşınca timeline'ı otomatik kaydırma yardımcısı (hem sol hem sağ kenar, sanal scrollTime üzerinden)
+  const startEdgeAutoScroll = useCallback(
+    (initialClientX: number, onTickScroll: (clientX: number) => void) => {
+      let lastClientX = initialClientX;
+      let autoScrollRafId: number | null = null;
+      let active = true;
+
+      const step = () => {
+        if (!active) return;
+        const vp = trackViewportRef.current;
+        if (vp) {
+          const rect = vp.getBoundingClientRect();
+          const trackLeft = rect.left + 224; // w-56 (224px) katman başlığı sonrası track alanı başlangıcı
+          const edgeZone = 44;
+          const pxPerSec = Math.max(1, zoomPxPerSec);
+          const maxScroll = Math.max(0, scene.duration - viewportWidthPx / pxPerSec + 2);
+          const curScrollTime = scrollTimeRef.current;
+          let nextScrollTime = curScrollTime;
+
+          if (lastClientX < trackLeft + edgeZone && curScrollTime > 0) {
+            const dist = Math.min(140, trackLeft + edgeZone - lastClientX);
+            const deltaPx = Math.max(4, Math.round((dist / edgeZone) * 14));
+            nextScrollTime = Math.max(0, curScrollTime - deltaPx / pxPerSec);
+          } else if (lastClientX > rect.right - edgeZone && curScrollTime < maxScroll) {
+            const dist = Math.min(140, lastClientX - (rect.right - edgeZone));
+            const deltaPx = Math.max(4, Math.round((dist / edgeZone) * 14));
+            nextScrollTime = Math.min(maxScroll, curScrollTime + deltaPx / pxPerSec);
+          }
+
+          if (Math.abs(nextScrollTime - curScrollTime) > 1e-6) {
+            scrollTimeRef.current = nextScrollTime;
+            setScrollTime(nextScrollTime);
+            onTickScroll(lastClientX);
+          }
+        }
+        autoScrollRafId = requestAnimationFrame(step);
+      };
+
+      autoScrollRafId = requestAnimationFrame(step);
+
+      return {
+        updateClientX: (clientX: number) => {
+          lastClientX = clientX;
+        },
+        stop: () => {
+          active = false;
+          if (autoScrollRafId !== null) {
+            cancelAnimationFrame(autoScrollRafId);
+            autoScrollRafId = null;
+          }
+        },
+      };
+    },
+    [scene.duration, viewportWidthPx, zoomPxPerSec]
+  );
+
   // Sürükleme / Kırpma (rAF toplu güncelleme, drag boyunca sıfır scene state değişikliği)
   const handleStartClipDrag = useCallback(
     (
@@ -340,82 +400,92 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
       }
 
       const startX = e.clientX;
+      const startScrollTime = scrollTimeRef.current;
       const excludeSet = new Set(activeClipIds);
       const snapTargets = snapEnabled ? collectSnapTargets(scene, currentTime, excludeSet) : [];
       let latestPreview: TimelineDragPreview | null = null;
 
-      const handleMove = (ev: PointerEvent) => {
-        const dxPx = ev.clientX - startX;
-        const rawDeltaSec = dxPx / Math.max(1, zoomPxPerSec);
+      const updatePreviewForClientX = (clientX: number) => {
+        const pxPerSec = Math.max(1, zoomPxPerSec);
+        const rawDeltaSec =
+          (clientX - startX) / pxPerSec + (scrollTimeRef.current - startScrollTime);
 
+        let deltaStart = 0;
+        let deltaDuration = 0;
+        let snapGuideTime: number | null = null;
+
+        if (mode === 'move') {
+          const candidateStart = Math.max(0, timing.startTime + rawDeltaSec);
+          if (snapEnabled) {
+            const snapStart = computeSnapTime(candidateStart, snapTargets, zoomPxPerSec);
+            const snapEnd = computeSnapTime(
+              candidateStart + timing.duration,
+              snapTargets,
+              zoomPxPerSec
+            );
+            if (snapStart.guideTime !== null) {
+              deltaStart = snapStart.snappedTime - timing.startTime;
+              snapGuideTime = snapStart.guideTime;
+            } else if (snapEnd.guideTime !== null) {
+              deltaStart = snapEnd.snappedTime - timing.duration - timing.startTime;
+              snapGuideTime = snapEnd.guideTime;
+            } else {
+              deltaStart = candidateStart - timing.startTime;
+            }
+          } else {
+            deltaStart = candidateStart - timing.startTime;
+          }
+        } else if (mode === 'resize-start') {
+          const maxStart = timing.startTime + timing.duration - MIN_CLIP_DURATION;
+          let candidateStart = Math.max(0, Math.min(maxStart, timing.startTime + rawDeltaSec));
+          if (snapEnabled) {
+            const snap = computeSnapTime(candidateStart, snapTargets, zoomPxPerSec);
+            if (snap.guideTime !== null) {
+              candidateStart = Math.max(0, Math.min(maxStart, snap.snappedTime));
+              snapGuideTime = snap.guideTime;
+            }
+          }
+          deltaStart = candidateStart - timing.startTime;
+        } else {
+          let candidateEnd = Math.max(
+            timing.startTime + MIN_CLIP_DURATION,
+            timing.startTime + timing.duration + rawDeltaSec
+          );
+          if (snapEnabled) {
+            const snap = computeSnapTime(candidateEnd, snapTargets, zoomPxPerSec);
+            if (snap.guideTime !== null) {
+              candidateEnd = Math.max(timing.startTime + MIN_CLIP_DURATION, snap.snappedTime);
+              snapGuideTime = snap.guideTime;
+            }
+          }
+          deltaDuration = candidateEnd - (timing.startTime + timing.duration);
+        }
+
+        latestPreview = {
+          anchorClipId: id,
+          clipIds: activeClipIds,
+          mode,
+          deltaStart,
+          deltaDuration,
+          snapGuideTime,
+        };
+        setDragPreview(latestPreview);
+      };
+
+      const autoScroll = startEdgeAutoScroll(e.clientX, updatePreviewForClientX);
+
+      const handleMove = (ev: PointerEvent) => {
+        autoScroll.updateClientX(ev.clientX);
         if (rafRef.current !== null) {
           cancelAnimationFrame(rafRef.current);
         }
         rafRef.current = requestAnimationFrame(() => {
-          let deltaStart = 0;
-          let deltaDuration = 0;
-          let snapGuideTime: number | null = null;
-
-          if (mode === 'move') {
-            const candidateStart = Math.max(0, timing.startTime + rawDeltaSec);
-            if (snapEnabled) {
-              const snapStart = computeSnapTime(candidateStart, snapTargets, zoomPxPerSec);
-              const snapEnd = computeSnapTime(
-                candidateStart + timing.duration,
-                snapTargets,
-                zoomPxPerSec
-              );
-              if (snapStart.guideTime !== null) {
-                deltaStart = snapStart.snappedTime - timing.startTime;
-                snapGuideTime = snapStart.guideTime;
-              } else if (snapEnd.guideTime !== null) {
-                deltaStart = snapEnd.snappedTime - timing.duration - timing.startTime;
-                snapGuideTime = snapEnd.guideTime;
-              } else {
-                deltaStart = candidateStart - timing.startTime;
-              }
-            } else {
-              deltaStart = candidateStart - timing.startTime;
-            }
-          } else if (mode === 'resize-start') {
-            const maxStart = timing.startTime + timing.duration - MIN_CLIP_DURATION;
-            let candidateStart = Math.max(0, Math.min(maxStart, timing.startTime + rawDeltaSec));
-            if (snapEnabled) {
-              const snap = computeSnapTime(candidateStart, snapTargets, zoomPxPerSec);
-              if (snap.guideTime !== null) {
-                candidateStart = Math.max(0, Math.min(maxStart, snap.snappedTime));
-                snapGuideTime = snap.guideTime;
-              }
-            }
-            deltaStart = candidateStart - timing.startTime;
-          } else {
-            let candidateEnd = Math.max(
-              timing.startTime + MIN_CLIP_DURATION,
-              timing.startTime + timing.duration + rawDeltaSec
-            );
-            if (snapEnabled) {
-              const snap = computeSnapTime(candidateEnd, snapTargets, zoomPxPerSec);
-              if (snap.guideTime !== null) {
-                candidateEnd = Math.max(timing.startTime + MIN_CLIP_DURATION, snap.snappedTime);
-                snapGuideTime = snap.guideTime;
-              }
-            }
-            deltaDuration = candidateEnd - (timing.startTime + timing.duration);
-          }
-
-          latestPreview = {
-            anchorClipId: id,
-            clipIds: activeClipIds,
-            mode,
-            deltaStart,
-            deltaDuration,
-            snapGuideTime,
-          };
-          setDragPreview(latestPreview);
+          updatePreviewForClientX(ev.clientX);
         });
       };
 
       const handleUp = () => {
+        autoScroll.stop();
         window.removeEventListener('pointermove', handleMove);
         window.removeEventListener('pointerup', handleUp);
         if (rafRef.current !== null) {
@@ -441,6 +511,7 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
       selectedClipIdSet,
       selectedClips,
       snapEnabled,
+      startEdgeAutoScroll,
       zoomPxPerSec,
     ]
   );
@@ -459,12 +530,37 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
       if (clip.locked || charObj.locked) return;
 
       const startClientX = e.clientX;
+      const startScrollTime = scrollTimeRef.current;
       const origStart = clip.startTime;
       const origDur = clip.duration;
       let latestPreview: MotionClipDragPreview | null = null;
       let cancelled = false;
 
+      const updateMotionPreview = (clientX: number) => {
+        if (cancelled) return;
+        const pxPerSec = Math.max(1, zoomPxPerSec);
+        const dt = (clientX - startClientX) / pxPerSec + (scrollTimeRef.current - startScrollTime);
+        const next = computeMotionClipDragTiming(
+          origStart,
+          origDur,
+          dt,
+          mode,
+          scene.duration
+        );
+        latestPreview = {
+          characterId: charObj.id,
+          clipId: clip.id,
+          mode,
+          startTime: next.startTime,
+          duration: next.duration,
+        };
+        setMotionDragPreview(latestPreview);
+      };
+
+      const autoScroll = startEdgeAutoScroll(e.clientX, updateMotionPreview);
+
       const cleanup = () => {
+        autoScroll.stop();
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', onUp);
         window.removeEventListener('pointercancel', onCancel);
@@ -477,27 +573,12 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
 
       const onMove = (ev: PointerEvent) => {
         if (cancelled) return;
-        const dt = (ev.clientX - startClientX) / Math.max(1, zoomPxPerSec);
+        autoScroll.updateClientX(ev.clientX);
         if (rafRef.current !== null) {
           cancelAnimationFrame(rafRef.current);
         }
         rafRef.current = requestAnimationFrame(() => {
-          if (cancelled) return;
-          const next = computeMotionClipDragTiming(
-            origStart,
-            origDur,
-            dt,
-            mode,
-            scene.duration
-          );
-          latestPreview = {
-            characterId: charObj.id,
-            clipId: clip.id,
-            mode,
-            startTime: next.startTime,
-            duration: next.duration,
-          };
-          setMotionDragPreview(latestPreview);
+          updateMotionPreview(ev.clientX);
         });
       };
 
@@ -532,7 +613,14 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
       window.addEventListener('pointercancel', onCancel);
       window.addEventListener('keydown', onKeyDown);
     },
-    [commitSceneUpdate, onSelectMotionClip, onSelectObject, scene.duration, zoomPxPerSec]
+    [
+      commitSceneUpdate,
+      onSelectMotionClip,
+      onSelectObject,
+      scene.duration,
+      startEdgeAutoScroll,
+      zoomPxPerSec,
+    ]
   );
 
   // Motion Clip sırasını yukarı/aşağı değiştirme (üstteki klip alttakini bastırır)
@@ -961,6 +1049,7 @@ export const AdaptiveTimeline: React.FC<AdaptiveTimelineProps> = ({
         onAddScene={onAddScene}
         onContinueScene={onContinueScene}
         onDeleteScene={onDeleteScene}
+        onReorderScene={onReorderScene}
         onChangeViewMode={setViewMode}
         onTogglePlay={onTogglePlay}
         onRestart={onRestart}

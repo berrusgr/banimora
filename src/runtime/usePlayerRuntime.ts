@@ -39,7 +39,7 @@ export function usePlayerRuntime(options: UsePlayerRuntimeOptions) {
   currentTimeRef.current = options.currentTime;
 
   const controllerRef = useRef<PlayerRuntimeController | null>(null);
-  if (!controllerRef.current) {
+  if (!controllerRef.current || controllerRef.current.isDisposed()) {
     controllerRef.current = new PlayerRuntimeController({
       mode: options.mode,
       scenes: options.scenes,
@@ -70,11 +70,17 @@ export function usePlayerRuntime(options: UsePlayerRuntimeOptions) {
     runtimeAdapter: options.runtimeAdapter,
     callbacks: options.callbacks,
   });
-  controllerRef.current.setCurrentTime(currentTimeRef.current);
+  if (
+    !controllerRef.current.getIsPlaying() ||
+    Math.abs(controllerRef.current.getCurrentTime() - currentTimeRef.current) > 0.08
+  ) {
+    controllerRef.current.setCurrentTime(currentTimeRef.current);
+  }
 
   useEffect(() => {
     const controller = controllerRef.current;
     if (!controller) return;
+    controller.revive();
     if (options.isPlaying) {
       controller.play();
     } else {
@@ -84,6 +90,7 @@ export function usePlayerRuntime(options: UsePlayerRuntimeOptions) {
 
   useEffect(() => {
     const controller = controllerRef.current;
+    controller?.revive();
     return () => {
       controller?.dispose();
     };

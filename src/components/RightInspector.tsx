@@ -1374,8 +1374,12 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] uppercase tracking-wider font-bold text-indigo-600">
-              {isArticulatedCharacter ? 'SEÇİLİ KARAKTER' : 'SEÇİLİ KATMAN'}
+            <span
+              className={`text-[10px] uppercase tracking-wider font-extrabold ${
+                isArticulatedCharacter ? 'text-[#e06d53]' : 'text-indigo-600'
+              }`}
+            >
+              {isArticulatedCharacter ? 'KARAKTER DENETÇİSİ' : 'SEÇİLİ KATMAN'}
             </span>
             {isMathAsset && (
               <span
@@ -1404,9 +1408,18 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               </span>
             )}
           </div>
-          <h2 className="text-sm font-bold text-slate-900 truncate mt-0.5">
-            {selectedObject.name}
-          </h2>
+          <div className="flex items-center gap-2 mt-0.5">
+            <h2 className="text-sm font-bold text-slate-900 truncate">
+              {selectedObject.name}
+            </h2>
+            {isArticulatedCharacter && resolvedCharConfig && (
+              <span
+                className="h-3.5 w-3.5 rounded-full border border-slate-200 shadow-2xs shrink-0"
+                style={{ backgroundColor: resolvedCharConfig.topColor || '#e06d53' }}
+                title="Karakter Kıyafet Teması"
+              />
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -1458,7 +1471,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
         <button
           onClick={() => setActiveTab('design')}
           className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeTab === 'design'
-            ? 'bg-indigo-600 text-white shadow-xs'
+            ? 'bg-gradient-to-r from-[#e06d53] to-violet-600 text-white shadow-xs'
             : 'text-slate-600 hover:text-slate-900'
             }`}
         >
@@ -1468,7 +1481,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
         <button
           onClick={() => setActiveTab('animate')}
           className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeTab === 'animate'
-            ? 'bg-indigo-600 text-white shadow-xs'
+            ? 'bg-gradient-to-r from-[#e06d53] to-violet-600 text-white shadow-xs'
             : 'text-slate-600 hover:text-slate-900'
             }`}
         >
@@ -1482,7 +1495,114 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
         <div className="space-y-4">
           {/* CHARACTER STUDIO, ACTIONS, EXPRESSIONS, HEAD DIRECTION & LIP-SYNC */}
           {isArticulatedCharacter && resolvedCharConfig && (
-            <div className="p-3 rounded-xl bg-indigo-50/70 border border-indigo-200 space-y-3.5">
+            <div className="p-3 rounded-xl bg-[#faf8f7] border border-[#e06d53]/25 space-y-3.5">
+              {/* 1. HAREKETİ CANLI TEST ET & DUDAK SENKRONU KARTI */}
+              <div className="bg-white p-3 rounded-xl border border-slate-200/90 shadow-2xs space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10.5px] font-bold text-slate-500">
+                    Hareketi Canlı Test Et:
+                  </span>
+                  {resolvedCharConfig.pose && resolvedCharConfig.pose !== 'idle' && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onUpdateObject(selectedObject.id, {
+                          characterConfig: {
+                            ...resolvedCharConfig,
+                            pose: 'idle',
+                          },
+                        })
+                      }
+                      className="text-[9.5px] font-bold text-[#e06d53] hover:underline cursor-pointer"
+                    >
+                      Duruşu Sıfırla
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  {(
+                    [
+                      { id: 'wave', label: 'El Salla' },
+                      { id: 'explain', label: 'Konu Anlat' },
+                      { id: 'presentation', label: 'Tahtayı Göster' },
+                      { id: 'cheer', label: 'Kutla' },
+                    ] as const
+                  ).map((poseOpt) => {
+                    const isSelected = resolvedCharConfig.pose === poseOpt.id;
+                    return (
+                      <button
+                        key={poseOpt.id}
+                        type="button"
+                        onClick={() =>
+                          onUpdateObject(selectedObject.id, {
+                            characterConfig: {
+                              ...resolvedCharConfig,
+                              pose: poseOpt.id,
+                            },
+                          })
+                        }
+                        className={`w-full flex items-center justify-between rounded-lg border px-3 py-2 text-left text-[11.5px] font-bold transition cursor-pointer ${
+                          isSelected
+                            ? 'border-[#e06d53] bg-gradient-to-r from-[#e06d53] to-violet-600 text-white shadow-xs'
+                            : 'border-slate-200 bg-slate-50/70 text-slate-700 hover:border-violet-300 hover:bg-violet-50/50'
+                        }`}
+                      >
+                        <span className="truncate">{poseOpt.label}</span>
+                        <span
+                          className={`h-2 w-2 rounded-full shrink-0 ${
+                            isSelected ? 'bg-white' : 'bg-[#e06d53]'
+                          }`}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Dudak Senkronu Canlı Durum Kartı */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdateObject(selectedObject.id, {
+                      characterConfig: {
+                        ...resolvedCharConfig,
+                        lipSyncEnabled: !resolvedCharConfig.lipSyncEnabled,
+                      },
+                    })
+                  }
+                  className="w-full text-left rounded-lg border border-violet-100 bg-violet-50/70 p-2.5 transition hover:border-violet-200 cursor-pointer"
+                  title="Dudak senkronunu aç/kapat"
+                >
+                  <div className="flex items-center justify-between text-[10.5px] font-bold text-violet-900">
+                    <span>Dudak Senkronu</span>
+                    <span
+                      className={
+                        resolvedCharConfig.lipSyncEnabled
+                          ? 'text-[#e06d53]'
+                          : 'text-slate-400'
+                      }
+                    >
+                      {resolvedCharConfig.lipSyncEnabled ? 'Aktif' : 'Kapalı'}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-0.5 h-2">
+                    {[35, 75, 50, 90, 45, 70, 55, 85, 40, 65, 50, 80].map(
+                      (h, i) => (
+                        <span
+                          key={i}
+                          className="flex-1 rounded-full bg-gradient-to-t from-violet-600 to-[#e06d53] transition-all duration-300"
+                          style={{
+                            height: resolvedCharConfig.lipSyncEnabled
+                              ? `${h}%`
+                              : '28%',
+                            opacity: resolvedCharConfig.lipSyncEnabled ? 1 : 0.45,
+                          }}
+                        />
+                      )
+                    )}
+                  </div>
+                </button>
+              </div>
               <input
                 ref={lipSyncFileInputRef}
                 type="file"
@@ -3262,12 +3382,17 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                             },
                           })
                         }
-                        className={`px-2 py-1.5 rounded-lg text-[10.5px] font-medium text-left border transition-all cursor-pointer truncate ${isPoseActive
-                          ? 'bg-indigo-600 text-white border-indigo-600 font-semibold shadow-2xs'
-                          : 'bg-slate-50 hover:bg-indigo-50/60 border-slate-200 text-slate-700'
+                        className={`px-2.5 py-2 rounded-lg text-[11px] font-bold text-left border flex items-center justify-between gap-1.5 transition-all cursor-pointer truncate ${isPoseActive
+                          ? 'border-[#e06d53] bg-gradient-to-r from-[#e06d53] to-violet-600 text-white shadow-xs'
+                          : 'bg-slate-50/80 hover:border-violet-300 hover:bg-violet-50/50 border-slate-200 text-slate-700'
                           }`}
                       >
-                        {act.label}
+                        <span className="truncate">{act.label}</span>
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                            isPoseActive ? 'bg-white' : 'bg-[#e06d53]'
+                          }`}
+                        />
                       </button>
                     );
                   })}

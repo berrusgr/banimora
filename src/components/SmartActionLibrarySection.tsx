@@ -206,10 +206,10 @@ export const SmartActionLibrarySection: React.FC<SmartActionLibrarySectionProps>
                     handleSelectPackage(pkg);
                   }
                 }}
-                className={`w-full p-2 rounded-lg border text-left transition-all cursor-pointer ${
+                className={`w-full p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-indigo-50/90 border-indigo-400 shadow-2xs'
-                    : 'bg-slate-50/70 hover:bg-slate-100/80 border-slate-200'
+                    ? 'border-[#e06d53] bg-gradient-to-r from-[#e06d53] to-violet-600 text-white shadow-xs'
+                    : 'bg-slate-50/80 hover:border-violet-300 hover:bg-violet-50/50 border-slate-200 text-slate-800'
                 }`}
               >
                 <div className="flex items-start justify-between gap-1.5">
@@ -217,32 +217,57 @@ export const SmartActionLibrarySection: React.FC<SmartActionLibrarySectionProps>
                     <span className="text-sm leading-none shrink-0">{pkg.iconEmoji}</span>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1">
-                        <span className="text-[11px] font-bold text-slate-800 truncate">
+                        <span
+                          className={`text-[11px] font-bold truncate ${
+                            isSelected ? 'text-white' : 'text-slate-800'
+                          }`}
+                        >
                           {pkg.title}
                         </span>
                         {pkg.isFeatured && (
-                          <span className="px-1 py-0.2 rounded bg-indigo-100 text-indigo-700 text-[8.5px] font-bold shrink-0">
+                          <span
+                            className={`px-1 py-0.2 rounded text-[8.5px] font-bold shrink-0 ${
+                              isSelected
+                                ? 'bg-white/20 text-white'
+                                : 'bg-indigo-100 text-indigo-700'
+                            }`}
+                          >
                             Sahne
                           </span>
                         )}
                       </div>
-                      <p className="text-[9.5px] text-slate-500 line-clamp-1">
+                      <p
+                        className={`text-[9.5px] line-clamp-1 ${
+                          isSelected ? 'text-white/85' : 'text-slate-500'
+                        }`}
+                      >
                         {pkg.description}
                       </p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => handleToggleFavorite(e, pkg)}
-                    title={isFav ? 'Favorilerden çıkar' : 'Favorilere ekle'}
-                    className="p-0.5 rounded hover:bg-white/80 cursor-pointer shrink-0"
-                  >
-                    <Star
-                      className={`w-3 h-3 ${
-                        isFav ? 'fill-amber-400 text-amber-500' : 'text-slate-300'
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className={`h-2 w-2 rounded-full shrink-0 ${
+                        isSelected ? 'bg-white' : 'bg-[#e06d53]'
                       }`}
                     />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleFavorite(e, pkg)}
+                      title={isFav ? 'Favorilerden çıkar' : 'Favorilere ekle'}
+                      className="p-0.5 rounded hover:bg-white/20 cursor-pointer shrink-0"
+                    >
+                      <Star
+                        className={`w-3 h-3 ${
+                          isFav
+                            ? 'fill-amber-400 text-amber-400'
+                            : isSelected
+                              ? 'text-white/70'
+                              : 'text-slate-300'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
 
                 {pkg.sceneRequirements.length > 0 && (

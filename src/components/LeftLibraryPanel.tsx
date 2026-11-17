@@ -482,7 +482,7 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
               }}
               className={`w-11 py-1.5 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
                 isActive
-                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
+                  ? 'bg-gradient-to-br from-violet-600 to-[#e06d53] text-white shadow-sm shadow-violet-600/20'
                   : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/60'
               }`}
               title={tab.label}

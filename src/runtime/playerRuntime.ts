@@ -509,4 +509,12 @@ export class PlayerRuntimeController {
     this.isPlaying = false;
     this.stopRafLoop();
   }
+
+  isDisposed(): boolean {
+    return this.disposed;
+  }
+
+  revive(): void {
+    this.disposed = false;
+  }
 }

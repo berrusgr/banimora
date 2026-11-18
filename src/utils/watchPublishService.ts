@@ -301,7 +301,11 @@ async function resolveWatchPackageMediaUrls(
   try {
     const resolved = structuredClone(pkg);
     const resolveRef = async (raw: string | undefined): Promise<string | undefined> => {
-      if (!raw || !raw.startsWith('banimora-asset://')) return raw;
+      if (!raw) return raw;
+      if (raw.startsWith('./')) {
+        return `/${raw.slice(2)}`;
+      }
+      if (!raw.startsWith('banimora-asset://')) return raw;
       return (await resolver.resolveUrl(raw)) ?? raw;
     };
 
@@ -325,6 +329,9 @@ async function resolveWatchPackageMediaUrls(
     }
     for (const bg of resolved.customBackgrounds ?? []) {
       bg.imageUrl = (await resolveRef(bg.imageUrl)) ?? bg.imageUrl;
+      if (bg.imageUrl) {
+        bg.style = `url("${bg.imageUrl}") center / cover no-repeat`;
+      }
     }
     for (const clip of resolved.customAudioClips ?? []) {
       clip.audioUrl = (await resolveRef(clip.audioUrl)) ?? clip.audioUrl;
@@ -332,6 +339,9 @@ async function resolveWatchPackageMediaUrls(
     for (const scene of resolved.scenes ?? []) {
       if (scene.background?.imageUrl) {
         scene.background.imageUrl = await resolveRef(scene.background.imageUrl);
+        if (scene.background.imageUrl) {
+          scene.background.style = `url("${scene.background.imageUrl}") center / cover no-repeat`;
+        }
       }
       for (const clip of scene.audioClips ?? []) {
         clip.audioUrl = (await resolveRef(clip.audioUrl)) ?? clip.audioUrl;
@@ -416,6 +426,7 @@ export async function loadPublishedWatchForViewer(
     (e) => e.storageType === 'cloud-r2' && Boolean(e.cloudObjectKey)
   );
 
+  let signedUrls: Record<string, string> = {};
   if (hasCloudR2Assets) {
     const workerUrl =
       options?.workerUrl !== undefined ? options.workerUrl : getMediaWorkerUrl();
@@ -460,8 +471,10 @@ export async function loadPublishedWatchForViewer(
       );
     }
 
-    pkg = await resolveWatchPackageMediaUrls(pkg, signBody.signedUrls);
+    signedUrls = signBody.signedUrls;
   }
+
+  pkg = await resolveWatchPackageMediaUrls(pkg, signedUrls);
 
   return {
     shareId: row.share_id ?? trimmedId,

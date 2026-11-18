@@ -692,6 +692,9 @@ function inferAssetMeta(url: string): {
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return { mimeType: 'application/octet-stream', storageType: 'external-url' };
   }
+  if (url.startsWith('banimora-asset://')) {
+    return { mimeType: 'application/octet-stream', storageType: 'indexeddb' };
+  }
   return { mimeType: 'application/octet-stream', storageType: 'package-relative' };
 }
 
@@ -826,7 +829,8 @@ export function buildAssetManifestFromProject(
   };
 
   for (const item of project.uploadedObjects ?? []) {
-    registerAsset(item.id, item.imageUrl, 'image', `uploadedObjects:${item.id}`, item.name);
+    const itemKey = item.customKey?.trim() || item.id;
+    registerAsset(itemKey, item.imageUrl, 'image', `uploadedObjects:${itemKey}`, item.name);
   }
   for (const item of project.customCharacters ?? []) {
     registerAsset(
@@ -885,7 +889,8 @@ export function buildAssetManifestFromProject(
       }
     }
     for (const obj of scene.objects ?? []) {
-      const objAssetKey = obj.assetId || obj.id;
+      const objAssetKey =
+        obj.assetId && obj.assetId !== 'obj-uploaded-image' ? obj.assetId : obj.id;
       if (obj.imageUrl) {
         registerAsset(objAssetKey, obj.imageUrl, 'image', `scene:${scene.id}:obj:${obj.id}`, obj.name);
       }
@@ -967,7 +972,14 @@ export function buildAssetManifestFromProject(
 
         const scanned = entries[entryAssetId];
         if (scanned) {
-          if (existingFingerprint && existingFingerprint !== scanned.contentFingerprint) {
+          const isExternalizedRef =
+            scanned.storageType === 'indexeddb' &&
+            (candidateStorageType === 'indexeddb' || candidateStorageType === 'cloud-r2');
+          if (
+            !isExternalizedRef &&
+            existingFingerprint &&
+            existingFingerprint !== scanned.contentFingerprint
+          ) {
             conflicts.push({
               assetId: entryAssetId,
               existingFingerprint,
@@ -984,6 +996,15 @@ export function buildAssetManifestFromProject(
             continue;
           }
 
+          if (isExternalizedRef) {
+            if (existingFingerprint) scanned.contentFingerprint = existingFingerprint;
+            if (typeof candidate.mimeType === 'string' && candidate.mimeType.trim()) {
+              scanned.mimeType = candidate.mimeType.trim();
+            }
+            if (typeof candidate.byteSize === 'number' && candidate.byteSize > 0) {
+              scanned.byteSize = candidate.byteSize;
+            }
+          }
           if (localBlobKey) scanned.localBlobKey = localBlobKey;
           if (cloudObjectKey) scanned.cloudObjectKey = cloudObjectKey;
           if (packagePath) scanned.packagePath = packagePath;

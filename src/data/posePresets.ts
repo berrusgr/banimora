@@ -88,8 +88,8 @@ export const BUILT_IN_POSES: readonly SavedCharacterPose[] = [
   }, { expression: 'happy' }),
 
   makeBuiltInPose('pose-teach-clasp', 'Eller Önde Sakin Duruş', 'teaching', 'Ders dinlerken veya sakin açıklama yaparken.', {
-    spine: 2, leftShoulder: 28, leftElbow: 56, leftWrist: -8,
-    rightShoulder: -28, rightElbow: -56, rightWrist: 8,
+    spine: 2, leftShoulder: 16, leftElbow: -62, leftWrist: 14,
+    rightShoulder: -16, rightElbow: 62, rightWrist: -14,
   }, { expression: 'neutral' }),
 
   makeBuiltInPose('pose-board-point-right', 'Tahtayı İşaret (Sağ El)', 'pointing', 'Sağ kolla tahtadaki noktayı işaret etme.', {

@@ -1704,13 +1704,6 @@ export function App() {
   }, []);
 
   const handleSaveProjectJson = useCallback(() => {
-    if (isDemoMode) {
-      showProjectNotice(
-        'error',
-        'Demo modunda proje indirilemez. Kendi projelerinizi kaydetmek için giriş yapın.'
-      );
-      return;
-    }
     downloadProjectJson({
       projectName,
       activeSceneId,
@@ -3233,6 +3226,14 @@ export function App() {
             <button
               type="button"
               onClick={() => {
+                if (isAuthenticated) {
+                  setIsAuthModalOpen(false);
+                  navigateEntryIntent('studio');
+                  resetToFreshProject('Yeni Proje', { mode: 'classic' });
+                  setModeSelectorCanDismiss(false);
+                  setIsModeSelectorOpen(true);
+                  return;
+                }
                 setAuthModalTab('signin');
                 setIsAuthModalOpen(true);
               }}
@@ -3271,13 +3272,6 @@ export function App() {
           setIsPlaying((p) => !p);
         }}
         onOpenExport={() => {
-          if (isDemoMode) {
-            showProjectNotice(
-              'error',
-              'Demo modunda dışa aktarma kapalıdır. Kendi projelerinizi dışa aktarmak için giriş yapın.'
-            );
-            return;
-          }
           setIsPlaying(false);
           setIsExportOpen(true);
         }}
@@ -3890,6 +3884,15 @@ export function App() {
       <AuthModal
         isOpen={isAuthModalOpen}
         initialTab={authModalTab}
+        onAuthSuccess={() => {
+          if (isDemoMode) {
+            setIsAuthModalOpen(false);
+            navigateEntryIntent('studio');
+            resetToFreshProject('Yeni Proje', { mode: 'classic' });
+            setModeSelectorCanDismiss(false);
+            setIsModeSelectorOpen(true);
+          }
+        }}
         onClose={() => {
           setIsAuthModalOpen(false);
           if (isProjectsModalOpen) {

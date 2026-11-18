@@ -25,7 +25,8 @@ export function resolveCorsHeaders(
   }
 
   const allowed = parseAllowedOrigins(allowedOriginsRaw);
-  if (!allowed.has(origin)) {
+  const isLocalhostOrigin = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  if (!allowed.has(origin) && !isLocalhostOrigin) {
     return { headers: { Vary: 'Origin' }, isOriginAllowed: false, hasOrigin: true };
   }
 

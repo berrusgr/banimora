@@ -280,7 +280,8 @@ async function externalizeProjectMedia(
   };
 
   for (const item of cloned.uploadedObjects ?? []) {
-    item.imageUrl = (await registerExternalizedUrl(item.id, item.imageUrl, 'image')) ?? item.imageUrl;
+    const itemKey = item.customKey?.trim() || item.id;
+    item.imageUrl = (await registerExternalizedUrl(itemKey, item.imageUrl, 'image')) ?? item.imageUrl;
   }
 
   for (const charItem of cloned.customCharacters ?? []) {
@@ -329,8 +330,12 @@ async function externalizeProjectMedia(
     }
     for (const obj of scene.objects ?? []) {
       if (obj.imageUrl) {
+        const objMediaKey =
+          obj.assetId && obj.assetId !== 'obj-uploaded-image'
+            ? obj.assetId
+            : obj.id;
         obj.imageUrl = await registerExternalizedUrl(
-          obj.assetId || obj.id,
+          objMediaKey,
           obj.imageUrl,
           'image',
           scene.id

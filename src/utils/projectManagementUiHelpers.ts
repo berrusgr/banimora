@@ -171,8 +171,12 @@ export function formatCloudRepositoryErrorMessage(error: unknown): string {
       case 'VALIDATION_ERROR':
         return 'Proje adı veya sürüm bilgisi geçersiz olduğu için işlem tamamlanamadı.';
       case 'UNKNOWN':
-      default:
-        return 'Bulut işlemi beklenmeyen bir hata nedeniyle tamamlanamadı. Yerel verileriniz korunuyor.';
+      default: {
+        const detail = error.message?.trim();
+        return detail
+          ? `Bulut işlemi beklenmeyen bir hata nedeniyle tamamlanamadı. Yerel verileriniz korunuyor. (${detail})`
+          : 'Bulut işlemi beklenmeyen bir hata nedeniyle tamamlanamadı. Yerel verileriniz korunuyor.';
+      }
     }
   }
 

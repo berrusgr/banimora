@@ -126,7 +126,8 @@ export class R2MediaClient {
     }
     this.workerUrl = trimmed;
     this.getAccessToken = options.getAccessToken;
-    this.fetchFn = options.fetchFn ?? fetch;
+    this.fetchFn =
+      options.fetchFn ?? ((input, init) => globalThis.fetch(input, init));
     this.nowMs = options.nowMs ?? (() => Date.now());
   }
 

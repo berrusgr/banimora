@@ -379,7 +379,7 @@ function drawTextCardObject(
   const h = obj.height;
   const halfW = w / 2;
   const halfH = h / 2;
-  const rawText = obj.text || obj.name || '';
+  const rawText = obj.text ?? '';
   const visibleChars = Math.ceil(rawText.length * textRevealRatio);
   const displayedText = textRevealRatio < 1 ? rawText.slice(0, visibleChars) : rawText;
   const fontSize = obj.fontSize || 18;

@@ -8,12 +8,14 @@ interface AuthModalProps {
   isOpen: boolean;
   initialTab?: AuthModalTab;
   onClose: () => void;
+  onAuthSuccess?: () => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   initialTab = 'signin',
   onClose,
+  onAuthSuccess,
 }) => {
   const {
     isConfigured,
@@ -76,6 +78,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         if (!res.ok) {
           setErrorMsg(res.error ?? 'Giriş yapılamadı.');
         } else {
+          onAuthSuccess?.();
           onClose();
         }
         return;
@@ -95,6 +98,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               'Kayıt başarılı! E-posta adresinize gönderilen doğrulama bağlantısını onaylayın.'
           );
           if (!res.needsEmailVerification) {
+            onAuthSuccess?.();
             onClose();
           }
         }

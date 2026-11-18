@@ -206,6 +206,10 @@ function resolveLipSyncRefAgainstScene(
   const matchedById = ref.clipId
     ? sceneAudioClips.find((c) => c.id === ref.clipId)
     : undefined;
+  // If this ref is bound to a specific scene clipId and the scene has clips, ignore deleted/stale clipIds
+  if (!isLegacySingle && ref.clipId && sceneAudioClips.length > 0 && !matchedById) {
+    return null;
+  }
   const matchedByUrl =
     !ref.clipId && ref.audioUrl
       ? sceneAudioClips.find((c) => Boolean(c.audioUrl) && c.audioUrl === ref.audioUrl)

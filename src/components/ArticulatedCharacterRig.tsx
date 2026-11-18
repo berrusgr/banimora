@@ -4609,15 +4609,32 @@ export function renderArticulatedHand(
       case 'point':
         return (
           <g>
-            {/* Clean lineless pointing hand silhouette (thumb inward when raised) */}
+            {/* Palm-facing pointing hand: index finger on +X (TOP when raised), curled fingers on -X (BOTTOM), palm facing viewer */}
             <path
-              d="M3.6 0 L-3.6 0 C-4.8 2.8, -5.2 6.0, -4.8 8.8 L-4.6 17.5 C-4.6 19.0, -2.2 19.0, -2.1 17.5 L-2.0 10.4 C-1.2 11.4, 0.4 11.6, 1.6 11.0 C2.8 11.4, 4.4 10.6, 4.8 9.0 C5.4 6.4, 4.8 2.8, 3.6 0 Z"
+              d="M-3.5 0 L3.5 0 C4.6 3.0, 4.9 6.2, 4.6 9.0 L4.5 17.6 C4.5 19.1, 2.0 19.1, 2.0 17.6 L1.9 10.6 C1.0 11.6, -0.6 11.8, -1.8 11.2 C-3.0 11.6, -4.6 10.8, -5.0 9.0 C-5.5 6.4, -4.7 2.8, -3.5 0 Z"
+              fill={skinTone}
+            />
+            {/* Palm hollow & curled finger creases facing the viewer */}
+            <path
+              d="M-3.2 6.8 Q-0.8 8.2 1.4 7.0 M-2.2 8.8 Q-0.2 9.8 1.4 9.0"
+              fill="none"
+              stroke={fingerCrease}
+              strokeWidth="0.9"
+              strokeLinecap="round"
+              opacity="0.65"
+            />
+            {/* Thumb resting across palm base on index (+X) side */}
+            <path
+              d="M3.4 1.8 C5.8 2.8, 6.2 5.6, 4.0 7.0 C2.6 7.8, 1.2 7.0, 1.6 5.4 C1.8 4.4, 2.6 3.2, 3.4 1.8 Z"
               fill={skinTone}
             />
             <path
-              d="M3.8 2.2 C6.4 3.4, 6.8 6.4, 4.4 7.8 C3.2 8.4, 2.0 7.6, 2.4 6.0 Z"
-              fill={palmShadow}
-              opacity="0.45"
+              d="M3.4 1.8 C5.8 2.8, 6.2 5.6, 4.0 7.0 C2.6 7.8, 1.2 7.0, 1.6 5.4"
+              fill="none"
+              stroke={palmShadow}
+              strokeWidth="0.95"
+              strokeLinecap="round"
+              opacity="0.75"
             />
           </g>
         );
@@ -4659,30 +4676,30 @@ export function renderArticulatedHand(
       case 'fist':
         return (
           <g>
-            {/* Clean lineless fist silhouette (Image 3 & 4) */}
+            {/* Clean lineless fist silhouette (thumb on +X palm side) */}
             <path
-              d="M-3.5 0 L3.5 0 C5.0 2.4, 5.5 6.2, 4.6 9.2 C3.8 11.2, 1.4 11.8, -1.2 11.6 C-3.6 11.4, -5.0 9.8, -5.0 7.2 C-5.8 5.6, -5.4 3.2, -3.5 0 Z"
+              d="M3.5 0 L-3.5 0 C-5.0 2.4, -5.5 6.2, -4.6 9.2 C-3.8 11.2, -1.4 11.8, 1.2 11.6 C3.6 11.4, 5.0 9.8, 5.0 7.2 C5.8 5.6, 5.4 3.2, 3.5 0 Z"
               fill={skinTone}
             />
-            <path d="M-2.2 4.8 Q0.8 4.0 3.2 5.6" fill="none" stroke={palmShadow} strokeWidth="0.9" strokeLinecap="round" opacity="0.5" />
+            <path d="M2.2 4.8 Q-0.8 4.0 -3.2 5.6" fill="none" stroke={palmShadow} strokeWidth="0.9" strokeLinecap="round" opacity="0.5" />
           </g>
         );
 
       case 'hold':
         return (
           <g>
-            {/* Clean lineless grip silhouette (Image 3 & 4) */}
+            {/* Clean lineless grip silhouette (thumb on +X palm side) */}
             <path
-              d="M-3.6 0 L3.6 0 C5.0 2.4, 5.4 6.0, 4.6 9.2 C3.8 11.2, 1.2 11.8, -1.4 11.4 C-3.8 11.0, -5.2 9.4, -5.2 6.8 C-5.8 5.2, -5.2 2.8, -3.6 0 Z"
+              d="M3.6 0 L-3.6 0 C-5.0 2.4, -5.4 6.0, -4.6 9.2 C-3.8 11.2, -1.2 11.8, 1.4 11.4 C3.8 11.0, 5.2 9.4, 5.2 6.8 C5.8 5.2, 5.2 2.8, 3.6 0 Z"
               fill={skinTone}
             />
-            <path d="M-2.6 4.4 Q0.6 3.6 3.4 5.4" fill="none" stroke={palmShadow} strokeWidth="0.95" strokeLinecap="round" opacity="0.55" />
+            <path d="M2.6 4.4 Q-0.6 3.6 -3.4 5.4" fill="none" stroke={palmShadow} strokeWidth="0.95" strokeLinecap="round" opacity="0.55" />
           </g>
         );
 
       case 'open':
       default:
-        // Temiz, kontursuz, modern 2D el silüeti (İlk görseldeki gibi başparmak önde, işaret parmağı ve el sırtı arkasında)
+        // Temiz, kontursuz, doğal duruş el silüeti (kollar yandayken başparmak içe/öne bakar, avuç bacağa dönüktür)
         return (
           <g>
             {/* Arka parmaklar / işaret parmağı silüeti (hafif koyu ton) */}
@@ -4690,7 +4707,7 @@ export function renderArticulatedHand(
               d="M-2.6 0 L3.2 0 C4.5 3.6, 4.8 7.8, 3.8 11.2 C2.8 14.0, 0.8 16.4, -0.8 17.2 C-1.7 17.6, -2.4 16.6, -2.2 14.8 C-2.0 12.6, -2.2 10.6, -2.6 0 Z"
               fill={palmShadow}
             />
-            {/* Ön ana el ve önde duran başparmak silüeti (temiz tek parça, kontursuz) */}
+            {/* Ön ana el ve içe/öne dönük başparmak silüeti */}
             <path
               d="M-3.2 0 L3.3 0 C4.6 3.6, 4.9 7.8, 3.9 11.2 C3.0 13.8, 1.2 15.8, -0.2 16.6 C-1.1 17.0, -1.6 16.0, -1.4 14.2 C-1.2 12.2, -1.6 10.4, -2.2 9.0 C-2.6 10.2, -3.1 11.4, -3.6 12.2 C-4.2 13.0, -4.9 12.4, -4.8 10.8 C-4.6 7.4, -4.0 3.4, -3.2 0 Z"
               fill={skinTone}
@@ -6838,6 +6855,23 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                 );
               })()}
 
+              {/* Tucked waist-bridge behind pelvis/belt so spine tilt (e.g. bow) never opens a gap at the waist */}
+              {spineAngle !== 0 && (
+                <g transform={`rotate(${spineAngle} 104 144)`}>
+                  <path
+                    d={
+                      config.genderAge === 'female'
+                        ? 'M78 122 L130 122 L132 164 Q104 168 76 164 Z'
+                        : 'M74 122 L134 122 L133 164 Q104 168 75 164 Z'
+                    }
+                    fill={effectiveOutfitStyle === 'lab-coat' ? '#f8fafc' : config.topColor}
+                  />
+                  {effectiveOutfitStyle === 'open-overshirt' && (
+                    <rect x="92" y="122" width="24" height="42" fill={secondaryTop} />
+                  )}
+                </g>
+              )}
+
               {/* Upper Pelvis / Hip block (or A-line Midi Skirt when bottomStyle === 'skirt') */}
               {bStyle === 'skirt' ? (
                 <g>
@@ -8099,6 +8133,23 @@ export const ArticulatedCharacterRig: React.FC<ArticulatedCharacterRigProps> = (
                           </>
                         );
                       })()}
+
+                      {/* Tucked waist-bridge behind classic pelvis/skirt so spine tilt never opens a gap at the waist */}
+                      {spineAngle !== 0 && (
+                        <g transform={`rotate(${spineAngle} 110 196)`}>
+                          <path
+                            d={
+                              config.genderAge === 'female'
+                                ? 'M82 174 L138 174 L139 216 Q110 220 81 216 Z'
+                                : 'M80 174 L140 174 L138 216 Q110 220 82 216 Z'
+                            }
+                            fill={torsoFill}
+                          />
+                          {config.outfitStyle === 'open-overshirt' && (
+                            <rect x="96" y="174" width="28" height="42" fill={secondaryTop} />
+                          )}
+                        </g>
+                      )}
 
                       {/* A-Line Skirt overlay when bottomStyle === 'skirt' */}
                       {bStyle === 'skirt' && (

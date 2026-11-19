@@ -2232,15 +2232,25 @@ export function App() {
       let result = await coordinator.listCombinedProjects();
 
       if (isAuthenticated && result.cloudAvailable) {
-        const conflictedEntries = result.projects.filter(
-          (entry) => entry.syncState === 'conflict'
+        const unsyncedEntries = result.projects.filter(
+          (entry) =>
+            entry.syncState === 'conflict' ||
+            entry.syncState === 'local-only' ||
+            entry.syncState === 'dirty'
         );
-        if (conflictedEntries.length > 0) {
-          for (const conflictEntry of conflictedEntries) {
+        if (unsyncedEntries.length > 0) {
+          for (const unsyncedEntry of unsyncedEntries) {
             try {
-              await coordinator.resolveConflictKeepLocal(conflictEntry.projectId);
+              if (unsyncedEntry.syncState === 'conflict') {
+                await coordinator.resolveConflictKeepLocal(unsyncedEntry.projectId);
+              } else {
+                const saveRes = await coordinator.saveToCloud(unsyncedEntry.projectId);
+                if (saveRes.status === 'conflict') {
+                  await coordinator.resolveConflictKeepLocal(unsyncedEntry.projectId);
+                }
+              }
             } catch {
-              // Bireysel proje kaydı başarısız olursa diğer çakışmaları kaydetmeye devam et
+              // Bireysel proje kaydı başarısız olursa diğerlerini kaydetmeye devam et
             }
           }
           result = await coordinator.listCombinedProjects();
@@ -2629,17 +2639,72 @@ export function App() {
   );
 
   const handleCreateNewProjectFromDashboard = useCallback(() => {
-    resetToFreshProject('Yeni Proje', { mode: 'classic' });
+    const freshName = 'Yeni Proje';
+    const freshMetadata: ProjectEducationalMetadata = { mode: 'classic' };
+    resetToFreshProject(freshName, freshMetadata);
+    const newId = currentProjectIdRef.current;
     setModeSelectorCanDismiss(false);
     setIsModeSelectorOpen(true);
-    navigateEntryIntent('studio', currentProjectIdRef.current ?? undefined);
-  }, [navigateEntryIntent, resetToFreshProject]);
+    navigateEntryIntent('studio', newId ?? undefined);
+
+    if (newId && isAuthenticated && !isDemoMode) {
+      void (async () => {
+        try {
+          const repo = getProjectRepository();
+          const v2Snapshot = buildV2ProjectFromStudioState(
+            {
+              projectName: freshName,
+              activeSceneId: INITIAL_SCENES[0].id,
+              scenes: INITIAL_SCENES,
+              customCharacters: [],
+              uploadedObjects: [],
+              customBackgrounds: [],
+              customAudioClips: [],
+              zoom: 100,
+              showGrid: true,
+              loopPlayback: false,
+              fps: 30,
+              educationalMetadata: freshMetadata,
+            },
+            { projectId: newId }
+          );
+          const { project: savedLocal, localRevision } = await repo.saveProject(v2Snapshot, 0);
+          if (currentProjectIdRef.current === newId) {
+            currentProjectRevisionRef.current = localRevision;
+            currentProjectCreatedAtRef.current = savedLocal.savedAt;
+            currentAssetManifestRef.current = savedLocal.assetManifest;
+            hasUnsavedChangesRef.current = false;
+          }
+          const cloudRes = await getSyncCoordinator().saveToCloud(newId);
+          if (currentProjectIdRef.current === newId && cloudRes.status === 'saved') {
+            currentProjectRevisionRef.current =
+              (await repo.getLocalRevision(cloudRes.project.projectId)) ?? localRevision;
+            setActiveSyncState('synced');
+          }
+        } catch {
+          // Yerel otomatik kayıt devam eder
+        }
+      })();
+    }
+  }, [
+    getProjectRepository,
+    getSyncCoordinator,
+    isAuthenticated,
+    isDemoMode,
+    navigateEntryIntent,
+    resetToFreshProject,
+  ]);
 
   const handleReturnToDashboard = useCallback(async () => {
     setIsPlaying(false);
     if (!isDemoMode && isAuthenticated) {
       try {
-        await ensureActiveProjectSavedLocally();
+        const savedId = await ensureActiveProjectSavedLocally();
+        let cloudRes = await getSyncCoordinator().saveToCloud(savedId);
+        if (cloudRes.status === 'conflict') {
+          cloudRes = await getSyncCoordinator().resolveConflictKeepLocal(savedId);
+        }
+        setActiveSyncState('synced');
       } catch {
         // Auto-save error banner already surfaces local persistence errors if any
       }
@@ -2648,6 +2713,7 @@ export function App() {
     void refreshCombinedProjects();
   }, [
     ensureActiveProjectSavedLocally,
+    getSyncCoordinator,
     isAuthenticated,
     isDemoMode,
     navigateEntryIntent,
@@ -2733,15 +2799,23 @@ export function App() {
         } else {
           const repo = getProjectRepository();
           await repo.renameProject(entry.projectId, nextName);
+          if (isAuthenticated) {
+            let syncRes = await getSyncCoordinator().saveToCloud(entry.projectId);
+            if (syncRes.status === 'conflict') {
+              syncRes = await getSyncCoordinator().resolveConflictKeepLocal(entry.projectId);
+            }
+          }
           if (entry.projectId === currentProjectIdRef.current) {
             setProjectName(nextName);
             currentProjectRevisionRef.current =
               (await repo.getLocalRevision(entry.projectId)) ??
               currentProjectRevisionRef.current;
-            setActiveSyncState((prev) =>
-              getSyncStateAfterLocalRename(
-                prev === 'cloud-only' ? 'local-only' : prev,
-              ),
+            setActiveSyncState(
+              isAuthenticated
+                ? 'synced'
+                : getSyncStateAfterLocalRename(
+                    activeSyncState === 'cloud-only' ? 'local-only' : activeSyncState
+                  )
             );
           }
         }
@@ -2754,9 +2828,12 @@ export function App() {
       }
     },
     [
+      activeSyncState,
       busyProjectId,
       getCloudRepository,
       getProjectRepository,
+      getSyncCoordinator,
+      isAuthenticated,
       refreshCombinedProjects,
       showProjectNotice,
     ]
@@ -2821,11 +2898,15 @@ export function App() {
       setBusyProjectId(entry.projectId);
       setProjectModalError(null);
       try {
-        if (entry.source === 'cloud' || entry.source === 'both') {
+        if (isAuthenticated && (entry.source === 'cloud' || entry.source === 'both')) {
           await getSyncCoordinator().deleteCloudProject(entry.projectId);
+        } else if (isAuthenticated) {
+          await getSyncCoordinator().deleteCloudProject(entry.projectId).catch(() => {});
         }
         if (entry.source === 'local' || entry.source === 'both') {
           await getProjectRepository().deleteProject(entry.projectId);
+        } else {
+          await getProjectRepository().deleteProject(entry.projectId).catch(() => {});
         }
         if (entry.projectId === currentProjectIdRef.current) {
           currentProjectIdRef.current = null;
@@ -2850,6 +2931,7 @@ export function App() {
       busyProjectId,
       getProjectRepository,
       getSyncCoordinator,
+      isAuthenticated,
       refreshCombinedProjects,
       showProjectNotice,
     ]

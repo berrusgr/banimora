@@ -4,7 +4,6 @@ import {
   Pause,
   Download,
   Check,
-  Clock,
   Video,
   Plus,
   Save,
@@ -25,10 +24,6 @@ import type { ProjectMode } from '../types/studio';
 import { BanimoraLogo } from './BanimoraLogo';
 import type { CombinedSyncStatus } from '../utils/projectSyncCoordinator';
 import { getProjectSyncStatusDisplay } from '../utils/projectManagementUiHelpers';
-import {
-  formatCompactDuration,
-  MAX_TOTAL_PROJECT_DURATION,
-} from '../utils/animationEngine';
 
 interface TopHeaderProps {
   projectName: string;
@@ -66,8 +61,6 @@ interface TopHeaderProps {
 export const TopHeader: React.FC<TopHeaderProps> = ({
   projectName,
   onProjectNameChange,
-  totalProjectDuration,
-  sceneCount,
   hasCamera,
   isCameraSelected,
   onAddOrSelectCamera,
@@ -178,16 +171,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             className="bg-slate-100 hover:bg-slate-200/70 focus:bg-white text-slate-900 text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-200 focus:border-indigo-500 focus:outline-none transition-colors w-28 xl:w-36"
             aria-label="Proje Adı"
           />
-          <span
-            className="hidden xl:inline-flex items-center gap-1.5 text-[11px] text-slate-700 bg-slate-100 border border-slate-200 px-2 py-1 rounded-lg font-mono font-semibold whitespace-nowrap shrink-0"
-            title="Toplam Süre"
-          >
-            <Clock className="w-3 h-3 text-indigo-600 shrink-0" />
-            <span>
-              {sceneCount} Sahne • {formatCompactDuration(totalProjectDuration)} /{' '}
-              {formatCompactDuration(MAX_TOTAL_PROJECT_DURATION)}
-            </span>
-          </span>
           {(() => {
             const syncDisplay = getProjectSyncStatusDisplay(activeSyncState);
             return (

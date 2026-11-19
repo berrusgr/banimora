@@ -91,28 +91,28 @@ export const ProjectModeSelectorModal: React.FC<ProjectModeSelectorModalProps> =
             disabled
             aria-disabled="true"
             data-testid="select-mode-addie"
-            className="text-left p-5 rounded-xl border-2 border-[#e06d53]/35 bg-gradient-to-br from-[#fdf6f4] via-white to-violet-50/80 cursor-not-allowed flex flex-col justify-between gap-4 shadow-2xs"
+            className="text-left p-5 rounded-xl border-2 border-slate-200/80 bg-slate-100/80 opacity-60 grayscale select-none cursor-not-allowed flex flex-col justify-between gap-4"
           >
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#e06d53] to-violet-600 text-white flex items-center justify-center shadow-xs">
+                <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-400 flex items-center justify-center">
                   <GraduationCap className="w-5 h-5" />
                 </div>
-                <span className="inline-flex items-center rounded-full bg-gradient-to-r from-[#e06d53] to-violet-600 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-2xs">
+                <span className="inline-flex items-center rounded-full bg-slate-200 border border-slate-300 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   Yakında
                 </span>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900">
+                <h3 className="text-sm font-bold text-slate-500">
                   ADDIE Modeli ile Eğitsel İçerik
                 </h3>
-                <p className="mt-1.5 text-xs text-slate-600 leading-relaxed">
+                <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">
                   ADDIE öğretim tasarımı modeliyle (Analiz, Tasarım, Geliştirme, Uygulama, Değerlendirme) öğrenme hedeflerine uygun etkileşimli eğitim videoları hazırla.
                 </p>
               </div>
             </div>
-            <span className="inline-flex items-center text-xs font-bold text-[#c8563d]">
-              Çok yakında kullanımda ✨
+            <span className="inline-flex items-center text-xs font-semibold text-slate-400">
+              Çok yakında kullanımda
             </span>
           </button>
         </div>

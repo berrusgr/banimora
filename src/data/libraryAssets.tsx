@@ -76,7 +76,7 @@ export const LIBRARY_ITEMS: LibraryAssetItem[] = [
   },
   {
     id: 'char-pro-elvan',
-    name: 'Elvan Hanım (Kadın)',
+    name: 'Elvan Öğretmen',
     subtitle: 'Kurumsal Eğitmen & Uzman',
     category: 'characters',
     defaultWidth: 170,

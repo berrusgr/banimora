@@ -19,8 +19,8 @@ import {
   Mic,
   Shapes,
   BarChart3,
-  PanelLeftClose,
-  PanelLeftOpen,
+  ChevronLeft,
+  ChevronRight,
   Star,
 } from 'lucide-react';
 import {
@@ -452,21 +452,6 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
 
       {/* Leftmost Vertical Icon Menu (w-14 bg-slate-50) */}
       <nav className="w-14 bg-slate-50 border-r border-slate-200 flex flex-col items-center py-2 gap-1 shrink-0">
-        {onToggleCollapsed && (
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            data-testid="toggle-left-panel-btn"
-            className="w-10 h-7 mb-1 rounded-lg flex items-center justify-center text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer"
-            title={collapsed ? 'Sol Kütüphaneyi Aç' : 'Sol Kütüphaneyi Daralt'}
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="w-4 h-4" />
-            ) : (
-              <PanelLeftClose className="w-4 h-4" />
-            )}
-          </button>
-        )}
         {DOCK_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeCategory === tab.id && !collapsed;
@@ -1173,6 +1158,21 @@ export const LeftLibraryPanel: React.FC<LeftLibraryPanelProps> = ({
           className="w-1 hover:w-1.5 bg-transparent hover:bg-indigo-400/60 cursor-col-resize shrink-0 transition-all"
           title="Panel Genişliğini Ayarla"
         />
+      )}
+      {onToggleCollapsed && (
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          data-testid="toggle-left-panel-btn"
+          title={collapsed ? 'Sol Kütüphaneyi Aç' : 'Sol Kütüphaneyi Daralt'}
+          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full z-30 w-4 h-16 rounded-r-xl bg-white/95 hover:bg-indigo-50 border border-l-0 border-slate-200 hover:border-indigo-300 shadow-md flex items-center justify-center text-slate-500 hover:text-indigo-700 cursor-pointer transition-all"
+        >
+          {collapsed ? (
+            <ChevronRight className="w-3.5 h-3.5" />
+          ) : (
+            <ChevronLeft className="w-3.5 h-3.5" />
+          )}
+        </button>
       )}
     </aside>
   );

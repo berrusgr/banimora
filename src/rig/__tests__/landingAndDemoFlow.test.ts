@@ -11,6 +11,7 @@ import test from 'node:test';
 import {
   buildUrlForEntryIntent,
   parseEntryRouteIntent,
+  parseStudioProjectId,
   resolveAppEntryState,
 } from '../../utils/entryRouting.ts';
 
@@ -19,7 +20,7 @@ const ROOT_DIR = path.resolve(
   '../../..'
 );
 
-test('1 & 5 & 7. Root / and unauthorized /studio land on LandingPage when unauthenticated, and route directly to Studio when authenticated', () => {
+test('1 & 5 & 7. Root / and unauthorized /dashboard or /studio land on LandingPage when unauthenticated, and route to Dashboard (or Studio on /studio) when authenticated', () => {
   const rootIntent = parseEntryRouteIntent('/', '', '');
   assert.equal(rootIntent, 'landing');
 
@@ -32,6 +33,16 @@ test('1 & 5 & 7. Root / and unauthorized /studio land on LandingPage when unauth
   assert.equal(unauthRoot.authModalTab, null);
   assert.equal(unauthRoot.isDemoMode, false);
   assert.equal(unauthRoot.canAccessStudio, false);
+
+  const directDashboardIntent = parseEntryRouteIntent('/dashboard', '', '');
+  assert.equal(directDashboardIntent, 'dashboard');
+  const unauthDirectDashboard = resolveAppEntryState({
+    intent: directDashboardIntent,
+    isAuthenticated: false,
+    isAuthLoading: false,
+  });
+  assert.equal(unauthDirectDashboard.view, 'landing');
+  assert.equal(unauthDirectDashboard.canAccessStudio, false);
 
   const directStudioIntent = parseEntryRouteIntent('/studio', '', '');
   assert.equal(directStudioIntent, 'studio');
@@ -48,12 +59,26 @@ test('1 & 5 & 7. Root / and unauthorized /studio land on LandingPage when unauth
     isAuthenticated: true,
     isAuthLoading: false,
   });
-  assert.equal(authRoot.view, 'studio');
+  assert.equal(authRoot.view, 'dashboard');
   assert.equal(authRoot.canAccessStudio, true);
   assert.equal(authRoot.isDemoMode, false);
+
+  const authStudio = resolveAppEntryState({
+    intent: directStudioIntent,
+    isAuthenticated: true,
+    isAuthLoading: false,
+  });
+  assert.equal(authStudio.view, 'studio');
+  assert.equal(authStudio.canAccessStudio, true);
+  assert.equal(authStudio.isDemoMode, false);
+
+  assert.equal(parseStudioProjectId('/studio/proj_123', '', ''), 'proj_123');
+  assert.equal(parseStudioProjectId('/', '?mode=studio&project=proj_456', ''), 'proj_456');
+  assert.equal(buildUrlForEntryIntent('dashboard'), '/?mode=dashboard');
+  assert.equal(buildUrlForEntryIntent('studio', 'proj_789'), '/?mode=studio&project=proj_789');
 });
 
-test('2 & 3. Kayıt Ol and Giriş Yap routes open AuthModal on signup/signin tabs and redirect authenticated users to Studio', () => {
+test('2 & 3. Kayıt Ol and Giriş Yap routes open AuthModal on signup/signin tabs and redirect authenticated users to Dashboard', () => {
   assert.equal(parseEntryRouteIntent('/', '?auth=signup', ''), 'signup');
   assert.equal(parseEntryRouteIntent('/kayit', '', ''), 'signup');
   assert.equal(parseEntryRouteIntent('/', '?auth=signin', ''), 'signin');
@@ -80,7 +105,7 @@ test('2 & 3. Kayıt Ol and Giriş Yap routes open AuthModal on signup/signin tab
     isAuthenticated: true,
     isAuthLoading: false,
   });
-  assert.equal(authAlreadySignedIn.view, 'studio');
+  assert.equal(authAlreadySignedIn.view, 'dashboard');
   assert.equal(authAlreadySignedIn.authModalTab, null);
 });
 
@@ -157,7 +182,7 @@ test('Faz 2: Edimo mode option is disabled/passive while Classic remains active,
   assert.ok(modeModalSource.includes('disabled'));
   assert.ok(modeModalSource.includes('aria-disabled="true"'));
   assert.ok(modeModalSource.includes('Yakında'));
-  assert.ok(modeModalSource.includes('Şimdilik kullanılamıyor'));
+  assert.ok(modeModalSource.includes('Çok yakında kullanımda'));
   assert.ok(!modeModalSource.includes("onSelectMode('addie')"));
 
   const topHeaderSource = fs.readFileSync(
@@ -165,7 +190,9 @@ test('Faz 2: Edimo mode option is disabled/passive while Classic remains active,
     'utf8'
   );
   assert.ok(topHeaderSource.includes('data-testid="export-menu-trigger"'));
-  assert.ok(topHeaderSource.includes('Dışa Aktar'));
+  assert.ok(topHeaderSource.includes('data-testid="studio-back-to-dashboard-btn"'));
+  assert.ok(topHeaderSource.includes('Kaydet'));
+  assert.ok(topHeaderSource.includes('Projeyi Kaydet'));
   assert.ok(topHeaderSource.includes('MP4 indir'));
   assert.ok(topHeaderSource.includes('onOpenExport()'));
   assert.ok(topHeaderSource.includes('İzleme bağlantısı oluştur'));
@@ -174,10 +201,21 @@ test('Faz 2: Edimo mode option is disabled/passive while Classic remains active,
   assert.ok(topHeaderSource.includes('{authSlot}'));
   assert.ok(topHeaderSource.includes('onClick={onTogglePlay}'));
 
+  const dashboardSource = fs.readFileSync(
+    path.join(ROOT_DIR, 'src/components/DashboardPage.tsx'),
+    'utf8'
+  );
+  assert.ok(dashboardSource.includes('data-testid="dashboard-page"'));
+  assert.ok(dashboardSource.includes('Yeni Proje Oluştur'));
+  assert.ok(dashboardSource.includes('Projeyi Aç'));
+  assert.ok(dashboardSource.includes('Henüz Kayıtlı Bir Projeniz Yok'));
+
   const appSource = fs.readFileSync(
     path.join(ROOT_DIR, 'src/App.tsx'),
     'utf8'
   );
   assert.ok(appSource.includes('if (isDemoMode) {'));
   assert.ok(appSource.includes('setIsExportOpen(true);'));
+  assert.ok(appSource.includes("entryState.view === 'dashboard'"));
+  assert.ok(appSource.includes('<DashboardPage'));
 });

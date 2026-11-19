@@ -27,40 +27,40 @@ const SYNC_STATUS_DISPLAY_MAP: Record<
 > = {
   'local-only': {
     status: 'local-only',
-    label: 'Yalnızca bu cihazda',
-    shortLabel: 'Bu cihazda',
+    label: 'Kaydedilmemiş',
+    shortLabel: 'Kaydedilmemiş',
     description:
-      'Bu proje yalnızca bu tarayıcıdaki yerel depoda saklanıyor; henüz buluta kaydedilmedi.',
-    tone: 'neutral',
+      'Bu projedeki değişiklikler henüz hesabınıza kaydedilmedi.',
+    tone: 'warning',
     badgeClassName:
-      'bg-slate-100 text-slate-700 border-slate-200',
+      'bg-amber-50 text-amber-800 border-amber-200',
   },
   'cloud-only': {
     status: 'cloud-only',
-    label: 'Bulutta',
-    shortLabel: 'Bulutta',
+    label: 'Senkronize',
+    shortLabel: 'Senkronize',
     description:
-      'Bu proje bulut hesabınızda kayıtlı; açtığınızda bu cihaza indirilir.',
-    tone: 'info',
+      'Projeniz hesabınızda kayıtlı ve güncel.',
+    tone: 'success',
     badgeClassName:
-      'bg-sky-50 text-sky-700 border-sky-200',
+      'bg-emerald-50 text-emerald-700 border-emerald-200',
   },
   synced: {
     status: 'synced',
     label: 'Senkronize',
     shortLabel: 'Senkronize',
     description:
-      'Bu cihazdaki sürüm ile buluttaki sürüm birbiriyle güncel ve uyumlu.',
+      'Projeniz hesabınızda kayıtlı ve güncel.',
     tone: 'success',
     badgeClassName:
       'bg-emerald-50 text-emerald-700 border-emerald-200',
   },
   dirty: {
     status: 'dirty',
-    label: 'Buluta kaydedilmemiş değişiklikler var',
+    label: 'Kaydedilmemiş değişiklikler var',
     shortLabel: 'Kaydedilmemiş',
     description:
-      'Bu cihazda yaptığınız son değişiklikler henüz buluta gönderilmedi.',
+      'Yaptığınız son değişiklikler henüz kaydedilmedi.',
     tone: 'warning',
     badgeClassName:
       'bg-amber-50 text-amber-800 border-amber-200',
@@ -70,7 +70,7 @@ const SYNC_STATUS_DISPLAY_MAP: Record<
     label: 'Sürüm çakışması var',
     shortLabel: 'Çakışma',
     description:
-      'Hem bu cihazda hem bulutta farklı değişiklikler var. Devam etmeden önce hangi sürümün korunacağını seçin.',
+      'Farklı değişiklikler tespit edildi. Devam etmeden önce hangi sürümün korunacağını seçin.',
     tone: 'danger',
     badgeClassName:
       'bg-rose-50 text-rose-700 border-rose-200',
@@ -116,10 +116,10 @@ export function getProjectActionAvailability(
 
   let cloudDisabledReason: string | undefined;
   if (!context.isAuthenticated) {
-    cloudDisabledReason = 'Bulut işlemleri için Banimora hesabınıza giriş yapın.';
+    cloudDisabledReason = 'Bu işlem için Banimora hesabınıza giriş yapın.';
   } else if (!context.cloudAvailable) {
     cloudDisabledReason =
-      'Bulut sunucusuna şu anda ulaşılamıyor. Yerel işlemlerinizi kullanmaya devam edebilirsiniz.';
+      'Sunucuya şu anda ulaşılamıyor. Çalışmalarınıza devam edebilirsiniz.';
   }
 
   return {
@@ -157,15 +157,15 @@ export function formatCloudRepositoryErrorMessage(error: unknown): string {
   if (error instanceof CloudRepositoryError) {
     switch (error.code) {
       case 'AUTH_REQUIRED':
-        return 'Bulut işlemi için Banimora hesabınıza giriş yapmanız gerekiyor.';
+        return 'Bu işlem için Banimora hesabınıza giriş yapmanız gerekiyor.';
       case 'REVISION_CONFLICT':
         return 'Bu proje başka bir oturumda güncellenmiş. Çakışma çözümünü kullanarak hangi sürümün korunacağını seçin.';
       case 'NOT_FOUND':
-        return 'Proje bulutta bulunamadı veya daha önce silinmiş.';
+        return 'Proje bulunamadı veya daha önce silinmiş.';
       case 'NETWORK_ERROR':
-        return 'Bulut sunucusuna ulaşılamadı. İnternet bağlantınızı kontrol edin; bu cihazdaki projeleriniz güvende.';
+        return 'Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin; çalışmalarınız güvende.';
       case 'PAYLOAD_TOO_LARGE':
-        return 'Proje boyutu 24 MB bulut aktarım sınırını aşıyor. Medya boyutlarını küçültün veya JSON olarak dışa aktarın.';
+        return 'Proje boyutu 24 MB aktarım sınırını aşıyor. Medya boyutlarını küçültün veya JSON olarak dışa aktarın.';
       case 'PERMISSION_DENIED':
         return 'Bu proje üzerinde işlem yapma yetkiniz bulunmuyor.';
       case 'VALIDATION_ERROR':
@@ -174,8 +174,8 @@ export function formatCloudRepositoryErrorMessage(error: unknown): string {
       default: {
         const detail = error.message?.trim();
         return detail
-          ? `Bulut işlemi beklenmeyen bir hata nedeniyle tamamlanamadı. Yerel verileriniz korunuyor. (${detail})`
-          : 'Bulut işlemi beklenmeyen bir hata nedeniyle tamamlanamadı. Yerel verileriniz korunuyor.';
+          ? `İşlem beklenmeyen bir hata nedeniyle tamamlanamadı. Verileriniz korunuyor. (${detail})`
+          : 'İşlem beklenmeyen bir hata nedeniyle tamamlanamadı. Verileriniz korunuyor.';
       }
     }
   }
@@ -184,12 +184,12 @@ export function formatCloudRepositoryErrorMessage(error: unknown): string {
     return error.message;
   }
 
-  return 'İşlem sırasında beklenmeyen bir hata oluştu. Yerel verileriniz korunuyor.';
+  return 'İşlem sırasında beklenmeyen bir hata oluştu. Verileriniz korunuyor.';
 }
 
 export function formatPayloadSizeWarningMessage(byteLength: number): string {
   const mb = (byteLength / (1024 * 1024)).toFixed(1);
-  return `Proje boyutu (${mb} MB) 24 MB bulut sınırına yaklaşıyor. Büyük medya dosyalarını küçültmeniz önerilir.`;
+  return `Proje boyutu (${mb} MB) 24 MB sınırına yaklaşıyor. Büyük medya dosyalarını küçültmeniz önerilir.`;
 }
 
 export interface ActiveProjectSwitchCheckInput {
@@ -248,8 +248,8 @@ export function evaluateProjectSwitchConfirmation(
     return {
       requiresConfirmation: true,
       reason: 'unsynced-cloud-changes',
-      title: 'Buluta kaydedilmemiş değişiklikler var',
-      message: `"${input.currentProjectName}" projesindeki son değişiklikler bu cihazda kayıtlı ancak henüz buluta gönderilmedi. ${targetLabel} geçmek istiyor musunuz?`,
+      title: 'Kaydedilmemiş değişiklikler var',
+      message: `"${input.currentProjectName}" projesindeki son değişiklikler henüz kaydedilmedi. ${targetLabel} geçmek istiyor musunuz?`,
     };
   }
 

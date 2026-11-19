@@ -1,8 +1,8 @@
 import type { AuthModalTab } from '../components/AuthModal.tsx';
 
-export type EntryRouteIntent = 'landing' | 'signin' | 'signup' | 'demo' | 'studio' | 'watch';
+export type EntryRouteIntent = 'landing' | 'signin' | 'signup' | 'demo' | 'dashboard' | 'studio' | 'watch';
 
-export type ResolvedAppView = 'loading' | 'landing' | 'demo' | 'studio' | 'watch';
+export type ResolvedAppView = 'loading' | 'landing' | 'demo' | 'dashboard' | 'studio' | 'watch';
 
 export interface EntryRouteResolution {
   view: ResolvedAppView;
@@ -42,6 +42,37 @@ export function parseWatchShareId(
 }
 
 /**
+ * URL pathname (/studio/:projectId), query (?project=...) veya hash (#/studio/:projectId)
+ * bilgisinden açılması hedeflenen proje kimliğini çözer.
+ */
+export function parseStudioProjectId(
+  pathname: string,
+  search = '',
+  hash = ''
+): string | null {
+  const cleanPath = (pathname || '').replace(/\/+$/, '');
+  const pathMatch = cleanPath.match(/(?:^|\/)studio\/([a-zA-Z0-9_-]+)$/i);
+  if (pathMatch && pathMatch[1]) {
+    return pathMatch[1];
+  }
+
+  const cleanHash = (hash || '').replace(/^#/, '').trim();
+  const hashPath = (cleanHash.split('?')[0] || '').replace(/\/+$/, '');
+  const hashMatch = hashPath.match(/(?:^|\/)studio\/([a-zA-Z0-9_-]+)$/i);
+  if (hashMatch && hashMatch[1]) {
+    return hashMatch[1];
+  }
+
+  const params = new URLSearchParams(search);
+  const queryProject = params.get('project')?.trim();
+  if (queryProject && /^[a-zA-Z0-9_-]+$/.test(queryProject)) {
+    return queryProject;
+  }
+
+  return null;
+}
+
+/**
  * URL pathname, query (?mode=..., ?auth=...) ve hash bilgisinden
  * kullanıcının hedef giriş niyetini çözer.
  */
@@ -59,6 +90,7 @@ export function parseEntryRouteIntent(
   const queryAuth = params.get('auth')?.trim().toLowerCase();
 
   if (queryMode === 'demo') return 'demo';
+  if (queryMode === 'dashboard') return 'dashboard';
   if (queryMode === 'studio') return 'studio';
   if (queryAuth === 'signup' || queryAuth === 'register' || queryAuth === 'kayit') {
     return 'signup';
@@ -69,24 +101,29 @@ export function parseEntryRouteIntent(
 
   const hashSegment = normalizeSegment(hash.replace(/^#/, ''));
   if (hashSegment === 'demo') return 'demo';
+  if (hashSegment === 'dashboard') return 'dashboard';
   if (hashSegment === 'kayit' || hashSegment === 'signup') return 'signup';
   if (hashSegment === 'giris' || hashSegment === 'signin') return 'signin';
-  if (hashSegment === 'studio') return 'studio';
+  if (hashSegment === 'studio' || hashSegment.startsWith('studio/')) return 'studio';
 
   const pathSegment = normalizeSegment(pathname);
   if (pathSegment === 'demo') return 'demo';
+  if (pathSegment === 'dashboard') return 'dashboard';
   if (pathSegment === 'kayit' || pathSegment === 'signup' || pathSegment === 'register') {
     return 'signup';
   }
   if (pathSegment === 'giris' || pathSegment === 'signin' || pathSegment === 'login') {
     return 'signin';
   }
-  if (pathSegment === 'studio') return 'studio';
+  if (pathSegment === 'studio' || /^studio\/[a-z0-9_-]+$/i.test(pathSegment)) return 'studio';
 
   return 'landing';
 }
 
-export function buildUrlForEntryIntent(intent: EntryRouteIntent): string {
+export function buildUrlForEntryIntent(
+  intent: EntryRouteIntent,
+  projectId?: string
+): string {
   switch (intent) {
     case 'demo':
       return '/?mode=demo';
@@ -94,8 +131,12 @@ export function buildUrlForEntryIntent(intent: EntryRouteIntent): string {
       return '/?auth=signin';
     case 'signup':
       return '/?auth=signup';
+    case 'dashboard':
+      return '/?mode=dashboard';
     case 'studio':
-      return '/?mode=studio';
+      return projectId
+        ? `/?mode=studio&project=${encodeURIComponent(projectId)}`
+        : '/?mode=studio';
     case 'landing':
     default:
       return '/';
@@ -149,8 +190,16 @@ export function resolveAppEntryState(input: {
   }
 
   if (input.isAuthenticated) {
+    if (input.intent === 'studio') {
+      return {
+        view: 'studio',
+        authModalTab: null,
+        isDemoMode: false,
+        canAccessStudio: true,
+      };
+    }
     return {
-      view: 'studio',
+      view: 'dashboard',
       authModalTab: null,
       isDemoMode: false,
       canAccessStudio: true,
@@ -175,7 +224,7 @@ export function resolveAppEntryState(input: {
     };
   }
 
-  // Yetkisiz doğrudan /studio veya / erişimi karşılama ekranına düşer.
+  // Yetkisiz doğrudan /dashboard, /studio veya / erişimi karşılama ekranına düşer.
   return {
     view: 'landing',
     authModalTab: null,

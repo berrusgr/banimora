@@ -127,7 +127,14 @@ export class AuthController {
       return () => {};
     }
 
+    if (this.unsubscribeAuth) {
+      this.unsubscribeAuth();
+      this.unsubscribeAuth = null;
+    }
+
+    let disposed = false;
     const { data: subData } = this.auth.onAuthStateChange((event, session) => {
+      if (disposed) return;
       const nextRecovery =
         event === 'PASSWORD_RECOVERY'
           ? true
@@ -145,30 +152,39 @@ export class AuthController {
       });
     });
 
-    this.unsubscribeAuth = () => {
+    const cleanupSubscription = () => {
+      if (disposed) return;
+      disposed = true;
       subData.subscription.unsubscribe();
+      if (this.unsubscribeAuth === cleanupSubscription) {
+        this.unsubscribeAuth = null;
+      }
     };
+
+    this.unsubscribeAuth = cleanupSubscription;
 
     try {
       const { data } = await this.auth.getSession();
-      this.setState({
-        session: data.session,
-        user: data.session?.user ?? null,
-        isAuthenticated: Boolean(data.session?.user),
-        isLoading: false,
-      });
+      if (!disposed) {
+        this.setState({
+          session: data.session,
+          user: data.session?.user ?? null,
+          isAuthenticated: Boolean(data.session?.user),
+          isLoading: false,
+        });
+      }
     } catch {
-      this.setState({
-        session: null,
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-      });
+      if (!disposed) {
+        this.setState({
+          session: null,
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+        });
+      }
     }
 
-    return () => {
-      this.dispose();
-    };
+    return cleanupSubscription;
   }
 
   dispose(): void {
@@ -291,10 +307,6 @@ export class AuthController {
 
     try {
       const { error } = await this.auth.signOut();
-      if (error) {
-        return { ok: false, error: translateSupabaseAuthError(error.message) };
-      }
-
       this.setState({
         session: null,
         user: null,
@@ -303,11 +315,22 @@ export class AuthController {
         needsEmailVerification: false,
       });
 
+      if (error) {
+        return { ok: false, error: translateSupabaseAuthError(error.message) };
+      }
+
       return {
         ok: true,
         message: 'Çıkış yapıldı. Yerel projeleriniz cihazınızda korunmaya devam ediyor.',
       };
     } catch (err) {
+      this.setState({
+        session: null,
+        user: null,
+        isAuthenticated: false,
+        isRecoveryMode: false,
+        needsEmailVerification: false,
+      });
       return {
         ok: false,
         error: translateSupabaseAuthError(err instanceof Error ? err.message : undefined),

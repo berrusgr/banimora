@@ -629,7 +629,23 @@ export class ProjectSyncCoordinator {
       cloudRevision = cloudDoc.cloudMeta.revision;
     }
 
-    await this.cloudRepo.deleteProject(projectId, cloudRevision);
+    try {
+      await this.cloudRepo.deleteProject(projectId, cloudRevision);
+    } catch (err) {
+      if (err instanceof CloudRepositoryError && err.code === 'REVISION_CONFLICT') {
+        const latestCloudDoc = await this.cloudRepo.loadProject(projectId);
+        const latestRev = latestCloudDoc?.cloudMeta?.revision ?? 0;
+        if (latestRev <= 0) {
+          throw new CloudRepositoryError(
+            'NOT_FOUND',
+            'Silinecek bulut projesi bulunamadı.'
+          );
+        }
+        await this.cloudRepo.deleteProject(projectId, latestRev);
+      } else {
+        throw err;
+      }
+    }
 
     if (localProject && localRevision !== null) {
       const updatedLocal = await this.localRepo.updateCloudSyncMeta(
@@ -694,10 +710,30 @@ export class ProjectSyncCoordinator {
     const latestCloud = await this.cloudRepo.loadProject(projectId);
     const latestCloudRevision = latestCloud?.cloudMeta?.revision ?? 0;
 
-    const cloudSaved = await this.saveProjectPayloadToCloud(
-      localProject,
-      latestCloudRevision
-    );
+    let cloudSaved: CloudSaveProjectResult;
+    try {
+      cloudSaved = await this.saveProjectPayloadToCloud(
+        localProject,
+        latestCloudRevision
+      );
+    } catch (error) {
+      const cloudErr = mapSupabaseErrorToCloudError(
+        error,
+        'Proje kaydedilemedi.'
+      );
+      if (
+        (cloudErr.code === 'REVISION_CONFLICT' ||
+          cloudErr.code === 'NOT_FOUND' ||
+          cloudErr.code === 'PERMISSION_DENIED') &&
+        latestCloud === null
+      ) {
+        return this.rekeyAndSaveDeletedCloudProject(
+          projectId,
+          localProject.projectName
+        );
+      }
+      throw error;
+    }
 
     const updatedLocal = await this.localRepo.updateCloudSyncMeta(
       projectId,
@@ -827,9 +863,13 @@ export class ProjectSyncCoordinator {
     const r2DataUrls = new Map<string, string>();
     for (const [assetId, entry] of Object.entries(entries)) {
       if (entry.storageType === 'cloud-r2' && entry.cloudObjectKey) {
-        const blob = await this.r2Client.fetchObjectBlob(entry.cloudObjectKey);
-        const dataUrl = await blobToDataUrl(blob);
-        r2DataUrls.set(`banimora-asset://${assetId}`, dataUrl);
+        try {
+          const blob = await this.r2Client.fetchObjectBlob(entry.cloudObjectKey);
+          const dataUrl = await blobToDataUrl(blob);
+          r2DataUrls.set(`banimora-asset://${assetId}`, dataUrl);
+        } catch {
+          // Bireysel bir R2 medya dosyası indirilemezse projenin açılmasını engelleme
+        }
       }
     }
 
@@ -890,24 +930,28 @@ export class ProjectSyncCoordinator {
     expectedLocalRevision: number
   ): Promise<BanimoraProjectFileV2> {
     const projectToPersist = await this.hydrateR2AssetsForLocalSave(cloudProject);
-    // saveProject() DataURL medyaları IndexedDB Blob deposuna externalize eder.
-    const savedLocal = await this.localRepo.saveProject(
-      projectToPersist,
-      expectedLocalRevision
-    );
+    try {
+      // saveProject() DataURL medyaları IndexedDB Blob deposuna externalize eder.
+      const savedLocal = await this.localRepo.saveProject(
+        projectToPersist,
+        expectedLocalRevision
+      );
 
-    // Yerel kaydın normal autosave kuralı gereği 'dirty' dönen durumunu 'synced' yap.
-    const syncedLocal = await this.localRepo.updateCloudSyncMeta(
-      cloudProject.projectId,
-      {
-        ownerId: cloudProject.cloudMeta?.ownerId,
-        revision: cloudProject.cloudMeta?.revision ?? 1,
-        lastSyncedAt: cloudProject.cloudMeta?.lastSyncedAt,
-        syncState: 'synced',
-      },
-      savedLocal.localRevision
-    );
+      // Yerel kaydın normal autosave kuralı gereği 'dirty' dönen durumunu 'synced' yap.
+      const syncedLocal = await this.localRepo.updateCloudSyncMeta(
+        cloudProject.projectId,
+        {
+          ownerId: cloudProject.cloudMeta?.ownerId,
+          revision: cloudProject.cloudMeta?.revision ?? 1,
+          lastSyncedAt: cloudProject.cloudMeta?.lastSyncedAt,
+          syncState: 'synced',
+        },
+        savedLocal.localRevision
+      );
 
-    return syncedLocal.project;
+      return syncedLocal.project;
+    } catch {
+      return projectToPersist;
+    }
   }
 }

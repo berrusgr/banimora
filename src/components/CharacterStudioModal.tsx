@@ -128,7 +128,7 @@ const SLENDER_PRO_TEMPLATES: {
   },
   {
     key: 'char-pro-elvan',
-    name: 'Elvan Hanım',
+    name: 'Elvan Öğretmen',
     subtitle: 'Kurumsal Kadın Uzman',
     ageBadge: '2. Kadın (Pro)',
     config: DEFAULT_CHARACTER_CONFIGS['char-pro-elvan'],

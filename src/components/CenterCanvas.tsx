@@ -28,6 +28,7 @@ import {
   ChevronRight,
   EyeOff,
   Type,
+  GripVertical,
 } from 'lucide-react';
 import { WorkspaceMode } from '../utils/workspaceLayoutStorage';
 import {
@@ -231,6 +232,68 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
   const [fitStageWidth, setFitStageWidth] = useState<number>(820);
   const [interaction, setInteraction] = useState<InteractionMode>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+
+  // Stage pan (click & hold empty stage/viewport to pan) & draggable floating toolbar position
+  const [stagePan, setStagePan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isPanningStage, setIsPanningStage] = useState(false);
+  const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
+  const floatingToolbarRef = useRef<HTMLDivElement>(null);
+
+  const startStagePan = (e: React.MouseEvent) => {
+    if (playerMode || isPlaying || e.button !== 0) return;
+    onSelectObject(null);
+    const startMouseX = e.clientX;
+    const startMouseY = e.clientY;
+    const origX = stagePan.x;
+    const origY = stagePan.y;
+    setIsPanningStage(true);
+
+    const handleMove = (ev: MouseEvent) => {
+      setStagePan({
+        x: origX + (ev.clientX - startMouseX),
+        y: origY + (ev.clientY - startMouseY),
+      });
+    };
+    const handleUp = () => {
+      setIsPanningStage(false);
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+  };
+
+  const startFloatingToolbarDrag = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const vp = viewportRef.current;
+    const bar = floatingToolbarRef.current;
+    if (!vp || !bar) return;
+    const vpRect = vp.getBoundingClientRect();
+    const barRect = bar.getBoundingClientRect();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const initLeft = barRect.left - vpRect.left;
+    const initTop = barRect.top - vpRect.top;
+
+    const handleMove = (ev: MouseEvent) => {
+      const nextVpRect = vp.getBoundingClientRect();
+      const maxLeft = Math.max(8, nextVpRect.width - barRect.width - 8);
+      const maxTop = Math.max(8, nextVpRect.height - barRect.height - 8);
+      const clampedX = Math.max(8, Math.min(maxLeft, initLeft + (ev.clientX - startX)));
+      const clampedY = Math.max(8, Math.min(maxTop, initTop + (ev.clientY - startY)));
+      setToolbarPos({ x: clampedX, y: clampedY });
+    };
+    const handleUp = () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+  };
 
   // Interactive 2D Bone Rigging mode on the canvas
   const [boneRigEditMode, setBoneRigEditMode] = useState(false);
@@ -865,56 +928,86 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
   return (
     <main
       ref={viewportRef}
+      onWheel={(e) => {
+        if (playerMode) return;
+        e.preventDefault();
+        const step = e.deltaY < 0 ? 8 : -8;
+        const nextZoom = Math.max(35, Math.min(250, zoom + step));
+        onZoomChange?.(nextZoom);
+      }}
       onMouseDown={(e) => {
         if (!playerMode && e.target === e.currentTarget) {
-          onSelectObject(null);
+          startStagePan(e);
         }
       }}
       className={`flex-1 relative flex items-center justify-center overflow-hidden ${
-        playerMode ? 'bg-slate-950' : 'bg-slate-100 studio-dot-grid'
+        playerMode
+          ? 'bg-slate-950'
+          : isPanningStage
+            ? 'bg-slate-100 studio-dot-grid cursor-grabbing'
+            : 'bg-slate-100 studio-dot-grid cursor-grab'
       }`}
     >
-      {/* Top Floating Scene Status & Stage Controls */}
+      {/* Top Floating Scene Status Badge */}
       {!playerMode && (
-      <div className="absolute top-2.5 inset-x-4 flex items-center justify-between gap-2 z-20 pointer-events-none">
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-slate-200 shadow-xs text-[11px] text-slate-600 min-w-0 truncate">
-          <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse shrink-0" />
-          <span className="font-bold text-slate-800 shrink-0">{scene.name}</span>
-          <span className="shrink-0">• 16:9 Full HD</span>
-          {scene.transition.type !== 'none' && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold shrink-0">
-              <Wand2 className="w-2.5 h-2.5" />
-              Geçiş: {scene.transition.type.toUpperCase()} ({scene.transition.duration}s)
-            </span>
-          )}
-          {scene.camera?.enabled && (
-            <button
-              type="button"
-              onClick={() => onSelectCamera(selectedCameraMovementId)}
-              title="Kamera Çerçevesini ve Ayarlarını Düzenle"
-              className={`pointer-events-auto inline-flex items-center gap-1 px-1.5 py-0.5 rounded border font-semibold shrink-0 cursor-pointer transition-colors ${
-                isCameraSelected
-                  ? 'bg-orange-500 text-white border-orange-600'
-                  : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
-              }`}
-            >
-              <Video className="w-2.5 h-2.5" />
-              Kamera: %{Math.round(cameraState.scale * 100)} Zoom
-              {scene.camera.movements.length > 0 &&
-                ` • ${scene.camera.movements.length} Hareket`}
-            </button>
-          )}
-          {isPlaying && (
-            <span className="ml-1 px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-bold shrink-0">
-              CANLI OYNATILIYOR
-            </span>
-          )}
+        <div className="absolute top-2.5 left-4 flex items-center gap-2 z-20 pointer-events-none">
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-slate-200 shadow-xs text-[11px] text-slate-600 min-w-0 truncate">
+            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse shrink-0" />
+            <span className="font-bold text-slate-800 shrink-0">{scene.name}</span>
+            <span className="shrink-0">• 16:9 Full HD</span>
+            {scene.transition.type !== 'none' && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold shrink-0">
+                <Wand2 className="w-2.5 h-2.5" />
+                Geçiş: {scene.transition.type.toUpperCase()} ({scene.transition.duration}s)
+              </span>
+            )}
+            {scene.camera?.enabled && (
+              <button
+                type="button"
+                onClick={() => onSelectCamera(selectedCameraMovementId)}
+                title="Kamera Çerçevesini ve Ayarlarını Düzenle"
+                className={`pointer-events-auto inline-flex items-center gap-1 px-1.5 py-0.5 rounded border font-semibold shrink-0 cursor-pointer transition-colors ${
+                  isCameraSelected
+                    ? 'bg-orange-500 text-white border-orange-600'
+                    : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
+                }`}
+              >
+                <Video className="w-2.5 h-2.5" />
+                Kamera: %{Math.round(cameraState.scale * 100)} Zoom
+                {scene.camera.movements.length > 0 &&
+                  ` • ${scene.camera.movements.length} Hareket`}
+              </button>
+            )}
+            {isPlaying && (
+              <span className="ml-1 px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-bold shrink-0">
+                CANLI OYNATILIYOR
+              </span>
+            )}
+          </div>
         </div>
+      )}
 
+      {/* Draggable Floating Stage Toolbar (Default: Bottom-Right of Stage Viewport) */}
+      {!playerMode && (
         <div
+          ref={floatingToolbarRef}
           data-testid="stage-top-toolbar"
-          className="pointer-events-auto flex items-center gap-1 bg-white/95 backdrop-blur-md px-1.5 py-0.5 rounded-xl border border-slate-200 shadow-xs shrink-0"
+          onMouseDown={startFloatingToolbarDrag}
+          style={
+            toolbarPos
+              ? { left: `${toolbarPos.x}px`, top: `${toolbarPos.y}px` }
+              : { right: '16px', bottom: '12px' }
+          }
+          title="Araç çubuğunu sürükleyerek istediğiniz yere taşıyabilirsiniz"
+          className="absolute z-30 pointer-events-auto flex items-center gap-1 bg-white/95 backdrop-blur-md px-1.5 py-1 rounded-xl border border-slate-200 shadow-lg shrink-0 cursor-move select-none"
         >
+          <span
+            className="px-0.5 text-slate-400 hover:text-slate-600 cursor-move"
+            title="Tut ve Sürükle"
+          >
+            <GripVertical className="w-3.5 h-3.5" />
+          </span>
+
           <button
             type="button"
             onClick={onUndo}
@@ -946,7 +1039,7 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
 
           <button
             type="button"
-            onClick={() => onZoomChange?.(Math.max(60, zoom - 10))}
+            onClick={() => onZoomChange?.(Math.max(35, zoom - 10))}
             title="Uzaklaştır"
             className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
           >
@@ -954,15 +1047,18 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => onZoomChange?.(100)}
-            title="Yakınlaştırmayı Sıfırla (%100)"
+            onClick={() => {
+              onZoomChange?.(100);
+              setStagePan({ x: 0, y: 0 });
+            }}
+            title="Yakınlaştırmayı ve Kaydırmayı Sıfırla (%100)"
             className="px-2 py-1 text-[11px] font-mono font-semibold text-slate-700 hover:bg-slate-100 rounded-md min-w-[46px] text-center cursor-pointer"
           >
             %{zoom}
           </button>
           <button
             type="button"
-            onClick={() => onZoomChange?.(Math.min(140, zoom + 10))}
+            onClick={() => onZoomChange?.(Math.min(250, zoom + 10))}
             title="Yakınlaştır"
             className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
           >
@@ -1036,7 +1132,6 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
             </>
           )}
         </div>
-      </div>
       )}
 
       {/* 16:9 Aspect Ratio Active Canvas */}
@@ -1047,12 +1142,14 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
         onDrop={playerMode ? undefined : handleDrop}
         onMouseDown={(e) => {
           if (!playerMode && e.target === e.currentTarget) {
-            onSelectObject(null);
+            startStagePan(e);
           }
         }}
         style={{
           width: `${fitStageWidth}px`,
-          transform: `scale(${zoom / 100})`,
+          transform: playerMode
+            ? `scale(${zoom / 100})`
+            : `translate(${stagePan.x}px, ${stagePan.y}px) scale(${zoom / 100})`,
           transformOrigin: 'center center',
         }}
         className={`aspect-video bg-slate-900 shadow-xl rounded-xl relative overflow-hidden transition-shadow ${
@@ -1117,6 +1214,10 @@ export const CenterCanvas: React.FC<CenterCanvasProps> = ({
               if (e.target !== e.currentTarget) return;
               if (isPlaying || e.button !== 0) {
                 onSelectObject(null);
+                return;
+              }
+              if (!e.shiftKey) {
+                startStagePan(e);
                 return;
               }
               const rect = stageContainerRef.current?.getBoundingClientRect();

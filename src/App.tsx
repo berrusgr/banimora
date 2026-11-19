@@ -39,6 +39,7 @@ import { BottomTimeline } from './components/BottomTimeline';
 import { ExportModal } from './components/ExportModal';
 import { AuthModal, type AuthModalTab } from './components/AuthModal';
 import { LandingPage } from './components/LandingPage';
+import { DashboardPage } from './components/DashboardPage';
 import { ProjectsModal } from './components/ProjectsModal';
 import { ProjectConflictDialog } from './components/ProjectConflictDialog';
 import { WatchShareModal } from './components/WatchShareModal';
@@ -94,6 +95,7 @@ import {
 import {
   buildUrlForEntryIntent,
   parseEntryRouteIntent,
+  parseStudioProjectId,
   resolveAppEntryState,
   type EntryRouteIntent,
 } from './utils/entryRouting';
@@ -251,14 +253,17 @@ export function App() {
     [routeIntent, isAuthenticated, isAuthLoading, isRecoveryMode]
   );
   const isDemoMode = entryState.isDemoMode;
-  const navigateEntryIntent = useCallback((nextIntent: EntryRouteIntent) => {
-    setRouteIntent(nextIntent);
-    const nextUrl = buildUrlForEntryIntent(nextIntent);
-    const currentUrl = `${window.location.pathname}${window.location.search}`;
-    if (currentUrl !== nextUrl) {
-      window.history.pushState({}, '', nextUrl);
-    }
-  }, []);
+  const navigateEntryIntent = useCallback(
+    (nextIntent: EntryRouteIntent, targetProjectId?: string) => {
+      setRouteIntent(nextIntent);
+      const nextUrl = buildUrlForEntryIntent(nextIntent, targetProjectId);
+      const currentUrl = `${window.location.pathname}${window.location.search}`;
+      if (currentUrl !== nextUrl) {
+        window.history.pushState({}, '', nextUrl);
+      }
+    },
+    []
+  );
   const [recoveredAutoSave, setRecoveredAutoSave] = useState<BanimoraProjectFile | null>(null);
   const [educationalMetadata, setEducationalMetadata] =
     useState<ProjectEducationalMetadata>({ mode: 'classic' });
@@ -1704,6 +1709,13 @@ export function App() {
   }, []);
 
   const handleSaveProjectJson = useCallback(() => {
+    if (isDemoMode) {
+      showProjectNotice(
+        'error',
+        'Demo modunda proje indirilemez. Kendi projelerinizi kaydetmek için giriş yapın.'
+      );
+      return;
+    }
     downloadProjectJson({
       projectName,
       activeSceneId,
@@ -1719,6 +1731,7 @@ export function App() {
       educationalMetadata,
     });
   }, [
+    isDemoMode,
     projectName,
     activeSceneId,
     scenes,
@@ -1731,6 +1744,7 @@ export function App() {
     loopPlayback,
     projectFps,
     educationalMetadata,
+    showProjectNotice,
   ]);
 
   const resetToFreshProject = useCallback(
@@ -1755,6 +1769,7 @@ export function App() {
       currentAssetManifestRef.current = undefined;
       setActiveProjectId(currentProjectIdRef.current);
       setActiveSyncState('local-only');
+      hasUnsavedChangesRef.current = true;
     },
     []
   );
@@ -1826,19 +1841,17 @@ export function App() {
     prevAuthRef.current = isAuthenticated;
 
     if (prev === false && isAuthenticated) {
-      // Başarılı giriş veya kayıt sonrası demo/landing verisini temizleyip üretim türü seçimine geç
+      // Başarılı giriş veya kayıt sonrası doğrudan Dashboard proje yönetim ekranına yönlendir
       setIsAuthModalOpen(false);
-      navigateEntryIntent('studio');
-      resetToFreshProject('Yeni Proje', { mode: 'classic' });
-      setModeSelectorCanDismiss(false);
-      setIsModeSelectorOpen(true);
+      setIsModeSelectorOpen(false);
+      navigateEntryIntent('dashboard');
     } else if (prev === true && !isAuthenticated) {
       // Çıkış yapıldığında karşılama ekranına dön
       setIsProjectsModalOpen(false);
       setConflictDialogState(null);
       navigateEntryIntent('landing');
     }
-  }, [isAuthLoading, isAuthenticated, navigateEntryIntent, resetToFreshProject]);
+  }, [isAuthLoading, isAuthenticated, navigateEntryIntent]);
 
   const handleOpenNewProjectSelector = useCallback(() => {
     setModeSelectorCanDismiss(true);
@@ -2004,20 +2017,34 @@ export function App() {
   );
 
   const applyLoadedProject = useCallback((loaded: BanimoraProjectFile) => {
+    const safeScenes =
+      Array.isArray(loaded.scenes) && loaded.scenes.length > 0
+        ? loaded.scenes
+        : INITIAL_SCENES;
+    const firstSceneId = safeScenes[0].id;
     setIsPlaying(false);
     setCurrentTime(0);
-    setProjectName(loaded.projectName);
-    setHistory([loaded.scenes]);
+    setProjectName(loaded.projectName || 'Yeni Proje');
+    setHistory([safeScenes]);
     setHistoryIndex(0);
-    setActiveSceneId(loaded.activeSceneId);
+    setActiveSceneId(firstSceneId);
     setSelectedObjectId(null);
+    setSelectedObjectIds([]);
     setSelectedPartId(null);
     setIsCameraSelected(false);
     setSelectedCameraMovementId(null);
-    setCustomCharacters(loaded.customCharacters);
-    setUploadedObjects(loaded.uploadedObjects);
-    setCustomBackgrounds(loaded.customBackgrounds);
-    setCustomAudioClips(loaded.customAudioClips);
+    setCustomCharacters(
+      Array.isArray(loaded.customCharacters) ? loaded.customCharacters : []
+    );
+    setUploadedObjects(
+      Array.isArray(loaded.uploadedObjects) ? loaded.uploadedObjects : []
+    );
+    setCustomBackgrounds(
+      Array.isArray(loaded.customBackgrounds) ? loaded.customBackgrounds : []
+    );
+    setCustomAudioClips(
+      Array.isArray(loaded.customAudioClips) ? loaded.customAudioClips : []
+    );
     setEducationalMetadata(
       normalizeProjectEducationalMetadata(loaded.educationalMetadata)
     );
@@ -2061,6 +2088,7 @@ export function App() {
       unsubscribe();
       repo.close();
       projectRepoRef.current = null;
+      syncCoordinatorRef.current = null;
     };
   }, [entryState.canAccessStudio, getProjectRepository, isDemoMode]);
 
@@ -2069,7 +2097,7 @@ export function App() {
       isInitialAutoSaveMountRef.current = false;
       return;
     }
-    if (isDemoMode || !entryState.canAccessStudio) return;
+    if (isDemoMode || entryState.view !== 'studio') return;
     hasUnsavedChangesRef.current = true;
     setActiveSyncState((prev) => (prev === 'synced' ? 'dirty' : prev));
     // Keep existing recovery snapshot intact until user either restores or discards it.
@@ -2200,7 +2228,25 @@ export function App() {
     setIsProjectsLoading(true);
     setProjectModalError(null);
     try {
-      const result = await getSyncCoordinator().listCombinedProjects();
+      const coordinator = getSyncCoordinator();
+      let result = await coordinator.listCombinedProjects();
+
+      if (isAuthenticated && result.cloudAvailable) {
+        const conflictedEntries = result.projects.filter(
+          (entry) => entry.syncState === 'conflict'
+        );
+        if (conflictedEntries.length > 0) {
+          for (const conflictEntry of conflictedEntries) {
+            try {
+              await coordinator.resolveConflictKeepLocal(conflictEntry.projectId);
+            } catch {
+              // Bireysel proje kaydı başarısız olursa diğer çakışmaları kaydetmeye devam et
+            }
+          }
+          result = await coordinator.listCombinedProjects();
+        }
+      }
+
       setCombinedProjects(result.projects);
       setCloudAvailable(result.cloudAvailable);
       if (result.cloudError && isAuthenticated && result.cloudError.code !== 'AUTH_REQUIRED') {
@@ -2211,14 +2257,25 @@ export function App() {
     } finally {
       setIsProjectsLoading(false);
     }
-  }, [getSyncCoordinator, isAuthenticated]);
+  }, [getSyncCoordinator, isAuthenticated, isDemoMode]);
 
   const openV2ProjectInStudio = useCallback(
     async (v2Project: BanimoraProjectFileV2, localRevisionOverride?: number) => {
       const repo = getProjectRepository();
-      const hydrated = await repo.hydrateProjectMedia(v2Project);
-      const localRev =
-        localRevisionOverride ?? (await repo.getLocalRevision(v2Project.projectId)) ?? 1;
+      let hydrated = v2Project;
+      try {
+        hydrated = await repo.hydrateProjectMedia(v2Project);
+      } catch {
+        hydrated = v2Project;
+      }
+      let localRev = localRevisionOverride ?? 1;
+      if (localRevisionOverride === undefined) {
+        try {
+          localRev = (await repo.getLocalRevision(v2Project.projectId)) ?? 1;
+        } catch {
+          localRev = 1;
+        }
+      }
 
       currentProjectIdRef.current = v2Project.projectId;
       currentProjectRevisionRef.current = localRev;
@@ -2337,22 +2394,9 @@ export function App() {
       setIsHeaderCloudSaving(true);
       setProjectModalError(null);
       try {
-        const result = await getSyncCoordinator().saveToCloud(projectId);
+        let result = await getSyncCoordinator().saveToCloud(projectId);
         if (result.status === 'conflict') {
-          if (projectId === currentProjectIdRef.current) {
-            setActiveSyncState('conflict');
-          }
-          setConflictDialogState({
-            isOpen: true,
-            projectId: result.project.projectId,
-            projectName: result.project.projectName,
-            localUpdatedAt: result.project.savedAt,
-            openAfterResolve: false,
-            isSubmitting: false,
-            errorMessage: null,
-          });
-          await refreshCombinedProjects();
-          return;
+          result = await getSyncCoordinator().resolveConflictKeepLocal(projectId);
         }
 
         const repo = getProjectRepository();
@@ -2371,14 +2415,14 @@ export function App() {
 
         showProjectNotice(
           'success',
-          `"${entryName ?? result.project.projectName}" buluta kaydedildi.`
+          `"${entryName ?? result.project.projectName}" kaydedildi.`
         );
-        if (isProjectsModalOpen) {
+        if (isProjectsModalOpen || entryState.view === 'dashboard') {
           await refreshCombinedProjects();
         }
       } catch (err) {
         const msg = formatCloudRepositoryErrorMessage(err);
-        if (isProjectsModalOpen) {
+        if (isProjectsModalOpen || entryState.view === 'dashboard') {
           setProjectModalError(msg);
         } else {
           showProjectNotice('error', msg);
@@ -2403,7 +2447,7 @@ export function App() {
     if (isDemoMode) {
       showProjectNotice(
         'error',
-        'Demo modunda buluta kayıt yapılamaz. Kendi projelerinizi kaydetmek için giriş yapın.'
+        'Demo modunda kayıt yapılamaz. Kendi projelerinizi kaydetmek için giriş yapın.'
       );
       return;
     }
@@ -2517,50 +2561,52 @@ export function App() {
     async (entry: CombinedProjectEntry) => {
       if (busyProjectId) return;
 
-      const switchCheck = evaluateProjectSwitchConfirmation({
-        currentProjectId: currentProjectIdRef.current,
-        currentProjectName: projectName,
-        currentSyncState: activeSyncState,
-        hasUnsavedLocalChanges: hasUnsavedChangesRef.current,
-        targetProjectId: entry.projectId,
-        targetProjectName: entry.projectName,
-      });
+      if (entryState.view === 'studio') {
+        const switchCheck = evaluateProjectSwitchConfirmation({
+          currentProjectId: currentProjectIdRef.current,
+          currentProjectName: projectName,
+          currentSyncState: activeSyncState,
+          hasUnsavedLocalChanges: hasUnsavedChangesRef.current,
+          targetProjectId: entry.projectId,
+          targetProjectName: entry.projectName,
+        });
 
-      if (switchCheck.requiresConfirmation && switchCheck.message) {
-        const confirmed = window.confirm(switchCheck.message);
-        if (!confirmed) return;
+        if (switchCheck.requiresConfirmation && switchCheck.message) {
+          const confirmed = window.confirm(switchCheck.message);
+          if (!confirmed) return;
+        }
       }
 
       setBusyProjectId(entry.projectId);
       setProjectModalError(null);
       try {
-        if (entry.syncState === 'cloud-only') {
-          const openRes = await getSyncCoordinator().openFromCloud(entry.projectId);
-          if (openRes.status === 'conflict') {
-            setConflictDialogState({
-              isOpen: true,
-              projectId: entry.projectId,
-              projectName: openRes.project.projectName,
-              cloudProjectName: openRes.cloudProject?.projectName,
-              localUpdatedAt: openRes.project.savedAt,
-              cloudUpdatedAt: openRes.cloudProject?.savedAt,
-              openAfterResolve: true,
-              isSubmitting: false,
-              errorMessage: null,
-            });
-            return;
+        let openedDoc: BanimoraProjectFileV2 | null = null;
+
+        if (entry.source === 'local' || entry.source === 'both') {
+          try {
+            openedDoc = await getProjectRepository().loadProject(entry.projectId);
+          } catch {
+            openedDoc = null;
           }
-          await openV2ProjectInStudio(openRes.project);
-        } else {
-          const localDoc = await getProjectRepository().loadProject(entry.projectId);
-          if (!localDoc) {
-            setProjectModalError('Proje yerel depoda bulunamadı.');
-            return;
-          }
-          await openV2ProjectInStudio(localDoc);
         }
 
+        if (!openedDoc) {
+          try {
+            const openRes = await getSyncCoordinator().openFromCloud(entry.projectId);
+            openedDoc = openRes.project;
+          } catch {
+            openedDoc = await getCloudRepository().loadProject(entry.projectId);
+          }
+        }
+
+        if (!openedDoc) {
+          throw new Error('Proje verisi yüklenemedi.');
+        }
+
+        await openV2ProjectInStudio(openedDoc);
+        studioUrlHydratedRef.current = entry.projectId;
         setIsProjectsModalOpen(false);
+        navigateEntryIntent('studio', entry.projectId);
         showProjectNotice('success', `"${entry.projectName}" açıldı.`);
       } catch (err) {
         setProjectModalError(formatCloudRepositoryErrorMessage(err));
@@ -2571,13 +2617,110 @@ export function App() {
     [
       activeSyncState,
       busyProjectId,
+      entryState.view,
+      getCloudRepository,
       getProjectRepository,
       getSyncCoordinator,
+      navigateEntryIntent,
       openV2ProjectInStudio,
       projectName,
       showProjectNotice,
     ]
   );
+
+  const handleCreateNewProjectFromDashboard = useCallback(() => {
+    resetToFreshProject('Yeni Proje', { mode: 'classic' });
+    setModeSelectorCanDismiss(false);
+    setIsModeSelectorOpen(true);
+    navigateEntryIntent('studio', currentProjectIdRef.current ?? undefined);
+  }, [navigateEntryIntent, resetToFreshProject]);
+
+  const handleReturnToDashboard = useCallback(async () => {
+    setIsPlaying(false);
+    if (!isDemoMode && isAuthenticated) {
+      try {
+        await ensureActiveProjectSavedLocally();
+      } catch {
+        // Auto-save error banner already surfaces local persistence errors if any
+      }
+    }
+    navigateEntryIntent('dashboard');
+    void refreshCombinedProjects();
+  }, [
+    ensureActiveProjectSavedLocally,
+    isAuthenticated,
+    isDemoMode,
+    navigateEntryIntent,
+    refreshCombinedProjects,
+  ]);
+
+  const handleSignOut = useCallback(async () => {
+    setIsPlaying(false);
+    setIsProjectsModalOpen(false);
+    setConflictDialogState(null);
+    await signOut();
+    navigateEntryIntent('landing');
+  }, [navigateEntryIntent, signOut]);
+
+  useEffect(() => {
+    if (entryState.view === 'dashboard' && isAuthenticated && !isDemoMode) {
+      void refreshCombinedProjects();
+    }
+  }, [entryState.view, isAuthenticated, isDemoMode, refreshCombinedProjects]);
+
+  const studioUrlHydratedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (entryState.view !== 'studio' || !isAuthenticated || isDemoMode) {
+      return;
+    }
+    const urlProjectId = parseStudioProjectId(
+      window.location.pathname,
+      window.location.search,
+      window.location.hash
+    );
+    const targetKey = urlProjectId ?? '__latest_local__';
+    if (
+      (urlProjectId && currentProjectIdRef.current === urlProjectId) ||
+      (!urlProjectId && currentProjectIdRef.current) ||
+      studioUrlHydratedRef.current === targetKey
+    ) {
+      return;
+    }
+    studioUrlHydratedRef.current = targetKey;
+
+    void (async () => {
+      try {
+        const repo = getProjectRepository();
+        if (urlProjectId) {
+          const localDoc = await repo.loadProject(urlProjectId);
+          if (localDoc) {
+            await openV2ProjectInStudio(localDoc);
+            return;
+          }
+          const openRes = await getSyncCoordinator().openFromCloud(urlProjectId);
+          await openV2ProjectInStudio(openRes.project);
+          return;
+        }
+        const localList = await repo.listProjects();
+        if (localList.length > 0) {
+          const mostRecent = localList[0];
+          const localDoc = await repo.loadProject(mostRecent.projectId);
+          if (localDoc) {
+            await openV2ProjectInStudio(localDoc);
+          }
+        }
+      } catch {
+        // Keep current studio state if requested project is not found
+      }
+    })();
+  }, [
+    entryState.view,
+    getProjectRepository,
+    getSyncCoordinator,
+    isAuthenticated,
+    isDemoMode,
+    openV2ProjectInStudio,
+  ]);
 
   const handleRenameProjectFromModal = useCallback(
     async (entry: CombinedProjectEntry, nextName: string) => {
@@ -2637,7 +2780,7 @@ export function App() {
         await refreshCombinedProjects();
         showProjectNotice(
           'success',
-          `"${entry.projectName}" bu cihazdan silindi.`
+          `"${entry.projectName}" projesi silindi.`
         );
       } catch (err) {
         setProjectModalError(formatCloudRepositoryErrorMessage(err));
@@ -2661,7 +2804,7 @@ export function App() {
         await refreshCombinedProjects();
         showProjectNotice(
           'success',
-          `"${entry.projectName}" buluttan silindi. Yerel kopyanız korundu.`
+          `"${entry.projectName}" projesi silindi.`
         );
       } catch (err) {
         setProjectModalError(formatCloudRepositoryErrorMessage(err));
@@ -2672,19 +2815,51 @@ export function App() {
     [busyProjectId, getSyncCoordinator, refreshCombinedProjects, showProjectNotice]
   );
 
+  const handleDeleteCompleteFromDashboard = useCallback(
+    async (entry: CombinedProjectEntry) => {
+      if (busyProjectId) return;
+      setBusyProjectId(entry.projectId);
+      setProjectModalError(null);
+      try {
+        if (entry.source === 'cloud' || entry.source === 'both') {
+          await getSyncCoordinator().deleteCloudProject(entry.projectId);
+        }
+        if (entry.source === 'local' || entry.source === 'both') {
+          await getProjectRepository().deleteProject(entry.projectId);
+        }
+        if (entry.projectId === currentProjectIdRef.current) {
+          currentProjectIdRef.current = null;
+          currentProjectRevisionRef.current = undefined;
+          currentProjectCreatedAtRef.current = undefined;
+          currentAssetManifestRef.current = undefined;
+          setActiveProjectId(null);
+          setActiveSyncState('local-only');
+        }
+        await refreshCombinedProjects();
+        showProjectNotice(
+          'success',
+          `"${entry.projectName}" projesi silindi.`
+        );
+      } catch (err) {
+        setProjectModalError(formatCloudRepositoryErrorMessage(err));
+      } finally {
+        setBusyProjectId(null);
+      }
+    },
+    [
+      busyProjectId,
+      getProjectRepository,
+      getSyncCoordinator,
+      refreshCombinedProjects,
+      showProjectNotice,
+    ]
+  );
+
   const handleResolveConflictFromModal = useCallback(
     (entry: CombinedProjectEntry) => {
-      setConflictDialogState({
-        isOpen: true,
-        projectId: entry.projectId,
-        projectName: entry.projectName,
-        localUpdatedAt: entry.updatedAt,
-        openAfterResolve: false,
-        isSubmitting: false,
-        errorMessage: null,
-      });
+      void handleSaveEntryToCloud(entry.projectId, entry.projectName);
     },
-    []
+    [handleSaveEntryToCloud]
   );
 
   const handleConflictKeepCloud = useCallback(async () => {
@@ -2702,6 +2877,9 @@ export function App() {
       ) {
         await openV2ProjectInStudio(resolved);
         setIsProjectsModalOpen(false);
+        if (conflictDialogState.openAfterResolve) {
+          navigateEntryIntent('studio', resolved.projectId);
+        }
       }
       setConflictDialogState(null);
       await refreshCombinedProjects();
@@ -2993,13 +3171,84 @@ export function App() {
       <AuthModal
           isOpen={isAuthModalOpen}
           initialTab={authModalTab}
+          onAuthSuccess={() => {
+            setIsAuthModalOpen(false);
+            setIsModeSelectorOpen(false);
+            navigateEntryIntent('dashboard');
+          }}
           onClose={() => {
             setIsAuthModalOpen(false);
-            if (!isAuthenticated) {
-              navigateEntryIntent('landing');
-            }
           }}
         />
+      </>
+    );
+  }
+
+  if (entryState.view === 'dashboard') {
+    return (
+      <>
+        <DashboardPage
+          userEmail={authUser?.email ?? null}
+          userDisplayName={
+            (authUser?.user_metadata?.display_name as string | undefined) ?? null
+          }
+          projects={combinedProjects}
+          activeProjectId={activeProjectId}
+          isLoading={isProjectsLoading}
+          cloudAvailable={cloudAvailable}
+          busyProjectId={busyProjectId}
+          errorMessage={projectModalError}
+          notice={
+            projectNotice
+              ? { type: projectNotice.type, message: projectNotice.text }
+              : null
+          }
+          onDismissError={() => setProjectModalError(null)}
+          onDismissNotice={() => setProjectNotice(null)}
+          onRefresh={() => {
+            void refreshCombinedProjects();
+          }}
+          onNewProject={handleCreateNewProjectFromDashboard}
+          onOpenProject={(entry) => {
+            void handleOpenProjectFromModal(entry);
+          }}
+          onSaveToCloud={(entry) => {
+            void handleSaveEntryToCloud(entry.projectId, entry.projectName);
+          }}
+          onRenameProject={handleRenameProjectFromModal}
+          onDeleteLocalProject={handleDeleteLocalFromModal}
+          onDeleteCloudProject={handleDeleteCloudFromModal}
+          onDeleteCompleteProject={handleDeleteCompleteFromDashboard}
+          onResolveConflict={handleResolveConflictFromModal}
+          onSignOut={() => {
+            void handleSignOut();
+          }}
+        />
+        {conflictDialogState?.isOpen && (
+          <ProjectConflictDialog
+            isOpen={conflictDialogState.isOpen}
+            projectName={conflictDialogState.projectName}
+            cloudProjectName={conflictDialogState.cloudProjectName}
+            localUpdatedAt={conflictDialogState.localUpdatedAt}
+            cloudUpdatedAt={conflictDialogState.cloudUpdatedAt}
+            isSubmitting={conflictDialogState.isSubmitting}
+            errorMessage={conflictDialogState.errorMessage}
+            onClose={() => {
+              if (!conflictDialogState.isSubmitting) {
+                setConflictDialogState(null);
+              }
+            }}
+            onKeepCloud={() => {
+              void handleConflictKeepCloud();
+            }}
+            onKeepLocal={() => {
+              void handleConflictKeepLocal();
+            }}
+            onSaveAsCopy={(copyName?: string) => {
+              void handleConflictSaveAsCopy(copyName);
+            }}
+          />
+        )}
       </>
     );
   }
@@ -3228,10 +3477,7 @@ export function App() {
               onClick={() => {
                 if (isAuthenticated) {
                   setIsAuthModalOpen(false);
-                  navigateEntryIntent('studio');
-                  resetToFreshProject('Yeni Proje', { mode: 'classic' });
-                  setModeSelectorCanDismiss(false);
-                  setIsModeSelectorOpen(true);
+                  navigateEntryIntent('dashboard');
                   return;
                 }
                 setAuthModalTab('signin');
@@ -3290,6 +3536,13 @@ export function App() {
         onChangeProjectMode={handleChangeProjectMode}
         onNewProject={handleOpenNewProjectSelector}
         onOpenProjects={isDemoMode ? undefined : handleOpenProjectsModal}
+        onBackToDashboard={
+          isDemoMode
+            ? undefined
+            : () => {
+                void handleReturnToDashboard();
+              }
+        }
         activeSyncState={activeSyncState}
         isAuthenticated={isDemoMode ? false : isAuthenticated}
         isCloudSaving={isHeaderCloudSaving}
@@ -3302,7 +3555,7 @@ export function App() {
           isDemoMode ? null : isAuthLoading ? null : isAuthenticated && authUser ? (
             <div className="flex items-center gap-1.5 pl-1">
               <span
-                className="hidden lg:inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[11px] font-medium text-slate-700 max-w-[140px] truncate"
+                className="hidden lg:inline-flex items-center px-2 py-1 rounded-lg bg-[#fdf6f4] border border-[#e06d53]/35 text-[11px] font-semibold text-[#e06d53] max-w-[140px] truncate"
                 title={authUser.email ?? 'Giriş yapıldı'}
               >
                 {(authUser.user_metadata?.display_name as string | undefined) ||
@@ -3312,7 +3565,7 @@ export function App() {
               <button
                 type="button"
                 onClick={() => {
-                  void signOut();
+                  void handleSignOut();
                 }}
                 className="px-2 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer whitespace-nowrap"
                 title="Hesaptan Çıkış Yap (Yerel projeleriniz korunur)"
@@ -3893,13 +4146,9 @@ export function App() {
         isOpen={isAuthModalOpen}
         initialTab={authModalTab}
         onAuthSuccess={() => {
-          if (isDemoMode) {
-            setIsAuthModalOpen(false);
-            navigateEntryIntent('studio');
-            resetToFreshProject('Yeni Proje', { mode: 'classic' });
-            setModeSelectorCanDismiss(false);
-            setIsModeSelectorOpen(true);
-          }
+          setIsAuthModalOpen(false);
+          setIsModeSelectorOpen(false);
+          navigateEntryIntent('dashboard');
         }}
         onClose={() => {
           setIsAuthModalOpen(false);

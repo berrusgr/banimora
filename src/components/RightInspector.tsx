@@ -23,8 +23,7 @@ import {
   Route,
   FastForward,
   Volume2,
-  PanelRightClose,
-  PanelRightOpen,
+  ChevronLeft,
   Video,
   Plus,
   Crosshair,
@@ -616,6 +615,23 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
     window.addEventListener('mouseup', onUp);
   };
 
+  const renderRightEdgeToggle = () =>
+    onToggleCollapsed ? (
+      <button
+        type="button"
+        onClick={onToggleCollapsed}
+        data-testid="toggle-right-panel-btn"
+        title={collapsed ? 'Sağ Paneli Aç' : 'Sağ Paneli Daralt'}
+        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full z-30 w-4 h-16 rounded-l-xl bg-white/95 hover:bg-indigo-50 border border-r-0 border-slate-200 hover:border-indigo-300 shadow-md flex items-center justify-center text-slate-500 hover:text-indigo-700 cursor-pointer transition-all"
+      >
+        {collapsed ? (
+          <ChevronLeft className="w-3.5 h-3.5" />
+        ) : (
+          <ChevronRight className="w-3.5 h-3.5" />
+        )}
+      </button>
+    ) : null;
+
   if (collapsed) {
     const collapsedLabel = !selectedObject
       ? isCameraSelected
@@ -625,22 +641,12 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
     return (
       <aside
         data-testid="right-inspector-collapsed"
-        className="w-10 border-l border-slate-200 bg-slate-50 flex flex-col items-center py-2.5 gap-3 shrink-0 select-none z-20"
+        className="w-10 border-l border-slate-200 bg-slate-50 flex flex-col items-center py-2.5 gap-3 shrink-0 select-none z-20 relative"
       >
-        {onToggleCollapsed && (
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            data-testid="toggle-right-panel-btn"
-            className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:text-indigo-700 hover:border-indigo-300 shadow-2xs cursor-pointer"
-            title="Sağ Paneli Aç"
-          >
-            <PanelRightOpen className="w-4 h-4" />
-          </button>
-        )}
+        {renderRightEdgeToggle()}
         <span
           style={{ writingMode: 'vertical-rl' }}
-          className="text-[10px] font-bold tracking-wider uppercase text-slate-500 rotate-180 truncate max-h-44"
+          className="text-[10px] font-bold tracking-wider uppercase text-slate-500 rotate-180 truncate max-h-44 mt-2"
         >
           {collapsedLabel}
         </span>
@@ -664,585 +670,577 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
       null;
 
     return (
-      <aside
-        data-testid="right-inspector-panel"
-        style={{ width: `${widthPx}px` }}
-        className="border-l border-slate-200 bg-white p-2.5 overflow-y-auto shrink-0 select-none z-20 space-y-2.5 relative"
-      >
-        {onChangeWidthPx && (
-          <div
-            onMouseDown={startRightResize}
-            title="Panel genişliğini sürükleyerek ayarla"
-            className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-indigo-400/50 transition-colors z-30"
-          />
-        )}
-        <input
-          ref={bgUploadInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/svg+xml"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-              onUploadBackgroundFile(file);
-              e.target.value = '';
-            }
-          }}
-          className="hidden"
-        />
-
-        {/* Scene Inspector Header */}
-        <div className="pb-2 border-b border-slate-200 flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <span className="text-[9.5px] uppercase tracking-wider font-bold text-indigo-600 flex items-center gap-1">
-              <Layers className="w-3 h-3 shrink-0" />
-              <span className="truncate">
-                {isCameraSelected
-                  ? 'KAMERA ARACI'
-                  : 'SAHNE & GEÇİŞ'}
-              </span>
-            </span>
-            <h2 className="text-xs font-bold text-slate-900 truncate mt-0.5">
-              {scene.name}
-            </h2>
-          </div>
-          {onToggleCollapsed && (
-            <button
-              type="button"
-              onClick={onToggleCollapsed}
-              data-testid="toggle-right-panel-btn"
-              className="p-1 rounded-md text-slate-400 hover:text-indigo-700 hover:bg-indigo-50 shrink-0 cursor-pointer"
-              title="Sağ Paneli Daralt"
-            >
-              <PanelRightClose className="w-4 h-4" />
-            </button>
+      <div className="relative flex shrink-0 z-20">
+        {renderRightEdgeToggle()}
+        <aside
+          data-testid="right-inspector-panel"
+          style={{ width: `${widthPx}px` }}
+          className="border-l border-slate-200 bg-white p-2.5 overflow-y-auto shrink-0 select-none z-20 space-y-2.5 relative"
+        >
+          {onChangeWidthPx && (
+            <div
+              onMouseDown={startRightResize}
+              title="Panel genişliğini sürükleyerek ayarla"
+              className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-indigo-400/50 transition-colors z-30"
+            />
           )}
-        </div>
+          <input
+            ref={bgUploadInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                onUploadBackgroundFile(file);
+                e.target.value = '';
+              }
+            }}
+            className="hidden"
+          />
 
-        {/* =================================================================
+          {/* Scene Inspector Header */}
+          <div className="pb-2 border-b border-slate-200 flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <span className="text-[9.5px] uppercase tracking-wider font-bold text-indigo-600 flex items-center gap-1">
+                <Layers className="w-3 h-3 shrink-0" />
+                <span className="truncate">
+                  {isCameraSelected
+                    ? 'KAMERA ARACI'
+                    : 'SAHNE & GEÇİŞ'}
+                </span>
+              </span>
+              <h2 className="text-xs font-bold text-slate-900 truncate mt-0.5">
+                {scene.name}
+              </h2>
+            </div>
+          </div>
+
+          {/* =================================================================
             CAMERA TOOL SECTION (ADD CAMERA, ADD CAMERA MOVEMENT, ZOOM & PAN)
            ================================================================= */}
-        {!scene.camera?.enabled ? (
-          <button
-            onClick={onAddOrSelectCamera}
-            className="w-full py-2.5 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm shadow-orange-500/20 transition-all cursor-pointer"
-          >
-            <Video className="w-4 h-4" />
-            <span>Kamera Ekle</span>
-          </button>
-        ) : (
-        <div className="p-3.5 rounded-xl bg-orange-50/80 border border-orange-200 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-orange-950 flex items-center gap-1.5">
-              <Video className="w-4 h-4 text-orange-600" />
-              Kamera Aracı (Zoom & Pan)
-            </span>
+          {!scene.camera?.enabled ? (
             <button
-              onClick={onRemoveCamera}
-              className="text-[10px] font-semibold text-rose-600 hover:underline cursor-pointer"
-              title="Sahnedeki kamerayı kaldır ve tam sahne görünümüne dön"
+              onClick={onAddOrSelectCamera}
+              className="w-full py-2.5 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm shadow-orange-500/20 transition-all cursor-pointer"
             >
-              Kamerayı Kaldır
+              <Video className="w-4 h-4" />
+              <span>Kamera Ekle</span>
             </button>
-          </div>
-
-          <div className="space-y-2.5">
-              {/* Add Camera Movement Button */}
-              <button
-                onClick={onAddCameraMovement}
-                className="w-full py-2 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-orange-500/20 transition-all cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Kamera Hareketi Ekle (Add Camera Movement)</span>
-              </button>
-
-              <button
-                onClick={onPreviewCamera}
-                className="w-full py-1.5 px-3 rounded-lg bg-white hover:bg-orange-100/70 text-orange-800 border border-orange-300 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Play className="w-3.5 h-3.5 fill-current text-orange-600" />
-                <span>Kamera Akışını Şimdi Önizle (Preview)</span>
-              </button>
-
-              {/* Quick Camera Movement Presets (Zoom In, Zoom Out, Pan Left->Right, Focus on Character) */}
-              <div>
-                <span className="text-[10.5px] font-bold text-orange-950 block mb-1.5">
-                  Hızlı Kamera Hareketi Şablonları
+          ) : (
+            <div className="p-3.5 rounded-xl bg-orange-50/80 border border-orange-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-orange-950 flex items-center gap-1.5">
+                  <Video className="w-4 h-4 text-orange-600" />
+                  Kamera Aracı (Zoom & Pan)
                 </span>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {[
-                    {
-                      label: '🔍 Merkeze Yakınlaş (Zoom In)',
-                      startRect: { x: 0, y: 0, width: 960, height: 540 },
-                      endRect: { x: 200, y: 95, width: 560, height: 315 },
-                      name: 'Merkeze Zoom In',
-                    },
-                    {
-                      label: '🖼️ Genel Plana Uzaklaş',
-                      startRect: { x: 200, y: 95, width: 560, height: 315 },
-                      endRect: { x: 0, y: 0, width: 960, height: 540 },
-                      name: 'Genel Plana Zoom Out',
-                    },
-                    {
-                      label: '➡️ Soldan Sağa Pan',
-                      startRect: { x: 20, y: 60, width: 640, height: 360 },
-                      endRect: { x: 300, y: 60, width: 640, height: 360 },
-                      name: 'Soldan Sağa Pan',
-                    },
-                    {
-                      label: '⬅️ Sağdan Sola Pan',
-                      startRect: { x: 300, y: 60, width: 640, height: 360 },
-                      endRect: { x: 20, y: 60, width: 640, height: 360 },
-                      name: 'Sağdan Sola Pan',
-                    },
-                  ].map((preset) => (
-                    <button
-                      key={preset.name}
-                      onClick={() => {
-                        const prevMovs = scene.camera?.movements || [];
-                        const lastMov = prevMovs[prevMovs.length - 1];
-                        const startT = lastMov
-                          ? Math.min(
-                            Math.max(0, scene.duration - 1),
-                            Number((lastMov.startTime + lastMov.duration).toFixed(1))
-                          )
-                          : 0;
-                        const newMov = {
-                          id: `cam-mov-${Date.now()}`,
-                          name: preset.name,
-                          startTime: startT,
-                          duration: Math.min(2.5, Math.max(0.8, scene.duration - startT)),
-                          startRect: preset.startRect,
-                          endRect: preset.endRect,
-                          easing: 'ease-in-out' as EasingType,
-                        };
-                        onUpdateSceneCamera(
-                          {
-                            ...scene.camera!,
-                            movements: [...prevMovs, newMov],
-                          },
-                          true
-                        );
-                        onSelectCamera(newMov.id);
-                      }}
-                      className="px-2 py-1.5 rounded-lg bg-white hover:bg-orange-100/70 border border-orange-200 text-[10px] font-semibold text-orange-950 text-left transition-colors cursor-pointer truncate"
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
+                <button
+                  onClick={onRemoveCamera}
+                  className="text-[10px] font-semibold text-rose-600 hover:underline cursor-pointer"
+                  title="Sahnedeki kamerayı kaldır ve tam sahne görünümüne dön"
+                >
+                  Kamerayı Kaldır
+                </button>
               </div>
 
-              {/* Focus on Scene Character / Object Quick Buttons */}
-              {scene.objects.length > 0 && (
+              <div className="space-y-2.5">
+                {/* Add Camera Movement Button */}
+                <button
+                  onClick={onAddCameraMovement}
+                  className="w-full py-2 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-orange-500/20 transition-all cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Kamera Hareketi Ekle (Add Camera Movement)</span>
+                </button>
+
+                <button
+                  onClick={onPreviewCamera}
+                  className="w-full py-1.5 px-3 rounded-lg bg-white hover:bg-orange-100/70 text-orange-800 border border-orange-300 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current text-orange-600" />
+                  <span>Kamera Akışını Şimdi Önizle (Preview)</span>
+                </button>
+
+                {/* Quick Camera Movement Presets (Zoom In, Zoom Out, Pan Left->Right, Focus on Character) */}
                 <div>
-                  <span className="text-[10.5px] font-bold text-orange-950 block mb-1">
-                    Karaktere / Nesneye Odaklan (Odak Yönetimi)
+                  <span className="text-[10.5px] font-bold text-orange-950 block mb-1.5">
+                    Hızlı Kamera Hareketi Şablonları
                   </span>
-                  <div className="flex flex-wrap gap-1">
-                    {scene.objects.slice(0, 4).map((obj) => (
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      {
+                        label: '🔍 Merkeze Yakınlaş (Zoom In)',
+                        startRect: { x: 0, y: 0, width: 960, height: 540 },
+                        endRect: { x: 200, y: 95, width: 560, height: 315 },
+                        name: 'Merkeze Zoom In',
+                      },
+                      {
+                        label: '🖼️ Genel Plana Uzaklaş',
+                        startRect: { x: 200, y: 95, width: 560, height: 315 },
+                        endRect: { x: 0, y: 0, width: 960, height: 540 },
+                        name: 'Genel Plana Zoom Out',
+                      },
+                      {
+                        label: '➡️ Soldan Sağa Pan',
+                        startRect: { x: 20, y: 60, width: 640, height: 360 },
+                        endRect: { x: 300, y: 60, width: 640, height: 360 },
+                        name: 'Soldan Sağa Pan',
+                      },
+                      {
+                        label: '⬅️ Sağdan Sola Pan',
+                        startRect: { x: 300, y: 60, width: 640, height: 360 },
+                        endRect: { x: 20, y: 60, width: 640, height: 360 },
+                        name: 'Sağdan Sola Pan',
+                      },
+                    ].map((preset) => (
                       <button
-                        key={obj.id}
-                        onClick={() => focusCameraOnObject(obj)}
-                        className="px-2 py-1 rounded-md bg-white hover:bg-orange-100 border border-orange-200 text-[10px] font-semibold text-orange-900 flex items-center gap-1 cursor-pointer"
-                        title={`${obj.name} üzerine kamerayı yakınlaştır`}
+                        key={preset.name}
+                        onClick={() => {
+                          const prevMovs = scene.camera?.movements || [];
+                          const lastMov = prevMovs[prevMovs.length - 1];
+                          const startT = lastMov
+                            ? Math.min(
+                              Math.max(0, scene.duration - 1),
+                              Number((lastMov.startTime + lastMov.duration).toFixed(1))
+                            )
+                            : 0;
+                          const newMov = {
+                            id: `cam-mov-${Date.now()}`,
+                            name: preset.name,
+                            startTime: startT,
+                            duration: Math.min(2.5, Math.max(0.8, scene.duration - startT)),
+                            startRect: preset.startRect,
+                            endRect: preset.endRect,
+                            easing: 'ease-in-out' as EasingType,
+                          };
+                          onUpdateSceneCamera(
+                            {
+                              ...scene.camera!,
+                              movements: [...prevMovs, newMov],
+                            },
+                            true
+                          );
+                          onSelectCamera(newMov.id);
+                        }}
+                        className="px-2 py-1.5 rounded-lg bg-white hover:bg-orange-100/70 border border-orange-200 text-[10px] font-semibold text-orange-950 text-left transition-colors cursor-pointer truncate"
                       >
-                        <Crosshair className="w-2.5 h-2.5 text-orange-600" />
-                        <span className="truncate max-w-[110px]">{obj.name}</span>
+                        {preset.label}
                       </button>
                     ))}
                   </div>
                 </div>
-              )}
 
-              {/* Active Camera Movements List & Timing Controls */}
-              {scene.camera.movements.length > 0 && (
-                <div className="pt-2 border-t border-orange-200/80 space-y-2">
-                  <span className="text-[10.5px] font-bold text-orange-950 block">
-                    Sahnedeki Kamera Hareketleri ({scene.camera.movements.length})
-                  </span>
-                  <div className="space-y-1.5">
-                    {scene.camera.movements.map((mov, idx) => {
-                      const isSel = activeMov?.id === mov.id;
-                      const z1 = Math.round((960 / mov.startRect.width) * 100);
-                      const z2 = Math.round((960 / mov.endRect.width) * 100);
-                      return (
-                        <div
-                          key={mov.id}
-                          onClick={() => onSelectCamera(mov.id)}
-                          className={`p-2 rounded-lg border text-xs cursor-pointer transition-all ${isSel
-                            ? 'bg-white border-orange-500 ring-1 ring-orange-500 shadow-2xs'
-                            : 'bg-white/70 hover:bg-white border-orange-200'
-                            }`}
+                {/* Focus on Scene Character / Object Quick Buttons */}
+                {scene.objects.length > 0 && (
+                  <div>
+                    <span className="text-[10.5px] font-bold text-orange-950 block mb-1">
+                      Karaktere / Nesneye Odaklan (Odak Yönetimi)
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {scene.objects.slice(0, 4).map((obj) => (
+                        <button
+                          key={obj.id}
+                          onClick={() => focusCameraOnObject(obj)}
+                          className="px-2 py-1 rounded-md bg-white hover:bg-orange-100 border border-orange-200 text-[10px] font-semibold text-orange-900 flex items-center gap-1 cursor-pointer"
+                          title={`${obj.name} üzerine kamerayı yakınlaştır`}
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-900 text-[11px]">
-                              {idx + 1}. {mov.name}
-                            </span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
+                          <Crosshair className="w-2.5 h-2.5 text-orange-600" />
+                          <span className="truncate max-w-[110px]">{obj.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Active Camera Movements List & Timing Controls */}
+                {scene.camera.movements.length > 0 && (
+                  <div className="pt-2 border-t border-orange-200/80 space-y-2">
+                    <span className="text-[10.5px] font-bold text-orange-950 block">
+                      Sahnedeki Kamera Hareketleri ({scene.camera.movements.length})
+                    </span>
+                    <div className="space-y-1.5">
+                      {scene.camera.movements.map((mov, idx) => {
+                        const isSel = activeMov?.id === mov.id;
+                        const z1 = Math.round((960 / mov.startRect.width) * 100);
+                        const z2 = Math.round((960 / mov.endRect.width) * 100);
+                        return (
+                          <div
+                            key={mov.id}
+                            onClick={() => onSelectCamera(mov.id)}
+                            className={`p-2 rounded-lg border text-xs cursor-pointer transition-all ${isSel
+                              ? 'bg-white border-orange-500 ring-1 ring-orange-500 shadow-2xs'
+                              : 'bg-white/70 hover:bg-white border-orange-200'
+                              }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-900 text-[11px]">
+                                {idx + 1}. {mov.name}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onUpdateSceneCamera(
+                                    {
+                                      ...scene.camera!,
+                                      movements: scene.camera!.movements.filter(
+                                        (m) => m.id !== mov.id
+                                      ),
+                                    },
+                                    true
+                                  );
+                                }}
+                                className="text-slate-400 hover:text-rose-600 p-0.5 cursor-pointer"
+                                title="Kamera Hareketini Sil"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <div className="text-[10px] text-orange-800 font-mono mt-0.5">
+                              Zoom: %{z1} ➔ %{z2} • {mov.startTime.toFixed(1)}sn –{' '}
+                              {(mov.startTime + mov.duration).toFixed(1)}sn
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Selected Camera Movement Timing & Audio Sync Controls */}
+                    {activeMov && (
+                      <div className="p-2.5 rounded-lg bg-white border border-orange-200 space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <label className="bg-orange-50/60 border border-orange-200 rounded-md px-2 py-1 flex items-center justify-between">
+                            <span className="text-[10px] text-orange-900">Başlangıç</span>
+                            <input
+                              type="number"
+                              step={0.2}
+                              min={0}
+                              max={Math.max(0, scene.duration - 0.5)}
+                              value={activeMov.startTime}
+                              onChange={(e) => {
+                                const nextStart = Math.max(
+                                  0,
+                                  Math.min(scene.duration - 0.5, Number(e.target.value))
+                                );
                                 onUpdateSceneCamera(
                                   {
                                     ...scene.camera!,
-                                    movements: scene.camera!.movements.filter(
-                                      (m) => m.id !== mov.id
+                                    movements: scene.camera!.movements.map((m) =>
+                                      m.id === activeMov.id
+                                        ? { ...m, startTime: nextStart }
+                                        : m
                                     ),
                                   },
                                   true
                                 );
                               }}
-                              className="text-slate-400 hover:text-rose-600 p-0.5 cursor-pointer"
-                              title="Kamera Hareketini Sil"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                          <div className="text-[10px] text-orange-800 font-mono mt-0.5">
-                            Zoom: %{z1} ➔ %{z2} • {mov.startTime.toFixed(1)}sn –{' '}
-                            {(mov.startTime + mov.duration).toFixed(1)}sn
-                          </div>
+                              className="w-12 bg-transparent text-right text-xs font-mono font-bold text-slate-900 focus:outline-none"
+                            />
+                          </label>
+                          <label className="bg-orange-50/60 border border-orange-200 rounded-md px-2 py-1 flex items-center justify-between">
+                            <span className="text-[10px] text-orange-900">Süre (Hız)</span>
+                            <input
+                              type="number"
+                              step={0.2}
+                              min={0.5}
+                              max={scene.duration}
+                              value={activeMov.duration}
+                              onChange={(e) => {
+                                const nextDur = Math.max(
+                                  0.5,
+                                  Math.min(
+                                    scene.duration - activeMov.startTime,
+                                    Number(e.target.value)
+                                  )
+                                );
+                                onUpdateSceneCamera(
+                                  {
+                                    ...scene.camera!,
+                                    movements: scene.camera!.movements.map((m) =>
+                                      m.id === activeMov.id
+                                        ? { ...m, duration: nextDur }
+                                        : m
+                                    ),
+                                  },
+                                  true
+                                );
+                              }}
+                              className="w-12 bg-transparent text-right text-xs font-mono font-bold text-slate-900 focus:outline-none"
+                            />
+                          </label>
                         </div>
-                      );
-                    })}
-                  </div>
 
-                  {/* Selected Camera Movement Timing & Audio Sync Controls */}
-                  {activeMov && (
-                    <div className="p-2.5 rounded-lg bg-white border border-orange-200 space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        <label className="bg-orange-50/60 border border-orange-200 rounded-md px-2 py-1 flex items-center justify-between">
-                          <span className="text-[10px] text-orange-900">Başlangıç</span>
-                          <input
-                            type="number"
-                            step={0.2}
-                            min={0}
-                            max={Math.max(0, scene.duration - 0.5)}
-                            value={activeMov.startTime}
-                            onChange={(e) => {
-                              const nextStart = Math.max(
-                                0,
-                                Math.min(scene.duration - 0.5, Number(e.target.value))
-                              );
+                        {/* Sync Camera Start with Audio Track Start */}
+                        {scene.audioClips.length > 0 && (
+                          <button
+                            onClick={() => {
+                              const firstAudio = scene.audioClips[0];
                               onUpdateSceneCamera(
                                 {
                                   ...scene.camera!,
                                   movements: scene.camera!.movements.map((m) =>
                                     m.id === activeMov.id
-                                      ? { ...m, startTime: nextStart }
+                                      ? { ...m, startTime: firstAudio.startTime }
                                       : m
                                   ),
                                 },
                                 true
                               );
                             }}
-                            className="w-12 bg-transparent text-right text-xs font-mono font-bold text-slate-900 focus:outline-none"
-                          />
-                        </label>
-                        <label className="bg-orange-50/60 border border-orange-200 rounded-md px-2 py-1 flex items-center justify-between">
-                          <span className="text-[10px] text-orange-900">Süre (Hız)</span>
-                          <input
-                            type="number"
-                            step={0.2}
-                            min={0.5}
-                            max={scene.duration}
-                            value={activeMov.duration}
-                            onChange={(e) => {
-                              const nextDur = Math.max(
-                                0.5,
-                                Math.min(
-                                  scene.duration - activeMov.startTime,
-                                  Number(e.target.value)
-                                )
-                              );
-                              onUpdateSceneCamera(
-                                {
-                                  ...scene.camera!,
-                                  movements: scene.camera!.movements.map((m) =>
-                                    m.id === activeMov.id
-                                      ? { ...m, duration: nextDur }
-                                      : m
-                                  ),
-                                },
-                                true
-                              );
-                            }}
-                            className="w-12 bg-transparent text-right text-xs font-mono font-bold text-slate-900 focus:outline-none"
-                          />
-                        </label>
+                            className="w-full py-1 px-2 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
+                            title="Kamera hareketinin başlangıcını zaman çizelgesindeki ses dalgalarının başladığı noktayla hizalar"
+                          >
+                            <Volume2 className="w-3 h-3 text-emerald-600" />
+                            <span>Ses Dalgalarının Başlangıcıyla Hizala</span>
+                          </button>
+                        )}
                       </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
-                      {/* Sync Camera Start with Audio Track Start */}
-                      {scene.audioClips.length > 0 && (
-                        <button
-                          onClick={() => {
-                            const firstAudio = scene.audioClips[0];
-                            onUpdateSceneCamera(
-                              {
-                                ...scene.camera!,
-                                movements: scene.camera!.movements.map((m) =>
-                                  m.id === activeMov.id
-                                    ? { ...m, startTime: firstAudio.startTime }
-                                    : m
-                                ),
-                              },
-                              true
-                            );
-                          }}
-                          className="w-full py-1 px-2 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
-                          title="Kamera hareketinin başlangıcını zaman çizelgesindeki ses dalgalarının başladığı noktayla hizalar"
-                        >
-                          <Volume2 className="w-3 h-3 text-emerald-600" />
-                          <span>Ses Dalgalarının Başlangıcıyla Hizala</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
+          {/* Scene Name & Duration (Up to 10 Minutes / 600s) */}
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+            <div>
+              <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                Sahne Başlığı
+              </label>
+              <input
+                type="text"
+                value={scene.name}
+                onChange={(e) => onUpdateScene({ name: e.target.value })}
+                className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:outline-none"
+              />
+            </div>
+
+            {/* Scene Duration Controls (Max 10 min total across scenes) */}
+            <div className="pt-2 border-t border-slate-200/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                  Sahne Süresi
+                </span>
+                <span className="text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
+                  {formatCompactDuration(scene.duration)} ({scene.duration} sn)
+                </span>
+              </div>
+
+              {/* Minutes + Seconds Inputs */}
+              <div className="grid grid-cols-2 gap-2">
+                <label className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-500">Dakika (dk)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={Math.floor(maxAllowedSceneDuration / 60)}
+                    value={curMins}
+                    onChange={(e) => {
+                      const m = Math.max(0, Number(e.target.value));
+                      onUpdateScene({
+                        duration: clampSceneDuration(m * 60 + curSecs),
+                      });
+                    }}
+                    className="w-12 bg-transparent text-right text-xs font-mono font-bold text-slate-900 focus:outline-none"
+                  />
+                </label>
+
+                <label className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-500">Saniye (sn)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={curSecs}
+                    onChange={(e) => {
+                      const s = Math.max(0, Math.min(59, Number(e.target.value)));
+                      onUpdateScene({
+                        duration: clampSceneDuration(curMins * 60 + s),
+                      });
+                    }}
+                    className="w-12 bg-transparent text-right text-xs font-mono font-bold text-slate-900 focus:outline-none"
+                  />
+                </label>
+              </div>
+
+              {/* Range Slider up to maxAllowedSceneDuration (up to 600s / 10 min) */}
+              <input
+                type="range"
+                min={1}
+                max={maxAllowedSceneDuration}
+                step={1}
+                value={scene.duration}
+                onChange={(e) =>
+                  onUpdateScene({
+                    duration: clampSceneDuration(Number(e.target.value)),
+                  })
+                }
+                className="w-full accent-indigo-600 cursor-pointer"
+              />
+
+              {/* Quick Duration Presets */}
+              <div className="grid grid-cols-5 gap-1">
+                {[
+                  { label: '10 sn', sec: 10 },
+                  { label: '30 sn', sec: 30 },
+                  { label: '1 dk', sec: 60 },
+                  { label: '5 dk', sec: 300 },
+                  { label: '10 dk', sec: 600 },
+                ].map((preset) => {
+                  const targetSec = Math.min(maxAllowedSceneDuration, preset.sec);
+                  const isDisabled = preset.sec > maxAllowedSceneDuration && preset.sec !== 600;
+                  const isCurrent = Math.round(scene.duration) === targetSec;
+                  return (
+                    <button
+                      key={preset.label}
+                      disabled={isDisabled}
+                      onClick={() => onUpdateScene({ duration: targetSec })}
+                      className={`py-1 rounded-md text-[10px] font-semibold border transition-colors cursor-pointer disabled:opacity-40 ${isCurrent
+                        ? 'bg-indigo-600 border-indigo-600 text-white'
+                        : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                        }`}
+                      title={
+                        preset.sec === 600 && maxAllowedSceneDuration < 600
+                          ? `Kalan maksimum sahne süresi: ${formatCompactDuration(
+                            maxAllowedSceneDuration
+                          )}`
+                          : `${preset.label} olarak ayarla`
+                      }
+                    >
+                      {preset.sec === 600 && maxAllowedSceneDuration < 600
+                        ? `Maks`
+                        : preset.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 10-Minute Total Video Capacity Info Box */}
+              <div className="p-2 rounded-lg bg-indigo-50/70 border border-indigo-100 text-[10px] text-slate-600 space-y-1">
+                <div className="flex items-center justify-between font-semibold text-slate-800">
+                  <span>Toplam Proje Süresi (Maks 10 Dk):</span>
+                  <span className="font-mono text-indigo-700">
+                    {formatCompactDuration(totalProjectDuration)} / 10:00
+                  </span>
                 </div>
-              )}
+                <p className="text-[10px] text-slate-500 leading-tight">
+                  Tek sahne 10 dk olabilir veya birden fazla sahnenin toplamı 10 dk (600 sn) olabilir. Kalan kullanılabilir süre:{' '}
+                  <strong className="text-slate-700">
+                    {formatCompactDuration(remainingTotalSec)}
+                  </strong>
+                </p>
+              </div>
             </div>
           </div>
-        )}
 
-        {/* Scene Name & Duration (Up to 10 Minutes / 600s) */}
-        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-          <div>
-            <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-              Sahne Başlığı
-            </label>
-            <input
-              type="text"
-              value={scene.name}
-              onChange={(e) => onUpdateScene({ name: e.target.value })}
-              className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:outline-none"
-            />
-          </div>
-
-          {/* Scene Duration Controls (Max 10 min total across scenes) */}
-          <div className="pt-2 border-t border-slate-200/80 space-y-2">
+          {/* SCENE TRANSITIONS SECTION (INCLUDING DISSOLVE!) */}
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-indigo-600" />
-                Sahne Süresi
+              <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <Wand2 className="w-3.5 h-3.5 text-indigo-600" />
+                Sahneler Arası Geçiş
               </span>
-              <span className="text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
-                {formatCompactDuration(scene.duration)} ({scene.duration} sn)
+              <span className="text-[10px] font-mono font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                {scene.transition.duration.toFixed(1)} sn
               </span>
             </div>
 
-            {/* Minutes + Seconds Inputs */}
-            <div className="grid grid-cols-2 gap-2">
-              <label className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex items-center justify-between">
-                <span className="text-[11px] text-slate-500">Dakika (dk)</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={Math.floor(maxAllowedSceneDuration / 60)}
-                  value={curMins}
-                  onChange={(e) => {
-                    const m = Math.max(0, Number(e.target.value));
-                    onUpdateScene({
-                      duration: clampSceneDuration(m * 60 + curSecs),
-                    });
-                  }}
-                  className="w-12 bg-transparent text-right text-xs font-mono font-bold text-slate-900 focus:outline-none"
-                />
-              </label>
+            {/* Preview Transition Button */}
+            <button
+              onClick={onTriggerTransitionPreview}
+              className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Geçiş Efektini Şimdi Önizle</span>
+            </button>
 
-              <label className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex items-center justify-between">
-                <span className="text-[11px] text-slate-500">Saniye (sn)</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={59}
-                  value={curSecs}
-                  onChange={(e) => {
-                    const s = Math.max(0, Math.min(59, Number(e.target.value)));
-                    onUpdateScene({
-                      duration: clampSceneDuration(curMins * 60 + s),
-                    });
-                  }}
-                  className="w-12 bg-transparent text-right text-xs font-mono font-bold text-slate-900 focus:outline-none"
-                />
-              </label>
-            </div>
-
-            {/* Range Slider up to maxAllowedSceneDuration (up to 600s / 10 min) */}
-            <input
-              type="range"
-              min={1}
-              max={maxAllowedSceneDuration}
-              step={1}
-              value={scene.duration}
-              onChange={(e) =>
-                onUpdateScene({
-                  duration: clampSceneDuration(Number(e.target.value)),
-                })
-              }
-              className="w-full accent-indigo-600 cursor-pointer"
-            />
-
-            {/* Quick Duration Presets */}
-            <div className="grid grid-cols-5 gap-1">
-              {[
-                { label: '10 sn', sec: 10 },
-                { label: '30 sn', sec: 30 },
-                { label: '1 dk', sec: 60 },
-                { label: '5 dk', sec: 300 },
-                { label: '10 dk', sec: 600 },
-              ].map((preset) => {
-                const targetSec = Math.min(maxAllowedSceneDuration, preset.sec);
-                const isDisabled = preset.sec > maxAllowedSceneDuration && preset.sec !== 600;
-                const isCurrent = Math.round(scene.duration) === targetSec;
+            {/* Transition Type Cards */}
+            <div className="space-y-1.5">
+              {SCENE_TRANSITION_OPTIONS.map((opt) => {
+                const isSelected = scene.transition.type === opt.id;
                 return (
                   <button
-                    key={preset.label}
-                    disabled={isDisabled}
-                    onClick={() => onUpdateScene({ duration: targetSec })}
-                    className={`py-1 rounded-md text-[10px] font-semibold border transition-colors cursor-pointer disabled:opacity-40 ${isCurrent
-                      ? 'bg-indigo-600 border-indigo-600 text-white'
-                      : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                    key={opt.id}
+                    onClick={() => {
+                      onUpdateSceneTransition({
+                        ...scene.transition,
+                        type: opt.id,
+                      });
+                      setTimeout(() => onTriggerTransitionPreview(), 30);
+                    }}
+                    className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer ${isSelected
+                      ? 'bg-indigo-50/90 border-indigo-500 ring-1 ring-indigo-500 shadow-2xs'
+                      : 'bg-white hover:bg-slate-100/70 border-slate-200'
                       }`}
-                    title={
-                      preset.sec === 600 && maxAllowedSceneDuration < 600
-                        ? `Kalan maksimum sahne süresi: ${formatCompactDuration(
-                          maxAllowedSceneDuration
-                        )}`
-                        : `${preset.label} olarak ayarla`
-                    }
                   >
-                    {preset.sec === 600 && maxAllowedSceneDuration < 600
-                      ? `Maks`
-                      : preset.label}
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`text-xs font-bold ${isSelected ? 'text-indigo-950' : 'text-slate-800'
+                          }`}
+                      >
+                        {opt.label}
+                      </span>
+                      {opt.badge && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-600 text-white">
+                          {opt.badge}
+                        </span>
+                      )}
+                    </div>
                   </button>
                 );
               })}
             </div>
 
-            {/* 10-Minute Total Video Capacity Info Box */}
-            <div className="p-2 rounded-lg bg-indigo-50/70 border border-indigo-100 text-[10px] text-slate-600 space-y-1">
-              <div className="flex items-center justify-between font-semibold text-slate-800">
-                <span>Toplam Proje Süresi (Maks 10 Dk):</span>
-                <span className="font-mono text-indigo-700">
-                  {formatCompactDuration(totalProjectDuration)} / 10:00
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-500 leading-tight">
-                Tek sahne 10 dk olabilir veya birden fazla sahnenin toplamı 10 dk (600 sn) olabilir. Kalan kullanılabilir süre:{' '}
-                <strong className="text-slate-700">
-                  {formatCompactDuration(remainingTotalSec)}
-                </strong>
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* SCENE TRANSITIONS SECTION (INCLUDING DISSOLVE!) */}
-        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <Wand2 className="w-3.5 h-3.5 text-indigo-600" />
-              Sahneler Arası Geçiş
-            </span>
-            <span className="text-[10px] font-mono font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-              {scene.transition.duration.toFixed(1)} sn
-            </span>
-          </div>
-
-          {/* Preview Transition Button */}
-          <button
-            onClick={onTriggerTransitionPreview}
-            className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Geçiş Efektini Şimdi Önizle</span>
-          </button>
-
-          {/* Transition Type Cards */}
-          <div className="space-y-1.5">
-            {SCENE_TRANSITION_OPTIONS.map((opt) => {
-              const isSelected = scene.transition.type === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  onClick={() => {
-                    onUpdateSceneTransition({
-                      ...scene.transition,
-                      type: opt.id,
-                    });
-                    setTimeout(() => onTriggerTransitionPreview(), 30);
-                  }}
-                  className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer ${isSelected
-                    ? 'bg-indigo-50/90 border-indigo-500 ring-1 ring-indigo-500 shadow-2xs'
-                    : 'bg-white hover:bg-slate-100/70 border-slate-200'
-                    }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-xs font-bold ${isSelected ? 'text-indigo-950' : 'text-slate-800'
-                        }`}
-                    >
-                      {opt.label}
+            {/* Transition Duration Slider */}
+            {scene.transition.type !== 'none' && (
+              <div className="pt-2 border-t border-slate-200 space-y-2.5">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-600 font-medium">
+                      Geçiş Süresi (Duration)
                     </span>
-                    {opt.badge && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-600 text-white">
-                        {opt.badge}
-                      </span>
-                    )}
+                    <span className="font-mono font-semibold text-slate-900">
+                      {scene.transition.duration.toFixed(1)} sn
+                    </span>
                   </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Transition Duration Slider */}
-          {scene.transition.type !== 'none' && (
-            <div className="pt-2 border-t border-slate-200 space-y-2.5">
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-600 font-medium">
-                    Geçiş Süresi (Duration)
-                  </span>
-                  <span className="font-mono font-semibold text-slate-900">
-                    {scene.transition.duration.toFixed(1)} sn
-                  </span>
+                  <input
+                    type="range"
+                    min={0.3}
+                    max={2.5}
+                    step={0.1}
+                    value={scene.transition.duration}
+                    onChange={(e) =>
+                      onUpdateSceneTransition({
+                        ...scene.transition,
+                        duration: Number(e.target.value),
+                      })
+                    }
+                    className="w-full accent-indigo-600 cursor-pointer"
+                  />
                 </div>
-                <input
-                  type="range"
-                  min={0.3}
-                  max={2.5}
-                  step={0.1}
-                  value={scene.transition.duration}
-                  onChange={(e) =>
-                    onUpdateSceneTransition({
-                      ...scene.transition,
-                      duration: Number(e.target.value),
-                    })
-                  }
-                  className="w-full accent-indigo-600 cursor-pointer"
-                />
-              </div>
 
-              <button
-                onClick={() => {
-                  onUpdateSceneTransition(scene.transition, true);
-                  setAppliedAllFeedback(true);
-                  setTimeout(() => setAppliedAllFeedback(false), 1800);
-                }}
-                className="w-full py-1.5 px-2.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-[11px] font-semibold text-slate-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              >
-                {appliedAllFeedback ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    <span className="text-emerald-700">Tüm Sahnelere Uygulandı!</span>
-                  </>
-                ) : (
-                  <span>Bu Geçişi Tüm Sahnelere Uygula</span>
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-      </aside>
+                <button
+                  onClick={() => {
+                    onUpdateSceneTransition(scene.transition, true);
+                    setAppliedAllFeedback(true);
+                    setTimeout(() => setAppliedAllFeedback(false), 1800);
+                  }}
+                  className="w-full py-1.5 px-2.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-[11px] font-semibold text-slate-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  {appliedAllFeedback ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-emerald-700">Tüm Sahnelere Uygulandı!</span>
+                    </>
+                  ) : (
+                    <span>Bu Geçişi Tüm Sahnelere Uygula</span>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
     );
   }
 
@@ -1358,2871 +1356,2857 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
   };
 
   return (
-    <aside
-      data-testid="right-inspector-panel"
-      style={{ width: `${widthPx}px` }}
-      className="border-l border-slate-200 bg-white p-2.5 overflow-y-auto shrink-0 select-none z-20 relative"
-    >
-      {onChangeWidthPx && (
-        <div
-          onMouseDown={startRightResize}
-          title="Panel genişliğini sürükleyerek ayarla"
-          className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-indigo-400/50 transition-colors z-30"
-        />
-      )}
-      {/* Selected Object Header */}
-      <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span
-              className={`text-[10px] uppercase tracking-wider font-extrabold ${
-                isArticulatedCharacter ? 'text-[#e06d53]' : 'text-indigo-600'
-              }`}
-            >
-              {isArticulatedCharacter ? 'KARAKTER DENETÇİSİ' : 'SEÇİLİ KATMAN'}
-            </span>
-            {isMathAsset && (
+    <div className="relative flex shrink-0 z-20">
+      {renderRightEdgeToggle()}
+      <aside
+        data-testid="right-inspector-panel"
+        style={{ width: `${widthPx}px` }}
+        className="border-l border-slate-200 bg-white p-2.5 overflow-y-auto shrink-0 select-none z-20 relative"
+      >
+        {onChangeWidthPx && (
+          <div
+            onMouseDown={startRightResize}
+            title="Panel genişliğini sürükleyerek ayarla"
+            className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-indigo-400/50 transition-colors z-30"
+          />
+        )}
+        {/* Selected Object Header */}
+        <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span
-                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold ${resolvedAssetClass === 'static'
-                  ? 'bg-slate-100 text-slate-700 border border-slate-200'
-                  : resolvedAssetClass === 'animated'
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                    : 'bg-pink-50 text-pink-700 border border-pink-200'
+                className={`text-[10px] uppercase tracking-wider font-extrabold ${isArticulatedCharacter ? 'text-[#e06d53]' : 'text-indigo-600'
                   }`}
               >
-                {resolvedAssetClass === 'static' && (
-                  <>
-                    <Box className="w-2.5 h-2.5" /> Sabit Varlık
-                  </>
-                )}
-                {resolvedAssetClass === 'animated' && (
-                  <>
-                    <Zap className="w-2.5 h-2.5" /> Hareketli Varlık
-                  </>
-                )}
-                {resolvedAssetClass === 'composite' && (
-                  <>
-                    <Puzzle className="w-2.5 h-2.5" /> Parçalı Varlık
-                  </>
-                )}
+                {isArticulatedCharacter ? 'KARAKTER DENETÇİSİ' : 'SEÇİLİ KATMAN'}
               </span>
-            )}
+              {isMathAsset && (
+                <span
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold ${resolvedAssetClass === 'static'
+                    ? 'bg-slate-100 text-slate-700 border border-slate-200'
+                    : resolvedAssetClass === 'animated'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-pink-50 text-pink-700 border border-pink-200'
+                    }`}
+                >
+                  {resolvedAssetClass === 'static' && (
+                    <>
+                      <Box className="w-2.5 h-2.5" /> Sabit Varlık
+                    </>
+                  )}
+                  {resolvedAssetClass === 'animated' && (
+                    <>
+                      <Zap className="w-2.5 h-2.5" /> Hareketli Varlık
+                    </>
+                  )}
+                  {resolvedAssetClass === 'composite' && (
+                    <>
+                      <Puzzle className="w-2.5 h-2.5" /> Parçalı Varlık
+                    </>
+                  )}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <h2 className="text-sm font-bold text-slate-900 truncate">
+                {selectedObject.name}
+              </h2>
+              {isArticulatedCharacter && resolvedCharConfig && (
+                <span
+                  className="h-3.5 w-3.5 rounded-full border border-slate-200 shadow-2xs shrink-0"
+                  style={{ backgroundColor: resolvedCharConfig.topColor || '#e06d53' }}
+                  title="Karakter Kıyafet Teması"
+                />
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <h2 className="text-sm font-bold text-slate-900 truncate">
-              {selectedObject.name}
-            </h2>
-            {isArticulatedCharacter && resolvedCharConfig && (
-              <span
-                className="h-3.5 w-3.5 rounded-full border border-slate-200 shadow-2xs shrink-0"
-                style={{ backgroundColor: resolvedCharConfig.topColor || '#e06d53' }}
-                title="Karakter Kıyafet Teması"
-              />
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() =>
-              onUpdateObject(selectedObject.id, { locked: !selectedObject.locked })
-            }
-            className={`p-1.5 rounded-lg border cursor-pointer ${selectedObject.locked
-              ? 'bg-amber-100 border-amber-300 text-amber-700'
-              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
-              }`}
-            title={selectedObject.locked ? 'Kilidi Aç' : 'Nesneyi Kilitle'}
-          >
-            {selectedObject.locked ? (
-              <Lock className="w-3.5 h-3.5" />
-            ) : (
-              <Unlock className="w-3.5 h-3.5" />
-            )}
-          </button>
-          <button
-            onClick={() => onDuplicateObject(selectedObject.id)}
-            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 cursor-pointer"
-            title="Nesneyi Kopyala"
-          >
-            <Copy className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => onDeleteObject(selectedObject.id)}
-            className="p-1.5 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 cursor-pointer"
-            title="Nesneyi Sil"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-          {onToggleCollapsed && (
+          <div className="flex items-center gap-1">
             <button
-              type="button"
-              onClick={onToggleCollapsed}
-              data-testid="toggle-right-panel-btn"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-700 hover:bg-indigo-50 cursor-pointer"
-              title="Sağ Paneli Daralt"
+              onClick={() =>
+                onUpdateObject(selectedObject.id, { locked: !selectedObject.locked })
+              }
+              className={`p-1.5 rounded-lg border cursor-pointer ${selectedObject.locked
+                ? 'bg-amber-100 border-amber-300 text-amber-700'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                }`}
+              title={selectedObject.locked ? 'Kilidi Aç' : 'Nesneyi Kilitle'}
             >
-              <PanelRightClose className="w-3.5 h-3.5" />
+              {selectedObject.locked ? (
+                <Lock className="w-3.5 h-3.5" />
+              ) : (
+                <Unlock className="w-3.5 h-3.5" />
+              )}
             </button>
-          )}
+            <button
+              onClick={() => onDuplicateObject(selectedObject.id)}
+              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 cursor-pointer"
+              title="Nesneyi Kopyala"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => onDeleteObject(selectedObject.id)}
+              className="p-1.5 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 cursor-pointer"
+              title="Nesneyi Sil"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Two-Tab Switcher: Tasarım (Design) & Animasyon (Animate) */}
-      <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200 mb-4">
-        <button
-          onClick={() => setActiveTab('design')}
-          className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeTab === 'design'
-            ? 'bg-gradient-to-r from-[#e06d53] to-violet-600 text-white shadow-xs'
-            : 'text-slate-600 hover:text-slate-900'
-            }`}
-        >
-          <Sliders className="w-3.5 h-3.5" />
-          <span>Tasarım</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('animate')}
-          className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeTab === 'animate'
-            ? 'bg-gradient-to-r from-[#e06d53] to-violet-600 text-white shadow-xs'
-            : 'text-slate-600 hover:text-slate-900'
-            }`}
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Animasyon</span>
-        </button>
-      </div>
+        {/* Two-Tab Switcher: Tasarım (Design) & Animasyon (Animate) */}
+        <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200 mb-4">
+          <button
+            onClick={() => setActiveTab('design')}
+            className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeTab === 'design'
+              ? 'bg-gradient-to-r from-[#e06d53] to-violet-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+              }`}
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Tasarım</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('animate')}
+            className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeTab === 'animate'
+              ? 'bg-gradient-to-r from-[#e06d53] to-violet-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+              }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Animasyon</span>
+          </button>
+        </div>
 
-      {/* TAB 1: DESIGN (TASARIM) */}
-      {activeTab === 'design' && (
-        <div className="space-y-4">
-          {/* CHARACTER STUDIO, ACTIONS, EXPRESSIONS, HEAD DIRECTION & LIP-SYNC */}
-          {isArticulatedCharacter && resolvedCharConfig && (
-            <div className="p-3 rounded-xl bg-[#faf8f7] border border-[#e06d53]/25 space-y-3.5">
-              {/* 1. HAREKETİ CANLI TEST ET & DUDAK SENKRONU KARTI */}
-              <div className="bg-white p-3 rounded-xl border border-slate-200/90 shadow-2xs space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10.5px] font-bold text-slate-500">
-                    Hareketi Canlı Test Et:
-                  </span>
-                  {resolvedCharConfig.pose && resolvedCharConfig.pose !== 'idle' && (
-                    <button
-                      type="button"
-                      onClick={() =>
+        {/* TAB 1: DESIGN (TASARIM) */}
+        {activeTab === 'design' && (
+          <div className="space-y-4">
+            {/* CHARACTER STUDIO, ACTIONS, EXPRESSIONS, HEAD DIRECTION & LIP-SYNC */}
+            {isArticulatedCharacter && resolvedCharConfig && (
+              <div className="p-3 rounded-xl bg-[#faf8f7] border border-[#e06d53]/25 space-y-3.5">
+                {/* 1. HAREKETİ CANLI TEST ET & DUDAK SENKRONU KARTI */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200/90 shadow-2xs space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10.5px] font-bold text-slate-500">
+                      Hareketi Canlı Test Et:
+                    </span>
+                    {resolvedCharConfig.pose && resolvedCharConfig.pose !== 'idle' && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onUpdateObject(selectedObject.id, {
+                            characterConfig: {
+                              ...resolvedCharConfig,
+                              pose: 'idle',
+                            },
+                          })
+                        }
+                        className="text-[9.5px] font-bold text-[#e06d53] hover:underline cursor-pointer"
+                      >
+                        Duruşu Sıfırla
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {(
+                      [
+                        { id: 'wave', label: 'El Salla' },
+                        { id: 'explain', label: 'Konu Anlat' },
+                        { id: 'presentation', label: 'Tahtayı Göster' },
+                        { id: 'cheer', label: 'Kutla' },
+                      ] as const
+                    ).map((poseOpt) => {
+                      const isSelected = resolvedCharConfig.pose === poseOpt.id;
+                      return (
+                        <button
+                          key={poseOpt.id}
+                          type="button"
+                          onClick={() =>
+                            onUpdateObject(selectedObject.id, {
+                              characterConfig: {
+                                ...resolvedCharConfig,
+                                pose: poseOpt.id,
+                              },
+                            })
+                          }
+                          className={`w-full flex items-center justify-between rounded-lg border px-3 py-2 text-left text-[11.5px] font-bold transition cursor-pointer ${isSelected
+                              ? 'border-[#e06d53] bg-gradient-to-r from-[#e06d53] to-violet-600 text-white shadow-xs'
+                              : 'border-slate-200 bg-slate-50/70 text-slate-700 hover:border-violet-300 hover:bg-violet-50/50'
+                            }`}
+                        >
+                          <span className="truncate">{poseOpt.label}</span>
+                          <span
+                            className={`h-2 w-2 rounded-full shrink-0 ${isSelected ? 'bg-white' : 'bg-[#e06d53]'
+                              }`}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Dudak Senkronu Canlı Durum Kartı */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onUpdateObject(selectedObject.id, {
+                        characterConfig: {
+                          ...resolvedCharConfig,
+                          lipSyncEnabled: !resolvedCharConfig.lipSyncEnabled,
+                        },
+                      })
+                    }
+                    className="w-full text-left rounded-lg border border-violet-100 bg-violet-50/70 p-2.5 transition hover:border-violet-200 cursor-pointer"
+                    title="Dudak senkronunu aç/kapat"
+                  >
+                    <div className="flex items-center justify-between text-[10.5px] font-bold text-violet-900">
+                      <span>Dudak Senkronu</span>
+                      <span
+                        className={
+                          resolvedCharConfig.lipSyncEnabled
+                            ? 'text-[#e06d53]'
+                            : 'text-slate-400'
+                        }
+                      >
+                        {resolvedCharConfig.lipSyncEnabled ? 'Aktif' : 'Kapalı'}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-0.5 h-2">
+                      {[35, 75, 50, 90, 45, 70, 55, 85, 40, 65, 50, 80].map(
+                        (h, i) => (
+                          <span
+                            key={i}
+                            className="flex-1 rounded-full bg-gradient-to-t from-violet-600 to-[#e06d53] transition-all duration-300"
+                            style={{
+                              height: resolvedCharConfig.lipSyncEnabled
+                                ? `${h}%`
+                                : '28%',
+                              opacity: resolvedCharConfig.lipSyncEnabled ? 1 : 0.45,
+                            }}
+                          />
+                        )
+                      )}
+                    </div>
+                  </button>
+                </div>
+                <input
+                  ref={lipSyncFileInputRef}
+                  type="file"
+                  accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/mp4,audio/x-m4a,.mp3,.wav,.ogg,.m4a"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        if (typeof reader.result !== 'string') return;
+                        const dataUrl = reader.result;
+                        ensureAudioLipSyncAnalyzed(dataUrl);
                         onUpdateObject(selectedObject.id, {
                           characterConfig: {
                             ...resolvedCharConfig,
-                            pose: 'idle',
+                            lipSyncEnabled: true,
+                            lipSyncAudioUrl: dataUrl,
+                            lipSyncAudioName: file.name,
+                            lipSyncAudioStartTime: 0,
                           },
-                        })
-                      }
-                      className="text-[9.5px] font-bold text-[#e06d53] hover:underline cursor-pointer"
-                    >
-                      Duruşu Sıfırla
-                    </button>
-                  )}
-                </div>
+                        });
+                      };
+                      reader.readAsDataURL(file);
+                      e.target.value = '';
+                    }
+                  }}
+                  className="hidden"
+                />
 
-                <div className="space-y-1.5">
-                  {(
-                    [
-                      { id: 'wave', label: 'El Salla' },
-                      { id: 'explain', label: 'Konu Anlat' },
-                      { id: 'presentation', label: 'Tahtayı Göster' },
-                      { id: 'cheer', label: 'Kutla' },
-                    ] as const
-                  ).map((poseOpt) => {
-                    const isSelected = resolvedCharConfig.pose === poseOpt.id;
-                    return (
-                      <button
-                        key={poseOpt.id}
-                        type="button"
-                        onClick={() =>
-                          onUpdateObject(selectedObject.id, {
-                            characterConfig: {
-                              ...resolvedCharConfig,
-                              pose: poseOpt.id,
-                            },
-                          })
-                        }
-                        className={`w-full flex items-center justify-between rounded-lg border px-3 py-2 text-left text-[11.5px] font-bold transition cursor-pointer ${
-                          isSelected
-                            ? 'border-[#e06d53] bg-gradient-to-r from-[#e06d53] to-violet-600 text-white shadow-xs'
-                            : 'border-slate-200 bg-slate-50/70 text-slate-700 hover:border-violet-300 hover:bg-violet-50/50'
-                        }`}
-                      >
-                        <span className="truncate">{poseOpt.label}</span>
-                        <span
-                          className={`h-2 w-2 rounded-full shrink-0 ${
-                            isSelected ? 'bg-white' : 'bg-[#e06d53]'
-                          }`}
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Dudak Senkronu Canlı Durum Kartı */}
-                <button
-                  type="button"
-                  onClick={() =>
-                    onUpdateObject(selectedObject.id, {
-                      characterConfig: {
-                        ...resolvedCharConfig,
-                        lipSyncEnabled: !resolvedCharConfig.lipSyncEnabled,
-                      },
-                    })
+                {/* 2. YÜZ İFADELERİ & KAFA YÖNÜ (EXPRESSIONS & HEAD DIRECTION) */}
+                <DesignAccordionSection
+                  isOpen={isSectionOpen('expression')}
+                  onToggle={() => toggleSection('expression')}
+                  containerClassName="bg-white p-2.5 rounded-xl border border-indigo-100"
+                  titleClassName="text-[11px] font-bold text-slate-800"
+                  title={
+                    <>
+                      <Smile className="w-3.5 h-3.5 text-indigo-600" />
+                      Yüz İfadesi & Kafa Yönü
+                    </>
                   }
-                  className="w-full text-left rounded-lg border border-violet-100 bg-violet-50/70 p-2.5 transition hover:border-violet-200 cursor-pointer"
-                  title="Dudak senkronunu aç/kapat"
                 >
-                  <div className="flex items-center justify-between text-[10.5px] font-bold text-violet-900">
-                    <span>Dudak Senkronu</span>
-                    <span
-                      className={
-                        resolvedCharConfig.lipSyncEnabled
-                          ? 'text-[#e06d53]'
-                          : 'text-slate-400'
-                      }
-                    >
-                      {resolvedCharConfig.lipSyncEnabled ? 'Aktif' : 'Kapalı'}
-                    </span>
-                  </div>
-                  <div className="mt-1.5 flex items-center gap-0.5 h-2">
-                    {[35, 75, 50, 90, 45, 70, 55, 85, 40, 65, 50, 80].map(
-                      (h, i) => (
-                        <span
-                          key={i}
-                          className="flex-1 rounded-full bg-gradient-to-t from-violet-600 to-[#e06d53] transition-all duration-300"
-                          style={{
-                            height: resolvedCharConfig.lipSyncEnabled
-                              ? `${h}%`
-                              : '28%',
-                            opacity: resolvedCharConfig.lipSyncEnabled ? 1 : 0.45,
-                          }}
-                        />
-                      )
-                    )}
-                  </div>
-                </button>
-              </div>
-              <input
-                ref={lipSyncFileInputRef}
-                type="file"
-                accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/mp4,audio/x-m4a,.mp3,.wav,.ogg,.m4a"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      if (typeof reader.result !== 'string') return;
-                      const dataUrl = reader.result;
-                      ensureAudioLipSyncAnalyzed(dataUrl);
-                      onUpdateObject(selectedObject.id, {
-                        characterConfig: {
-                          ...resolvedCharConfig,
-                          lipSyncEnabled: true,
-                          lipSyncAudioUrl: dataUrl,
-                          lipSyncAudioName: file.name,
-                          lipSyncAudioStartTime: 0,
-                        },
-                      });
-                    };
-                    reader.readAsDataURL(file);
-                    e.target.value = '';
-                  }
-                }}
-                className="hidden"
-              />
-
-              {/* 2. YÜZ İFADELERİ & KAFA YÖNÜ (EXPRESSIONS & HEAD DIRECTION) */}
-              <DesignAccordionSection
-                isOpen={isSectionOpen('expression')}
-                onToggle={() => toggleSection('expression')}
-                containerClassName="bg-white p-2.5 rounded-xl border border-indigo-100"
-                titleClassName="text-[11px] font-bold text-slate-800"
-                title={
-                  <>
-                    <Smile className="w-3.5 h-3.5 text-indigo-600" />
-                    Yüz İfadesi & Kafa Yönü
-                  </>
-                }
-              >
-                <div>
-                  <div className="grid grid-cols-3 gap-1">
-                    {EXPRESSION_OPTIONS.map((exp) => {
-                      const curExp = resolvedCharConfig.expression || 'neutral';
-                      const isActive = curExp === exp.id;
-                      return (
-                        <button
-                          key={exp.id}
-                          onClick={() =>
-                            onUpdateObject(selectedObject.id, {
-                              characterConfig: {
-                                ...resolvedCharConfig,
-                                expression: exp.id,
-                              },
-                            })
-                          }
-                          className={`py-1.5 px-1.5 rounded-lg text-[10.5px] font-medium border flex items-center justify-center gap-1 transition-all cursor-pointer ${isActive
-                            ? 'bg-indigo-600 text-white border-indigo-600 font-semibold'
-                            : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                            }`}
-                        >
-                          <span>{exp.emoji}</span>
-                          <span>{exp.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Kafa Yönü (Sola / Kameraya / Sağa) */}
-                <div className="pt-2 border-t border-slate-100">
-                  <span className="text-[10.5px] font-bold text-slate-700 block mb-1">
-                    Kafa Yönü (Bakış Açısı)
-                  </span>
-                  <div className="grid grid-cols-3 gap-1">
-                    {HEAD_DIRECTION_OPTIONS.map((dir) => {
-                      const curDir = resolvedCharConfig.headDirection || 'center';
-                      const isActive = curDir === dir.id;
-                      return (
-                        <button
-                          key={dir.id}
-                          onClick={() =>
-                            onUpdateObject(selectedObject.id, {
-                              characterConfig: {
-                                ...resolvedCharConfig,
-                                headDirection: dir.id,
-                              },
-                            })
-                          }
-                          className={`py-1 px-1.5 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${isActive
-                            ? 'bg-indigo-600 text-white border-indigo-600'
-                            : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                            }`}
-                        >
-                          {dir.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </DesignAccordionSection>
-
-              {/* 3. DUDAK SENKRONİZASYONU (LIP-SYNC: SES DOSYASI VEYA MİKROFON) */}
-              <DesignAccordionSection
-                isOpen={isSectionOpen('lipsync')}
-                onToggle={() => toggleSection('lipsync')}
-                containerClassName="bg-white p-2.5 rounded-xl border border-indigo-100"
-                titleClassName="text-[11px] font-bold text-slate-800"
-                title={
-                  <>
-                    <Volume2 className="w-3.5 h-3.5 text-indigo-600" />
-                    Dudak Senkronu (Lip-Sync)
-                  </>
-                }
-                headerExtra={
-                  <button
-                    onClick={() => {
-                      const nextEnabled = !resolvedCharConfig.lipSyncEnabled;
-                      const firstSceneAudio = scene.audioClips.find((c) =>
-                        Boolean(c.audioUrl)
-                      );
-                      const shouldAttachSceneAudio =
-                        nextEnabled &&
-                        !resolvedCharConfig.lipSyncAudioUrl &&
-                        firstSceneAudio?.audioUrl;
-                      if (shouldAttachSceneAudio && firstSceneAudio?.audioUrl) {
-                        ensureAudioLipSyncAnalyzed(firstSceneAudio.audioUrl);
-                      }
-                      onUpdateObject(selectedObject.id, {
-                        characterConfig: {
-                          ...resolvedCharConfig,
-                          lipSyncEnabled: nextEnabled,
-                          ...(shouldAttachSceneAudio && firstSceneAudio
-                            ? {
-                              lipSyncAudioUrl: firstSceneAudio.audioUrl,
-                              lipSyncAudioName: firstSceneAudio.name,
-                              lipSyncAudioStartTime: firstSceneAudio.startTime,
-                            }
-                            : {}),
-                        },
-                      });
-                    }}
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${resolvedCharConfig.lipSyncEnabled
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-200 text-slate-600'
-                      }`}
-                  >
-                    {resolvedCharConfig.lipSyncEnabled ? 'Aktif (Konuşuyor)' : 'Kapalı'}
-                  </button>
-                }
-              >
-
-                <p className="text-[10px] text-slate-500 leading-snug">
-                  Ses dosyası (.mp3/.wav) yükleyin veya mikrofonla kaydedin; oynatma sırasında dudaklar otomatik senkronize hareket eder.
-                </p>
-
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    onClick={() => lipSyncFileInputRef.current?.click()}
-                    className="py-1.5 px-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10.5px] font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                  >
-                    <Upload className="w-3 h-3" />
-                    <span>Ses Yükle (.mp3)</span>
-                  </button>
-
-                  {!isRecordingVoice ? (
-                    <button
-                      onClick={async () => {
-                        try {
-                          const stream = await navigator.mediaDevices.getUserMedia({
-                            audio: true,
-                          });
-                          recordedChunksRef.current = [];
-                          const recorder = new MediaRecorder(stream);
-                          recorder.ondataavailable = (ev) => {
-                            if (ev.data.size > 0) {
-                              recordedChunksRef.current.push(ev.data);
-                            }
-                          };
-                          recorder.onstop = () => {
-                            const blob = new Blob(recordedChunksRef.current, {
-                              type: 'audio/webm',
-                            });
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                              const dataUrl = reader.result as string;
-                              ensureAudioLipSyncAnalyzed(dataUrl);
+                  <div>
+                    <div className="grid grid-cols-3 gap-1">
+                      {EXPRESSION_OPTIONS.map((exp) => {
+                        const curExp = resolvedCharConfig.expression || 'neutral';
+                        const isActive = curExp === exp.id;
+                        return (
+                          <button
+                            key={exp.id}
+                            onClick={() =>
                               onUpdateObject(selectedObject.id, {
                                 characterConfig: {
                                   ...resolvedCharConfig,
-                                  lipSyncEnabled: true,
-                                  lipSyncAudioUrl: dataUrl,
-                                  lipSyncAudioName: 'Mikrofon Kaydı',
-                                  lipSyncAudioStartTime: 0,
+                                  expression: exp.id,
                                 },
-                              });
-                            };
-                            reader.readAsDataURL(blob);
-                            stream.getTracks().forEach((t) => t.stop());
-                          };
-                          mediaRecorderRef.current = recorder;
-                          recorder.start();
-                          setIsRecordingVoice(true);
-                        } catch {
-                          // If microphone permission not available, enable simulated lip-sync directly
-                          onUpdateObject(selectedObject.id, {
-                            characterConfig: {
-                              ...resolvedCharConfig,
-                              lipSyncEnabled: true,
-                              lipSyncAudioName: 'Canlı Konuşma Simülasyonu',
-                            },
-                          });
-                        }
-                      }}
-                      className="py-1.5 px-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[10.5px] font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <Mic className="w-3 h-3" />
-                      <span>Mikrofon Kayıt</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        mediaRecorderRef.current?.stop();
-                        setIsRecordingVoice(false);
-                      }}
-                      className="py-1.5 px-2 rounded-lg bg-rose-600 text-white text-[10.5px] font-bold flex items-center justify-center gap-1 animate-pulse cursor-pointer"
-                    >
-                      <Square className="w-3 h-3 fill-current" />
-                      <span>Kaydı Bitir</span>
-                    </button>
-                  )}
-                </div>
-
-                {scene.audioClips.some((c) => Boolean(c.audioUrl)) && (
-                  <div className="space-y-1 pt-1 border-t border-slate-100">
-                    <span className="text-[10px] font-bold text-slate-600 block">
-                      Sahnedeki Sese Senkronla (Çoklu Seçilebilir)
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      {scene.audioClips
-                        .filter((c) => Boolean(c.audioUrl))
-                        .map((clip) => {
-                          const isLinked = isSceneClipLinkedToCharacter(
-                            resolvedCharConfig,
-                            clip
-                          );
-                          return (
-                            <button
-                              key={clip.id}
-                              type="button"
-                              aria-pressed={isLinked}
-                              onClick={() => {
-                                if (!isLinked && clip.audioUrl) {
-                                  ensureAudioLipSyncAnalyzed(clip.audioUrl);
-                                }
-                                onUpdateObject(selectedObject.id, {
-                                  characterConfig: toggleCharacterLipSyncClip(
-                                    resolvedCharConfig,
-                                    clip,
-                                    scene.audioClips
-                                  ),
-                                });
-                              }}
-                              className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-colors cursor-pointer truncate max-w-full ${isLinked
-                                ? 'bg-emerald-600 text-white border-emerald-600'
-                                : 'bg-slate-50 hover:bg-indigo-50 text-slate-700 border-slate-200'
-                                }`}
-                            >
-                              {isLinked ? '✓ ' : ''}🎙️ {clip.name} ({clip.startTime.toFixed(1)}s)
-                            </button>
-                          );
-                        })}
-                    </div>
-                  </div>
-                )}
-
-                {resolvedCharConfig.lipSyncAudioName && (
-                  <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 space-y-1.5">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="font-semibold text-emerald-800 truncate">
-                        🎙️ {resolvedCharConfig.lipSyncAudioName}
-                      </span>
-                      <button
-                        onClick={() =>
-                          onUpdateObject(selectedObject.id, {
-                            characterConfig: {
-                              ...resolvedCharConfig,
-                              lipSyncEnabled: false,
-                              lipSyncAudioClips: undefined,
-                              lipSyncAudioUrl: undefined,
-                              lipSyncAudioName: undefined,
-                              lipSyncAudioStartTime: undefined,
-                            },
-                          })
-                        }
-                        className="text-rose-600 hover:underline font-semibold cursor-pointer"
-                      >
-                        Kaldır
-                      </button>
-                    </div>
-                    {resolvedCharConfig.lipSyncAudioUrl && (
-                      <audio
-                        controls
-                        src={resolvedCharConfig.lipSyncAudioUrl}
-                        className="w-full h-7"
-                      />
-                    )}
-                  </div>
-                )}
-              </DesignAccordionSection>
-            </div>
-          )}
-
-          {selectedObject.category === 'characters' && scenes.length > 0 && (() => {
-            const sharedId = getCharacterContinuityId(selectedObject);
-            const currentSceneIdx = scenes.findIndex((s) => s.id === scene.id);
-            const presentSceneIds = new Set(
-              scenes
-                .filter((s) =>
-                  s.objects.some(
-                    (o) => o.category === 'characters' && getCharacterContinuityId(o) === sharedId
-                  )
-                )
-                .map((s) => s.id)
-            );
-            const subsequentScenes =
-              currentSceneIdx >= 0 ? scenes.slice(currentSceneIdx + 1) : [];
-            const hasLaterPresence = subsequentScenes.some((s) => presentSceneIds.has(s.id));
-            const hasOtherScenePresence =
-              presentSceneIds.size > (presentSceneIds.has(scene.id) ? 1 : 0);
-
-            return (
-              <DesignAccordionSection
-                isOpen={isSectionOpen('continuity')}
-                onToggle={() => toggleSection('continuity')}
-                title={
-                  <>
-                    <FastForward className="w-3.5 h-3.5 text-indigo-600" />
-                    Sahneler Arası Devamlılık
-                  </>
-                }
-                headerExtra={
-                  <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded">
-                    {presentSceneIds.size} sahne
-                  </span>
-                }
-              >
-                <div className="space-y-2 text-[10.5px]">
-                  <div className="flex flex-wrap gap-1">
-                    {scenes.map((s, idx) => {
-                      const isHere = presentSceneIds.has(s.id);
-                      return (
-                        <span
-                          key={s.id}
-                          className={`px-1.5 py-0.5 rounded border text-[9.5px] font-semibold ${
-                            isHere
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              : 'bg-white text-slate-400 border-slate-200'
-                          }`}
-                        >
-                          {idx + 1}. {s.name}
-                        </span>
-                      );
-                    })}
-                  </div>
-
-                  {subsequentScenes.length > 0 ? (
-                    <>
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[10px] text-slate-600 font-semibold">
-                          <span>Sonraki Sahnelere Devam Ettir</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const missingIds = subsequentScenes
-                                .filter((s) => !presentSceneIds.has(s.id))
-                                .map((s) => s.id);
-                              setSelectedContinuitySceneIds(
-                                selectedContinuitySceneIds.length === missingIds.length
-                                  ? []
-                                  : missingIds
-                              );
-                            }}
-                            className="text-indigo-600 hover:underline cursor-pointer"
+                              })
+                            }
+                            className={`py-1.5 px-1.5 rounded-lg text-[10.5px] font-medium border flex items-center justify-center gap-1 transition-all cursor-pointer ${isActive
+                              ? 'bg-indigo-600 text-white border-indigo-600 font-semibold'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                              }`}
                           >
-                            Tümünü Seç
+                            <span>{exp.emoji}</span>
+                            <span>{exp.label}</span>
                           </button>
-                        </div>
-                        <div className="max-h-28 overflow-y-auto space-y-1 rounded border border-slate-200 bg-white p-1.5">
-                          {subsequentScenes.map((targetScene) => {
-                            const alreadyIn = presentSceneIds.has(targetScene.id);
-                            const checked =
-                              alreadyIn || selectedContinuitySceneIds.includes(targetScene.id);
-                            return (
-                              <label
-                                key={targetScene.id}
-                                className="flex items-center justify-between gap-2 text-[10px] text-slate-700 cursor-pointer"
-                              >
-                                <span className="flex items-center gap-1.5 truncate">
-                                  <input
-                                    type="checkbox"
-                                    disabled={alreadyIn}
-                                    checked={checked}
-                                    onChange={(e) => {
-                                      setSelectedContinuitySceneIds((prev) =>
-                                        e.target.checked
-                                          ? [...prev, targetScene.id]
-                                          : prev.filter((id) => id !== targetScene.id)
-                                      );
-                                    }}
-                                    className="accent-indigo-600 cursor-pointer"
-                                  />
-                                  <span className="truncate">{targetScene.name}</span>
-                                </span>
-                                {alreadyIn && (
-                                  <span className="text-[9px] text-emerald-700 font-semibold shrink-0">
-                                    Mevcut
-                                  </span>
-                                )}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-1.5">
-                        <button
-                          type="button"
-                          disabled={selectedContinuitySceneIds.length === 0}
-                          onClick={() => {
-                            onContinueCharacterToScenes?.(
-                              scene.id,
-                              selectedObject.id,
-                              selectedContinuitySceneIds
-                            );
-                            const count = selectedContinuitySceneIds.length;
-                            setSelectedContinuitySceneIds([]);
-                            setContinuityFeedback(
-                              `Karakter ${count} sonraki sahneye devam ettirildi.`
-                            );
-                          }}
-                          className="w-full py-1.5 px-2 rounded-md bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-[10.5px] font-bold transition-colors cursor-pointer disabled:cursor-default"
-                        >
-                          Seçili sahnelere devam ettir
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={!hasLaterPresence}
-                          onClick={() => {
-                            onTerminateCharacterAfterScene?.(scene.id, selectedObject.id);
-                            setContinuityFeedback(
-                              'Karakterin devamlılığı bu sahneden sonra sonlandırıldı.'
-                            );
-                          }}
-                          className="w-full py-1.5 px-2 rounded-md border border-rose-200 bg-rose-50 hover:bg-rose-100 disabled:opacity-40 text-rose-700 text-[10.5px] font-semibold transition-colors cursor-pointer disabled:cursor-default"
-                        >
-                          Bu sahneden sonra sonlandır
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-[10px] text-slate-500">
-                      Bu karakterden sonra başka sahne bulunmuyor.
-                    </div>
-                  )}
-
-                  {hasOtherScenePresence && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSyncCharacterAppearance?.(scene.id, selectedObject.id);
-                        setContinuityFeedback(
-                          'Görünüm diğer sahnelerle eşitlendi (konum ve animasyonlar korundu).'
                         );
-                      }}
-                      className="w-full py-1.5 px-2 rounded-md border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10.5px] font-semibold transition-colors cursor-pointer"
-                    >
-                      Görünümü diğer sahnelerle eşitle
-                    </button>
-                  )}
-
-                  {continuityFeedback && (
-                    <div
-                      data-testid="continuity-feedback"
-                      className="rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-800"
-                    >
-                      {continuityFeedback}
-                    </div>
-                  )}
-                </div>
-              </DesignAccordionSection>
-            );
-          })()}
-
-          {/* Position & Dimensions Grid (X, Y, W, H, Rotation) */}
-          <DesignAccordionSection
-            isOpen={isSectionOpen('transform')}
-            onToggle={() => toggleSection('transform')}
-            title={
-              <>
-                <Move className="w-3.5 h-3.5 text-indigo-600" />
-                Konum & Boyut
-              </>
-            }
-            headerExtra={
-              <button
-                onClick={() =>
-                  onUpdateObject(selectedObject.id, {
-                    flipX: !selectedObject.flipX,
-                  })
-                }
-                className="flex items-center gap-1 px-2 py-0.5 rounded bg-white hover:bg-slate-100 text-[10px] font-medium text-slate-700 border border-slate-200 cursor-pointer"
-              >
-                <FlipHorizontal className="w-3 h-3" /> Yatay Çevir
-              </button>
-            }
-          >
-
-            <div className="grid grid-cols-2 gap-2">
-              <label className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
-                <span className="text-[11px] font-mono text-slate-400">X</span>
-                <input
-                  type="number"
-                  value={selectedObject.x}
-                  onChange={(e) =>
-                    onUpdateObject(selectedObject.id, {
-                      x: Number(e.target.value),
-                    })
-                  }
-                  className="w-16 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
-                />
-              </label>
-              <label className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
-                <span className="text-[11px] font-mono text-slate-400">Y</span>
-                <input
-                  type="number"
-                  value={selectedObject.y}
-                  onChange={(e) =>
-                    onUpdateObject(selectedObject.id, {
-                      y: Number(e.target.value),
-                    })
-                  }
-                  className="w-16 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
-                />
-              </label>
-              <label className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
-                <span className="text-[11px] font-mono text-slate-400">W</span>
-                <input
-                  type="number"
-                  min={40}
-                  value={selectedObject.width}
-                  onChange={(e) =>
-                    onUpdateObject(selectedObject.id, {
-                      width: Math.max(40, Number(e.target.value)),
-                    })
-                  }
-                  className="w-16 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
-                />
-              </label>
-              <label className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
-                <span className="text-[11px] font-mono text-slate-400">H</span>
-                <input
-                  type="number"
-                  min={40}
-                  value={selectedObject.height}
-                  onChange={(e) =>
-                    onUpdateObject(selectedObject.id, {
-                      height: Math.max(40, Number(e.target.value)),
-                    })
-                  }
-                  className="w-16 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
-                />
-              </label>
-            </div>
-
-            {/* Rotation & Opacity Sliders */}
-            <div className="pt-1 space-y-2">
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-600">Döndürme (Rotation)</span>
-                  <span className="font-mono font-semibold text-slate-900">
-                    {selectedObject.rotation}°
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={-180}
-                  max={180}
-                  value={selectedObject.rotation}
-                  onChange={(e) =>
-                    onUpdateObject(selectedObject.id, {
-                      rotation: Number(e.target.value),
-                    })
-                  }
-                  className="w-full accent-indigo-600 cursor-pointer"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-600">Ölçek (Scale)</span>
-                  <span className="font-mono font-semibold text-slate-900">
-                    {(selectedObject.scale ?? 1).toFixed(2)}x
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={0.25}
-                  max={2.5}
-                  step={0.05}
-                  value={selectedObject.scale ?? 1}
-                  onChange={(e) =>
-                    onUpdateObject(selectedObject.id, {
-                      scale: Number(e.target.value),
-                    })
-                  }
-                  className="w-full accent-indigo-600 cursor-pointer"
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/70">
-                <span className="text-slate-500 flex items-center gap-1">
-                  <Layers className="w-3 h-3 text-slate-400" />
-                  Katman Sırası:
-                </span>
-                <span className="font-mono font-semibold text-slate-800">
-                  #{layerIndex} / {scene.objects.length}
-                </span>
-              </div>
-            </div>
-          </DesignAccordionSection>
-
-          {/* Karaktere Bağla (Faz 4A Socket Bağlantısı) */}
-          {(() => {
-            const attachableChars = scene.objects.filter((o) => {
-              if (o.id === selectedObject.id || o.category !== 'characters' || o.assetId === 'char-robot-mira') {
-                return false;
-              }
-              const effCfg =
-                resolveEffectiveCharacterConfig(o, scene.audioClips) ||
-                o.characterConfig ||
-                DEFAULT_CHARACTER_CONFIGS[o.assetId];
-              if (!effCfg) return false;
-              const prof = buildCharacterRigProfile(effCfg, o.assetId);
-              return prof.isSupported && prof.propSockets.length > 0;
-            });
-
-            const currentAtt = selectedObject.attachment;
-            const activeParentId =
-              currentAtt?.parentObjectId ??
-              (attachableChars.some((c) => c.id === attachParentId)
-                ? attachParentId
-                : attachableChars[0]?.id ?? '');
-            const activeSocketId: PropSocketId =
-              currentAtt?.socketId ?? attachSocketId;
-
-            const SOCKET_LABELS: Record<PropSocketId, string> = {
-              leftPropSocket: 'Sol el',
-              rightPropSocket: 'Sağ el',
-              backPropSocket: 'Sırt',
-            };
-
-            const handleAttach = (nextParentId: string, nextSocketId: PropSocketId) => {
-              setAttachError(null);
-              const normalizedObjects = scene.objects.map((o) =>
-                o.category === 'characters'
-                  ? {
-                    ...o,
-                    characterConfig:
-                      resolveEffectiveCharacterConfig(o, scene.audioClips) ||
-                      o.characterConfig ||
-                      DEFAULT_CHARACTER_CONFIGS[o.assetId],
-                  }
-                  : o
-              );
-              const candidate = {
-                parentObjectId: nextParentId,
-                socketId: nextSocketId,
-                localOffsetX: currentAtt?.parentObjectId === nextParentId && currentAtt?.socketId === nextSocketId
-                  ? (currentAtt.localOffsetX ?? 0)
-                  : 0,
-                localOffsetY: currentAtt?.parentObjectId === nextParentId && currentAtt?.socketId === nextSocketId
-                  ? (currentAtt.localOffsetY ?? 0)
-                  : 0,
-                localRotationDeg: currentAtt?.localRotationDeg ?? 0,
-                inheritScale: currentAtt?.inheritScale ?? true,
-                inheritRotation: currentAtt?.inheritRotation ?? true,
-                inheritFlip: currentAtt?.inheritFlip ?? true,
-              };
-              const validation = validateObjectAttachment(
-                normalizedObjects,
-                selectedObject.id,
-                candidate,
-                buildCharacterRigProfile
-              );
-              if (!validation.valid) {
-                setAttachError(validation.message ?? 'Soket bağlantısı doğrulanamadı.');
-                return;
-              }
-              onUpdateObject(selectedObject.id, { attachment: candidate }, true);
-            };
-
-            const handleDetach = () => {
-              setAttachError(null);
-              if (!currentAtt) return;
-              const parentObj = scene.objects.find((o) => o.id === currentAtt.parentObjectId);
-              if (parentObj) {
-                const socketTransform = resolveParentCharacterSocketTransform(
-                  parentObj,
-                  currentAtt.socketId,
-                  scene,
-                  currentTime,
-                  false
-                );
-                if (socketTransform) {
-                  const objAnim = computeObjectAnimation(selectedObject, currentTime, false);
-                  const resolved = resolveAttachedObjectStageTransform(
-                    selectedObject,
-                    socketTransform,
-                    objAnim
-                  );
-                  const patch = detachObjectPreservingWorldTransform(resolved);
-                  onUpdateObject(selectedObject.id, patch, true);
-                  return;
-                }
-              }
-              onUpdateObject(selectedObject.id, { attachment: undefined }, true);
-            };
-
-            return (
-              <DesignAccordionSection
-                isOpen={isSectionOpen('attachment')}
-                onToggle={() => toggleSection('attachment')}
-                title={
-                  <>
-                    <Link2 className="w-3.5 h-3.5 text-emerald-600" />
-                    Karaktere Bağla
-                  </>
-                }
-                headerExtra={
-                  currentAtt ? (
-                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold">
-                      Bağlı
-                    </span>
-                  ) : undefined
-                }
-              >
-                {attachableChars.length === 0 ? (
-                  <p className="text-[11px] text-slate-500 leading-snug">
-                    Sahnede soket destekleyen başka bir karakter bulunmuyor.
-                  </p>
-                ) : (
-                  <div className="space-y-2.5">
-                    <div>
-                      <label className="block text-[11px] font-medium text-slate-600 mb-1">
-                        Hedef Karakter
-                      </label>
-                      <select
-                        value={activeParentId}
-                        onChange={(e) => {
-                          const nextId = e.target.value;
-                          setAttachParentId(nextId);
-                          setAttachError(null);
-                          if (currentAtt) {
-                            handleAttach(nextId, activeSocketId);
-                          }
-                        }}
-                        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                      >
-                        {(() => {
-                          const nameTotals = new Map<string, number>();
-                          attachableChars.forEach((c) => {
-                            nameTotals.set(c.name, (nameTotals.get(c.name) ?? 0) + 1);
-                          });
-                          const nameSeen = new Map<string, number>();
-                          return attachableChars.map((ch) => {
-                            const total = nameTotals.get(ch.name) ?? 1;
-                            const idx = (nameSeen.get(ch.name) ?? 0) + 1;
-                            nameSeen.set(ch.name, idx);
-                            const displayName = total > 1 ? `${ch.name} #${idx}` : ch.name;
-                            return (
-                              <option key={ch.id} value={ch.id}>
-                                {displayName}
-                              </option>
-                            );
-                          });
-                        })()}
-                      </select>
-                    </div>
-
-                    <div>
-                      <span className="block text-[11px] font-medium text-slate-600 mb-1">
-                        Soket Noktası
-                      </span>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {(['leftPropSocket', 'rightPropSocket', 'backPropSocket'] as PropSocketId[]).map(
-                          (sockId) => {
-                            const isActive = activeSocketId === sockId;
-                            return (
-                              <button
-                                key={sockId}
-                                type="button"
-                                onClick={() => {
-                                  setAttachSocketId(sockId);
-                                  setAttachError(null);
-                                  if (currentAtt && activeParentId) {
-                                    handleAttach(activeParentId, sockId);
-                                  }
-                                }}
-                                className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer ${isActive
-                                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-                                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                                  }`}
-                              >
-                                {SOCKET_LABELS[sockId]}
-                              </button>
-                            );
-                          }
-                        )}
-                      </div>
-                    </div>
-
-                    {attachError && (
-                      <p className="text-[11px] text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-2 py-1">
-                        {attachError}
-                      </p>
-                    )}
-
-                    <div className="flex items-center gap-2 pt-0.5">
-                      {!currentAtt ? (
-                        <button
-                          type="button"
-                          onClick={() => handleAttach(activeParentId, activeSocketId)}
-                          disabled={!activeParentId}
-                          className="w-full py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                        >
-                          <Link2 className="w-3.5 h-3.5" />
-                          <span>Bağla</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={handleDetach}
-                          className="w-full py-1.5 px-3 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                        >
-                          <Unlink className="w-3.5 h-3.5" />
-                          <span>Bağlantıyı Kaldır</span>
-                        </button>
-                      )}
+                      })}
                     </div>
                   </div>
-                )}
-              </DesignAccordionSection>
-            );
-          })()}
 
-          {/* 2-LEVEL COMPOSITE PART INSPECTOR (only for Parçalı Varlık) */}
-          {resolvedAssetClass === 'composite' && mathDef?.parts && (
-            <DesignAccordionSection
-              isOpen={isSectionOpen('composite')}
-              onToggle={() => toggleSection('composite')}
-              containerClassName="p-3 rounded-xl bg-pink-50/70 border border-pink-200"
-              titleClassName="text-xs font-bold text-pink-900"
-              title={
-                <>
-                  <Puzzle className="w-3.5 h-3.5 text-pink-600" />
-                  Parçalı Varlık — Parça Düzenleyici
-                </>
-              }
-              headerExtra={
-                selectedPartId ? (
-                  <button
-                    onClick={() => onSelectPart?.(null)}
-                    className="px-2 py-0.5 rounded bg-white border border-pink-200 text-[10px] font-semibold text-pink-700 hover:bg-pink-100 cursor-pointer"
-                  >
-                    Bütün Nesneyi Seç
-                  </button>
-                ) : undefined
-              }
-            >
+                  {/* Kafa Yönü (Sola / Kameraya / Sağa) */}
+                  <div className="pt-2 border-t border-slate-100">
+                    <span className="text-[10.5px] font-bold text-slate-700 block mb-1">
+                      Kafa Yönü (Bakış Açısı)
+                    </span>
+                    <div className="grid grid-cols-3 gap-1">
+                      {HEAD_DIRECTION_OPTIONS.map((dir) => {
+                        const curDir = resolvedCharConfig.headDirection || 'center';
+                        const isActive = curDir === dir.id;
+                        return (
+                          <button
+                            key={dir.id}
+                            onClick={() =>
+                              onUpdateObject(selectedObject.id, {
+                                characterConfig: {
+                                  ...resolvedCharConfig,
+                                  headDirection: dir.id,
+                                },
+                              })
+                            }
+                            className={`py-1 px-1.5 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${isActive
+                              ? 'bg-indigo-600 text-white border-indigo-600'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                              }`}
+                          >
+                            {dir.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </DesignAccordionSection>
 
-              <p className="text-[10px] text-pink-800/80 leading-snug">
-                Alt parçayı doğrudan sahneden veya aşağıdaki listeden seçip bağımsız olarak konumlandırabilir, döndürebilir ve ölçekleyebilirsiniz.
-              </p>
-
-              <div className="grid grid-cols-2 gap-1.5">
-                {mathDef.parts.map((part) => {
-                  const isPartActive = selectedPartId === part.id;
-                  return (
+                {/* 3. DUDAK SENKRONİZASYONU (LIP-SYNC: SES DOSYASI VEYA MİKROFON) */}
+                <DesignAccordionSection
+                  isOpen={isSectionOpen('lipsync')}
+                  onToggle={() => toggleSection('lipsync')}
+                  containerClassName="bg-white p-2.5 rounded-xl border border-indigo-100"
+                  titleClassName="text-[11px] font-bold text-slate-800"
+                  title={
+                    <>
+                      <Volume2 className="w-3.5 h-3.5 text-indigo-600" />
+                      Dudak Senkronu (Lip-Sync)
+                    </>
+                  }
+                  headerExtra={
                     <button
-                      key={part.id}
-                      onClick={() =>
-                        onSelectPart?.(isPartActive ? null : part.id)
-                      }
-                      className={`px-2 py-1.5 rounded-lg text-[10.5px] font-semibold text-left border transition-all cursor-pointer truncate ${isPartActive
-                        ? 'bg-pink-600 text-white border-pink-600 shadow-xs'
-                        : 'bg-white hover:bg-pink-50 border-pink-200 text-slate-700'
+                      onClick={() => {
+                        const nextEnabled = !resolvedCharConfig.lipSyncEnabled;
+                        const firstSceneAudio = scene.audioClips.find((c) =>
+                          Boolean(c.audioUrl)
+                        );
+                        const shouldAttachSceneAudio =
+                          nextEnabled &&
+                          !resolvedCharConfig.lipSyncAudioUrl &&
+                          firstSceneAudio?.audioUrl;
+                        if (shouldAttachSceneAudio && firstSceneAudio?.audioUrl) {
+                          ensureAudioLipSyncAnalyzed(firstSceneAudio.audioUrl);
+                        }
+                        onUpdateObject(selectedObject.id, {
+                          characterConfig: {
+                            ...resolvedCharConfig,
+                            lipSyncEnabled: nextEnabled,
+                            ...(shouldAttachSceneAudio && firstSceneAudio
+                              ? {
+                                lipSyncAudioUrl: firstSceneAudio.audioUrl,
+                                lipSyncAudioName: firstSceneAudio.name,
+                                lipSyncAudioStartTime: firstSceneAudio.startTime,
+                              }
+                              : {}),
+                          },
+                        });
+                      }}
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${resolvedCharConfig.lipSyncEnabled
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-200 text-slate-600'
                         }`}
                     >
-                      {part.name}
+                      {resolvedCharConfig.lipSyncEnabled ? 'Aktif (Konuşuyor)' : 'Kapalı'}
                     </button>
-                  );
-                })}
-              </div>
+                  }
+                >
 
-              {selectedPartId && (() => {
-                const partSchema = mathDef.parts?.find(
-                  (p) => p.id === selectedPartId
-                );
-                if (!partSchema) return null;
-                const pState: CompositePartState = selectedObject.partStates?.[
-                  selectedPartId
-                ] || {
-                  offsetX: 0,
-                  offsetY: 0,
-                  rotation: 0,
-                  scale: 1,
-                  opacity: 100,
-                  pivotX: partSchema.pivotX,
-                  pivotY: partSchema.pivotY,
-                };
-                return (
-                  <div className="bg-white rounded-lg p-2.5 border border-pink-200 space-y-2">
-                    <div className="flex items-center justify-between pb-1 border-b border-pink-100">
-                      <span className="text-[11px] font-bold text-pink-800">
-                        Seçili Parça: {partSchema.name}
-                      </span>
+                  <p className="text-[10px] text-slate-500 leading-snug">
+                    Ses dosyası (.mp3/.wav) yükleyin veya mikrofonla kaydedin; oynatma sırasında dudaklar otomatik senkronize hareket eder.
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      onClick={() => lipSyncFileInputRef.current?.click()}
+                      className="py-1.5 px-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10.5px] font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>Ses Yükle (.mp3)</span>
+                    </button>
+
+                    {!isRecordingVoice ? (
                       <button
-                        onClick={() => resetCompositePart(selectedPartId)}
-                        className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 hover:bg-rose-50 text-[10px] font-semibold text-slate-600 hover:text-rose-600 cursor-pointer"
-                        title="Parça dönüşümlerini sıfırla"
-                      >
-                        <RotateCcw className="w-2.5 h-2.5" /> Sıfırla
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="text-[10px] text-slate-600">
-                        <div className="flex justify-between mb-0.5">
-                          <span>Kayma X</span>
-                          <span className="font-mono font-bold">
-                            {pState.offsetX}
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={-80}
-                          max={80}
-                          value={pState.offsetX}
-                          onChange={(e) =>
-                            updateCompositePart(selectedPartId, {
-                              offsetX: Number(e.target.value),
-                            })
-                          }
-                          className="w-full accent-pink-600 cursor-pointer h-1.5"
-                        />
-                      </label>
-                      <label className="text-[10px] text-slate-600">
-                        <div className="flex justify-between mb-0.5">
-                          <span>Kayma Y</span>
-                          <span className="font-mono font-bold">
-                            {pState.offsetY}
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={-80}
-                          max={80}
-                          value={pState.offsetY}
-                          onChange={(e) =>
-                            updateCompositePart(selectedPartId, {
-                              offsetY: Number(e.target.value),
-                            })
-                          }
-                          className="w-full accent-pink-600 cursor-pointer h-1.5"
-                        />
-                      </label>
-                    </div>
-
-                    <label className="block text-[10px] text-slate-600">
-                      <div className="flex justify-between mb-0.5">
-                        <span>Parça Açısı (Rotation)</span>
-                        <span className="font-mono font-bold">
-                          {pState.rotation}°
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min={-180}
-                        max={180}
-                        value={pState.rotation}
-                        onChange={(e) =>
-                          updateCompositePart(selectedPartId, {
-                            rotation: Number(e.target.value),
-                          })
-                        }
-                        className="w-full accent-pink-600 cursor-pointer h-1.5"
-                      />
-                    </label>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="text-[10px] text-slate-600">
-                        <div className="flex justify-between mb-0.5">
-                          <span>Parça Ölçeği</span>
-                          <span className="font-mono font-bold">
-                            {pState.scale.toFixed(2)}x
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0.3}
-                          max={2.0}
-                          step={0.05}
-                          value={pState.scale}
-                          onChange={(e) =>
-                            updateCompositePart(selectedPartId, {
-                              scale: Number(e.target.value),
-                            })
-                          }
-                          className="w-full accent-pink-600 cursor-pointer h-1.5"
-                        />
-                      </label>
-                      <label className="text-[10px] text-slate-600">
-                        <div className="flex justify-between mb-0.5">
-                          <span>Parça Opaklığı</span>
-                          <span className="font-mono font-bold">
-                            %{pState.opacity}
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0}
-                          max={100}
-                          value={pState.opacity}
-                          onChange={(e) =>
-                            updateCompositePart(selectedPartId, {
-                              opacity: Number(e.target.value),
-                            })
-                          }
-                          className="w-full accent-pink-600 cursor-pointer h-1.5"
-                        />
-                      </label>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
-                      <label className="text-[10px] text-slate-500">
-                        <div className="flex justify-between mb-0.5">
-                          <span>Pivot X</span>
-                          <span className="font-mono">
-                            {pState.pivotX ?? partSchema.pivotX}
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0}
-                          max={200}
-                          value={pState.pivotX ?? partSchema.pivotX}
-                          onChange={(e) =>
-                            updateCompositePart(selectedPartId, {
-                              pivotX: Number(e.target.value),
-                            })
-                          }
-                          className="w-full accent-slate-500 cursor-pointer h-1.5"
-                        />
-                      </label>
-                      <label className="text-[10px] text-slate-500">
-                        <div className="flex justify-between mb-0.5">
-                          <span>Pivot Y</span>
-                          <span className="font-mono">
-                            {pState.pivotY ?? partSchema.pivotY}
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0}
-                          max={200}
-                          value={pState.pivotY ?? partSchema.pivotY}
-                          onChange={(e) =>
-                            updateCompositePart(selectedPartId, {
-                              pivotY: Number(e.target.value),
-                            })
-                          }
-                          className="w-full accent-slate-500 cursor-pointer h-1.5"
-                        />
-                      </label>
-                    </div>
-                  </div>
-                );
-              })()}
-            </DesignAccordionSection>
-          )}
-
-          {/* Text & Font Content Controls (if object supports text) */}
-          {(typeof selectedObject.text === 'string' ||
-            selectedObject.category === 'text' ||
-            selectedObject.assetId === 'obj-speech-bubble' ||
-            selectedObject.assetId === 'obj-formula-card' ||
-            selectedObject.assetId === 'obj-badge-star') && (
-              <DesignAccordionSection
-                isOpen={isSectionOpen('text')}
-                onToggle={() => toggleSection('text')}
-                title={
-                  <>
-                    <Type className="w-3.5 h-3.5 text-indigo-600" />
-                    Metin İçeriği, Font & Boyut
-                  </>
-                }
-                headerExtra={
-                  selectedObject.assetId === 'text-formula' ||
-                    selectedObject.assetId === 'obj-formula-card' ? (
-                    <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[9.5px] font-bold">
-                      LaTeX Destekli
-                    </span>
-                  ) : undefined
-                }
-              >
-                <textarea
-                  rows={3}
-                  value={selectedObject.text || ''}
-                  onChange={(e) =>
-                    onUpdateObject(selectedObject.id, { text: e.target.value })
-                  }
-                  className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-lg p-2 text-xs font-mono text-slate-900 focus:outline-none resize-none"
-                  placeholder={
-                    selectedObject.assetId === 'text-formula' ||
-                      selectedObject.assetId === 'obj-formula-card'
-                      ? 'Örn: \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}'
-                      : 'Sahne metnini girin...'
-                  }
-                />
-                {(selectedObject.assetId === 'text-formula' ||
-                  selectedObject.assetId === 'obj-formula-card') && (
-                    <div className="flex flex-wrap gap-1">
-                      {[
-                        { label: 'Kesir', code: '\\frac{a}{b}' },
-                        { label: 'Karekök', code: '\\sqrt{x}' },
-                        { label: 'Üs', code: 'x^{2}' },
-                        { label: '±', code: '\\pm ' },
-                        { label: 'Toplam ∑', code: '\\sum_{i=1}^{n} ' },
-                        { label: 'İntegral ∫', code: '\\int_{a}^{b} ' },
-                        { label: 'π', code: '\\pi ' },
-                      ].map((snip) => (
-                        <button
-                          key={snip.label}
-                          type="button"
-                          onClick={() =>
+                        onClick={async () => {
+                          try {
+                            const stream = await navigator.mediaDevices.getUserMedia({
+                              audio: true,
+                            });
+                            recordedChunksRef.current = [];
+                            const recorder = new MediaRecorder(stream);
+                            recorder.ondataavailable = (ev) => {
+                              if (ev.data.size > 0) {
+                                recordedChunksRef.current.push(ev.data);
+                              }
+                            };
+                            recorder.onstop = () => {
+                              const blob = new Blob(recordedChunksRef.current, {
+                                type: 'audio/webm',
+                              });
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const dataUrl = reader.result as string;
+                                ensureAudioLipSyncAnalyzed(dataUrl);
+                                onUpdateObject(selectedObject.id, {
+                                  characterConfig: {
+                                    ...resolvedCharConfig,
+                                    lipSyncEnabled: true,
+                                    lipSyncAudioUrl: dataUrl,
+                                    lipSyncAudioName: 'Mikrofon Kaydı',
+                                    lipSyncAudioStartTime: 0,
+                                  },
+                                });
+                              };
+                              reader.readAsDataURL(blob);
+                              stream.getTracks().forEach((t) => t.stop());
+                            };
+                            mediaRecorderRef.current = recorder;
+                            recorder.start();
+                            setIsRecordingVoice(true);
+                          } catch {
+                            // If microphone permission not available, enable simulated lip-sync directly
                             onUpdateObject(selectedObject.id, {
-                              text: (selectedObject.text || '') + snip.code,
-                            })
+                              characterConfig: {
+                                ...resolvedCharConfig,
+                                lipSyncEnabled: true,
+                                lipSyncAudioName: 'Canlı Konuşma Simülasyonu',
+                              },
+                            });
                           }
-                          className="px-1.5 py-0.5 rounded bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-[10px] font-semibold text-slate-700 cursor-pointer"
-                          title={snip.code}
-                        >
-                          {snip.label}
-                        </button>
-                      ))}
+                        }}
+                        className="py-1.5 px-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[10.5px] font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <Mic className="w-3 h-3" />
+                        <span>Mikrofon Kayıt</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          mediaRecorderRef.current?.stop();
+                          setIsRecordingVoice(false);
+                        }}
+                        className="py-1.5 px-2 rounded-lg bg-rose-600 text-white text-[10.5px] font-bold flex items-center justify-center gap-1 animate-pulse cursor-pointer"
+                      >
+                        <Square className="w-3 h-3 fill-current" />
+                        <span>Kaydı Bitir</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {scene.audioClips.some((c) => Boolean(c.audioUrl)) && (
+                    <div className="space-y-1 pt-1 border-t border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-600 block">
+                        Sahnedeki Sese Senkronla (Çoklu Seçilebilir)
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {scene.audioClips
+                          .filter((c) => Boolean(c.audioUrl))
+                          .map((clip) => {
+                            const isLinked = isSceneClipLinkedToCharacter(
+                              resolvedCharConfig,
+                              clip
+                            );
+                            return (
+                              <button
+                                key={clip.id}
+                                type="button"
+                                aria-pressed={isLinked}
+                                onClick={() => {
+                                  if (!isLinked && clip.audioUrl) {
+                                    ensureAudioLipSyncAnalyzed(clip.audioUrl);
+                                  }
+                                  onUpdateObject(selectedObject.id, {
+                                    characterConfig: toggleCharacterLipSyncClip(
+                                      resolvedCharConfig,
+                                      clip,
+                                      scene.audioClips
+                                    ),
+                                  });
+                                }}
+                                className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-colors cursor-pointer truncate max-w-full ${isLinked
+                                  ? 'bg-emerald-600 text-white border-emerald-600'
+                                  : 'bg-slate-50 hover:bg-indigo-50 text-slate-700 border-slate-200'
+                                  }`}
+                              >
+                                {isLinked ? '✓ ' : ''}🎙️ {clip.name} ({clip.startTime.toFixed(1)}s)
+                              </button>
+                            );
+                          })}
+                      </div>
                     </div>
                   )}
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-600">Yazı Tipi (Font)</span>
-                  </div>
-                  <select
-                    value={selectedObject.fontFamily || 'Inter'}
-                    onChange={(e) =>
-                      onUpdateObject(selectedObject.id, {
-                        fontFamily: e.target.value,
-                      })
-                    }
-                    style={{ fontFamily: selectedObject.fontFamily || 'Inter' }}
-                    className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none cursor-pointer"
-                  >
-                    <option value="Inter">Inter (Varsayılan)</option>
-                    <option value="Poppins">Poppins</option>
-                    <option value="Roboto">Roboto</option>
-                    <option value="Montserrat">Montserrat</option>
-                    <option value="Playfair Display">Playfair Display (Serif)</option>
-                    <option value="Caveat">Caveat (El Yazısı)</option>
-                    <option value="JetBrains Mono">JetBrains Mono (Kod / Matematik)</option>
-                  </select>
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-600">Yazı Boyutu (px)</span>
-                    <span className="font-mono font-semibold text-slate-900">
-                      {selectedObject.fontSize || 18}px
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={12}
-                    max={44}
-                    value={selectedObject.fontSize || 18}
-                    onChange={(e) =>
-                      onUpdateObject(selectedObject.id, {
-                        fontSize: Number(e.target.value),
-                      })
-                    }
-                    className="w-full accent-indigo-600 cursor-pointer"
-                  />
-                </div>
-              </DesignAccordionSection>
+
+                  {resolvedCharConfig.lipSyncAudioName && (
+                    <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="font-semibold text-emerald-800 truncate">
+                          🎙️ {resolvedCharConfig.lipSyncAudioName}
+                        </span>
+                        <button
+                          onClick={() =>
+                            onUpdateObject(selectedObject.id, {
+                              characterConfig: {
+                                ...resolvedCharConfig,
+                                lipSyncEnabled: false,
+                                lipSyncAudioClips: undefined,
+                                lipSyncAudioUrl: undefined,
+                                lipSyncAudioName: undefined,
+                                lipSyncAudioStartTime: undefined,
+                              },
+                            })
+                          }
+                          className="text-rose-600 hover:underline font-semibold cursor-pointer"
+                        >
+                          Kaldır
+                        </button>
+                      </div>
+                      {resolvedCharConfig.lipSyncAudioUrl && (
+                        <audio
+                          controls
+                          src={resolvedCharConfig.lipSyncAudioUrl}
+                          className="w-full h-7"
+                        />
+                      )}
+                    </div>
+                  )}
+                </DesignAccordionSection>
+              </div>
             )}
 
-          {/* Live Chart Data Editor */}
-          {selectedObject.assetId.startsWith('chart-') && (
-            <DesignAccordionSection
-              isOpen={isSectionOpen('chart')}
-              onToggle={() => toggleSection('chart')}
-              containerClassName="p-3 rounded-xl bg-indigo-50/60 border border-indigo-200"
-              titleClassName="text-xs font-bold text-indigo-950"
-              title={
-                <>
-                  <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
-                  Grafik Veri Editörü
-                </>
-              }
-            >
+            {selectedObject.category === 'characters' && scenes.length > 0 && (() => {
+              const sharedId = getCharacterContinuityId(selectedObject);
+              const currentSceneIdx = scenes.findIndex((s) => s.id === scene.id);
+              const presentSceneIds = new Set(
+                scenes
+                  .filter((s) =>
+                    s.objects.some(
+                      (o) => o.category === 'characters' && getCharacterContinuityId(o) === sharedId
+                    )
+                  )
+                  .map((s) => s.id)
+              );
+              const subsequentScenes =
+                currentSceneIdx >= 0 ? scenes.slice(currentSceneIdx + 1) : [];
+              const hasLaterPresence = subsequentScenes.some((s) => presentSceneIds.has(s.id));
+              const hasOtherScenePresence =
+                presentSceneIds.size > (presentSceneIds.has(scene.id) ? 1 : 0);
 
-              <div>
-                <span className="text-[10.5px] font-semibold text-slate-600 block mb-1">
-                  Renk Paleti
-                </span>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {(['corporate', 'pastel', 'vibrant'] as const).map((palId) => {
-                    const pal = CHART_PALETTES[palId];
-                    const isAct = (selectedObject.chartPalette || 'vibrant') === palId;
-                    return (
-                      <button
-                        key={palId}
-                        type="button"
-                        onClick={() =>
-                          onUpdateObject(selectedObject.id, { chartPalette: palId })
-                        }
-                        className={`p-1.5 rounded-lg border text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition-all ${isAct
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                          }`}
-                      >
-                        <span>{pal.label}</span>
-                        <div className="flex gap-0.5">
-                          {pal.colors.slice(0, 4).map((c, ci) => (
-                            <span
-                              key={ci}
-                              className="w-2.5 h-2.5 rounded-full border border-white/40"
-                              style={{ backgroundColor: c }}
-                            />
-                          ))}
+              return (
+                <DesignAccordionSection
+                  isOpen={isSectionOpen('continuity')}
+                  onToggle={() => toggleSection('continuity')}
+                  title={
+                    <>
+                      <FastForward className="w-3.5 h-3.5 text-indigo-600" />
+                      Sahneler Arası Devamlılık
+                    </>
+                  }
+                  headerExtra={
+                    <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded">
+                      {presentSceneIds.size} sahne
+                    </span>
+                  }
+                >
+                  <div className="space-y-2 text-[10.5px]">
+                    <div className="flex flex-wrap gap-1">
+                      {scenes.map((s, idx) => {
+                        const isHere = presentSceneIds.has(s.id);
+                        return (
+                          <span
+                            key={s.id}
+                            className={`px-1.5 py-0.5 rounded border text-[9.5px] font-semibold ${isHere
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-white text-slate-400 border-slate-200'
+                              }`}
+                          >
+                            {idx + 1}. {s.name}
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    {subsequentScenes.length > 0 ? (
+                      <>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[10px] text-slate-600 font-semibold">
+                            <span>Sonraki Sahnelere Devam Ettir</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const missingIds = subsequentScenes
+                                  .filter((s) => !presentSceneIds.has(s.id))
+                                  .map((s) => s.id);
+                                setSelectedContinuitySceneIds(
+                                  selectedContinuitySceneIds.length === missingIds.length
+                                    ? []
+                                    : missingIds
+                                );
+                              }}
+                              className="text-indigo-600 hover:underline cursor-pointer"
+                            >
+                              Tümünü Seç
+                            </button>
+                          </div>
+                          <div className="max-h-28 overflow-y-auto space-y-1 rounded border border-slate-200 bg-white p-1.5">
+                            {subsequentScenes.map((targetScene) => {
+                              const alreadyIn = presentSceneIds.has(targetScene.id);
+                              const checked =
+                                alreadyIn || selectedContinuitySceneIds.includes(targetScene.id);
+                              return (
+                                <label
+                                  key={targetScene.id}
+                                  className="flex items-center justify-between gap-2 text-[10px] text-slate-700 cursor-pointer"
+                                >
+                                  <span className="flex items-center gap-1.5 truncate">
+                                    <input
+                                      type="checkbox"
+                                      disabled={alreadyIn}
+                                      checked={checked}
+                                      onChange={(e) => {
+                                        setSelectedContinuitySceneIds((prev) =>
+                                          e.target.checked
+                                            ? [...prev, targetScene.id]
+                                            : prev.filter((id) => id !== targetScene.id)
+                                        );
+                                      }}
+                                      className="accent-indigo-600 cursor-pointer"
+                                    />
+                                    <span className="truncate">{targetScene.name}</span>
+                                  </span>
+                                  {alreadyIn && (
+                                    <span className="text-[9px] text-emerald-700 font-semibold shrink-0">
+                                      Mevcut
+                                    </span>
+                                  )}
+                                </label>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10.5px] font-semibold text-slate-600">
-                    Etiket & Değerler
-                  </span>
-                  {selectedObject.assetId !== 'chart-progress' &&
-                    selectedObject.assetId !== 'chart-gauge' && (
+                        <div className="grid grid-cols-1 gap-1.5">
+                          <button
+                            type="button"
+                            disabled={selectedContinuitySceneIds.length === 0}
+                            onClick={() => {
+                              onContinueCharacterToScenes?.(
+                                scene.id,
+                                selectedObject.id,
+                                selectedContinuitySceneIds
+                              );
+                              const count = selectedContinuitySceneIds.length;
+                              setSelectedContinuitySceneIds([]);
+                              setContinuityFeedback(
+                                `Karakter ${count} sonraki sahneye devam ettirildi.`
+                              );
+                            }}
+                            className="w-full py-1.5 px-2 rounded-md bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-[10.5px] font-bold transition-colors cursor-pointer disabled:cursor-default"
+                          >
+                            Seçili sahnelere devam ettir
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={!hasLaterPresence}
+                            onClick={() => {
+                              onTerminateCharacterAfterScene?.(scene.id, selectedObject.id);
+                              setContinuityFeedback(
+                                'Karakterin devamlılığı bu sahneden sonra sonlandırıldı.'
+                              );
+                            }}
+                            className="w-full py-1.5 px-2 rounded-md border border-rose-200 bg-rose-50 hover:bg-rose-100 disabled:opacity-40 text-rose-700 text-[10.5px] font-semibold transition-colors cursor-pointer disabled:cursor-default"
+                          >
+                            Bu sahneden sonra sonlandır
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-[10px] text-slate-500">
+                        Bu karakterden sonra başka sahne bulunmuyor.
+                      </div>
+                    )}
+
+                    {hasOtherScenePresence && (
                       <button
                         type="button"
                         onClick={() => {
-                          const cur = selectedObject.chartData || [];
-                          onUpdateObject(selectedObject.id, {
-                            chartData: [
-                              ...cur,
-                              { label: `Veri ${cur.length + 1}`, value: 50 },
-                            ],
-                          });
+                          onSyncCharacterAppearance?.(scene.id, selectedObject.id);
+                          setContinuityFeedback(
+                            'Görünüm diğer sahnelerle eşitlendi (konum ve animasyonlar korundu).'
+                          );
                         }}
-                        className="px-2 py-0.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold cursor-pointer"
+                        className="w-full py-1.5 px-2 rounded-md border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10.5px] font-semibold transition-colors cursor-pointer"
                       >
-                        + Ekle
+                        Görünümü diğer sahnelerle eşitle
                       </button>
                     )}
-                </div>
 
-                {(selectedObject.chartData || [{ label: 'Veri', value: 75 }]).map(
-                  (pt, idx) => (
-                    <div key={idx} className="flex items-center gap-1.5">
-                      <input
-                        type="text"
-                        value={pt.label}
-                        onChange={(e) => {
-                          const next = [...(selectedObject.chartData || [])];
-                          next[idx] = { ...pt, label: e.target.value };
-                          onUpdateObject(selectedObject.id, { chartData: next });
-                        }}
-                        className="flex-1 min-w-0 bg-white border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-900"
-                        placeholder="Etiket"
-                      />
-                      <input
-                        type="number"
-                        value={pt.value}
-                        onChange={(e) => {
-                          const next = [...(selectedObject.chartData || [])];
-                          next[idx] = { ...pt, value: Number(e.target.value) || 0 };
-                          onUpdateObject(selectedObject.id, { chartData: next });
-                        }}
-                        className="w-16 bg-white border border-slate-200 rounded-md px-2 py-1 text-xs font-mono text-slate-900"
-                      />
-                      {selectedObject.assetId !== 'chart-progress' &&
-                        selectedObject.assetId !== 'chart-gauge' &&
-                        (selectedObject.chartData?.length || 0) > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const next = (selectedObject.chartData || []).filter(
-                                (_, i) => i !== idx
-                              );
-                              onUpdateObject(selectedObject.id, { chartData: next });
-                            }}
-                            className="p-1 text-rose-500 hover:bg-rose-50 rounded cursor-pointer"
-                            title="Sil"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                    </div>
-                  )
-                )}
-              </div>
-            </DesignAccordionSection>
-          )}
+                    {continuityFeedback && (
+                      <div
+                        data-testid="continuity-feedback"
+                        className="rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-800"
+                      >
+                        {continuityFeedback}
+                      </div>
+                    )}
+                  </div>
+                </DesignAccordionSection>
+              );
+            })()}
 
-          {/* Live Table Editor */}
-          {selectedObject.assetId.startsWith('table-') && (
+            {/* Position & Dimensions Grid (X, Y, W, H, Rotation) */}
             <DesignAccordionSection
-              isOpen={isSectionOpen('table')}
-              onToggle={() => toggleSection('table')}
-              containerClassName="p-3 rounded-xl bg-indigo-50/60 border border-indigo-200"
-              titleClassName="text-xs font-bold text-indigo-950"
+              isOpen={isSectionOpen('transform')}
+              onToggle={() => toggleSection('transform')}
               title={
                 <>
-                  <Table className="w-3.5 h-3.5 text-indigo-600" />
-                  Tablo Düzenleyici
+                  <Move className="w-3.5 h-3.5 text-indigo-600" />
+                  Konum & Boyut
                 </>
               }
-            >
-
-              <div>
-                <span className="text-[10.5px] font-semibold text-slate-600 block mb-1">
-                  Renk Paleti
-                </span>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {(['corporate', 'pastel', 'vibrant'] as const).map((palId) => {
-                    const pal = CHART_PALETTES[palId];
-                    const isAct = (selectedObject.chartPalette || 'corporate') === palId;
-                    return (
-                      <button
-                        key={palId}
-                        type="button"
-                        onClick={() =>
-                          onUpdateObject(selectedObject.id, { chartPalette: palId })
-                        }
-                        className={`p-1.5 rounded-lg border text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition-all ${isAct
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                          }`}
-                      >
-                        <span>{pal.label}</span>
-                        <div className="flex gap-0.5">
-                          {pal.colors.slice(0, 4).map((c, ci) => (
-                            <span
-                              key={ci}
-                              className="w-2.5 h-2.5 rounded-full border border-white/40"
-                              style={{ backgroundColor: c }}
-                            />
-                          ))}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-1.5">
+              headerExtra={
                 <button
-                  type="button"
-                  onClick={() => {
-                    const td = selectedObject.tableData || {
-                      headers: ['Sütun 1', 'Sütun 2'],
-                      rows: [['A', 'B']],
-                    };
-                    const newRow = td.headers.map((_, i) => `Veri ${i + 1}`);
+                  onClick={() =>
                     onUpdateObject(selectedObject.id, {
-                      tableData: { ...td, rows: [...td.rows, newRow] },
-                    });
-                  }}
-                  className="py-1.5 px-2 rounded-lg bg-white hover:bg-indigo-50 border border-indigo-200 text-[10.5px] font-bold text-indigo-700 cursor-pointer"
+                      flipX: !selectedObject.flipX,
+                    })
+                  }
+                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-white hover:bg-slate-100 text-[10px] font-medium text-slate-700 border border-slate-200 cursor-pointer"
                 >
-                  + Satır Ekle
+                  <FlipHorizontal className="w-3 h-3" /> Yatay Çevir
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const td = selectedObject.tableData;
-                    if (!td || td.rows.length <= 1) return;
-                    onUpdateObject(selectedObject.id, {
-                      tableData: { ...td, rows: td.rows.slice(0, -1) },
-                    });
-                  }}
-                  className="py-1.5 px-2 rounded-lg bg-white hover:bg-rose-50 border border-slate-200 text-[10.5px] font-bold text-rose-600 cursor-pointer"
-                >
-                  - Satır Sil
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const td = selectedObject.tableData || {
-                      headers: ['Sütun 1', 'Sütun 2'],
-                      rows: [['A', 'B']],
-                    };
-                    onUpdateObject(selectedObject.id, {
-                      tableData: {
-                        headers: [...td.headers, `Sütun ${td.headers.length + 1}`],
-                        rows: td.rows.map((r) => [...r, '-']),
-                      },
-                    });
-                  }}
-                  className="py-1.5 px-2 rounded-lg bg-white hover:bg-indigo-50 border border-indigo-200 text-[10.5px] font-bold text-indigo-700 cursor-pointer"
-                >
-                  + Sütun Ekle
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const td = selectedObject.tableData;
-                    if (!td || td.headers.length <= 1) return;
-                    onUpdateObject(selectedObject.id, {
-                      tableData: {
-                        headers: td.headers.slice(0, -1),
-                        rows: td.rows.map((r) => r.slice(0, -1)),
-                      },
-                    });
-                  }}
-                  className="py-1.5 px-2 rounded-lg bg-white hover:bg-rose-50 border border-slate-200 text-[10.5px] font-bold text-rose-600 cursor-pointer"
-                >
-                  - Sütun Sil
-                </button>
-              </div>
-              <p className="text-[10px] text-indigo-700/80 leading-snug">
-                İpucu: Sahnedeki herhangi bir hücreye çift tıklayarak metni doğrudan düzenleyebilirsiniz.
-              </p>
-            </DesignAccordionSection>
-          )}
-
-          {/* Color Pickers & Swatches */}
-          {!selectedObject.imageUrl && (
-            <DesignAccordionSection
-              isOpen={isSectionOpen('palette')}
-              onToggle={() => toggleSection('palette')}
-              title={
-                <>
-                  <Palette className="w-3.5 h-3.5 text-indigo-600" />
-                  Renk Paleti
-                </>
               }
             >
 
               <div className="grid grid-cols-2 gap-2">
-                <label className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-2 cursor-pointer">
+                <label className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                  <span className="text-[11px] font-mono text-slate-400">X</span>
                   <input
-                    type="color"
-                    value={selectedObject.color}
-                    onChange={(e) =>
-                      onUpdateObject(selectedObject.id, { color: e.target.value })
-                    }
-                    className="w-6 h-6 rounded border-0 bg-transparent cursor-pointer"
-                  />
-                  <div className="min-w-0">
-                    <span className="text-[10px] text-slate-500 block">
-                      {selectedObject.assetId.startsWith('text-rough-')
-                        ? 'Çizgi & Metin'
-                        : 'Ana Renk'}
-                    </span>
-                    <span className="text-xs font-mono text-slate-900 uppercase">
-                      {selectedObject.color}
-                    </span>
-                  </div>
-                </label>
-
-                <label className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-2 cursor-pointer">
-                  <input
-                    type="color"
-                    value={selectedObject.secondaryColor || '#6366f1'}
+                    type="number"
+                    value={selectedObject.x}
                     onChange={(e) =>
                       onUpdateObject(selectedObject.id, {
-                        secondaryColor: e.target.value,
+                        x: Number(e.target.value),
                       })
                     }
-                    className="w-6 h-6 rounded border-0 bg-transparent cursor-pointer"
+                    className="w-16 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
                   />
-                  <div className="min-w-0">
-                    <span className="text-[10px] text-slate-500 block">
-                      {selectedObject.assetId.startsWith('text-rough-')
-                        ? 'Dolgu Rengi'
-                        : 'İkincil'}
-                    </span>
-                    <span className="text-xs font-mono text-slate-900 uppercase">
-                      {selectedObject.secondaryColor || '#6366f1'}
-                    </span>
-                  </div>
+                </label>
+                <label className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                  <span className="text-[11px] font-mono text-slate-400">Y</span>
+                  <input
+                    type="number"
+                    value={selectedObject.y}
+                    onChange={(e) =>
+                      onUpdateObject(selectedObject.id, {
+                        y: Number(e.target.value),
+                      })
+                    }
+                    className="w-16 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
+                  />
+                </label>
+                <label className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                  <span className="text-[11px] font-mono text-slate-400">W</span>
+                  <input
+                    type="number"
+                    min={40}
+                    value={selectedObject.width}
+                    onChange={(e) =>
+                      onUpdateObject(selectedObject.id, {
+                        width: Math.max(40, Number(e.target.value)),
+                      })
+                    }
+                    className="w-16 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
+                  />
+                </label>
+                <label className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                  <span className="text-[11px] font-mono text-slate-400">H</span>
+                  <input
+                    type="number"
+                    min={40}
+                    value={selectedObject.height}
+                    onChange={(e) =>
+                      onUpdateObject(selectedObject.id, {
+                        height: Math.max(40, Number(e.target.value)),
+                      })
+                    }
+                    className="w-16 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
+                  />
                 </label>
               </div>
 
-              {selectedObject.assetId.startsWith('text-rough-') && (
-                <div className="bg-white border border-slate-200 rounded-lg p-2">
-                  <div className="flex items-center justify-between text-[11px] mb-1">
-                    <span className="text-slate-600 font-medium">Çizgi Kalınlığı</span>
-                    <span className="font-mono text-indigo-700 font-semibold">
-                      {(selectedObject.strokeWidth ?? 2.3).toFixed(1)} px
+              {/* Rotation & Opacity Sliders */}
+              <div className="pt-1 space-y-2">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-600">Döndürme (Rotation)</span>
+                    <span className="font-mono font-semibold text-slate-900">
+                      {selectedObject.rotation}°
                     </span>
                   </div>
                   <input
                     type="range"
-                    min={1}
-                    max={6}
-                    step={0.5}
-                    value={selectedObject.strokeWidth ?? 2.3}
+                    min={-180}
+                    max={180}
+                    value={selectedObject.rotation}
                     onChange={(e) =>
                       onUpdateObject(selectedObject.id, {
-                        strokeWidth: Number(e.target.value),
+                        rotation: Number(e.target.value),
                       })
                     }
                     className="w-full accent-indigo-600 cursor-pointer"
                   />
                 </div>
-              )}
 
-              {/* Quick Studio Swatches */}
-              <div>
-                <span className="text-[10px] text-slate-500 block mb-1.5">
-                  Hızlı Stüdyo Renkleri
-                </span>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {STUDIO_SWATCHES.map((swatch) => (
-                    <button
-                      key={swatch}
-                      onClick={() =>
-                        onUpdateObject(selectedObject.id, { color: swatch })
-                      }
-                      style={{ backgroundColor: swatch }}
-                      className={`w-5 h-5 rounded-md border transition-transform cursor-pointer ${selectedObject.color.toLowerCase() === swatch.toLowerCase()
-                        ? 'scale-110 ring-2 ring-indigo-500 border-white'
-                        : 'border-slate-300 hover:scale-105'
-                        }`}
-                      title={swatch}
-                    />
-                  ))}
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-600">Ölçek (Scale)</span>
+                    <span className="font-mono font-semibold text-slate-900">
+                      {(selectedObject.scale ?? 1).toFixed(2)}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.25}
+                    max={2.5}
+                    step={0.05}
+                    value={selectedObject.scale ?? 1}
+                    onChange={(e) =>
+                      onUpdateObject(selectedObject.id, {
+                        scale: Number(e.target.value),
+                      })
+                    }
+                    className="w-full accent-indigo-600 cursor-pointer"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/70">
+                  <span className="text-slate-500 flex items-center gap-1">
+                    <Layers className="w-3 h-3 text-slate-400" />
+                    Katman Sırası:
+                  </span>
+                  <span className="font-mono font-semibold text-slate-800">
+                    #{layerIndex} / {scene.objects.length}
+                  </span>
                 </div>
               </div>
             </DesignAccordionSection>
-          )}
 
-          {/* Timeline Timing inside Design Tab */}
-          <DesignAccordionSection
-            isOpen={isSectionOpen('timing')}
-            onToggle={() => toggleSection('timing')}
-            title={
-              <>
-                <Clock className="w-3.5 h-3.5 text-indigo-600" />
-                Zaman Çizelgesi Aralığı
-              </>
-            }
-            headerExtra={
-              <button
-                onClick={() =>
-                  onUpdateObject(selectedObject.id, {
-                    startTime: 0,
-                    duration: scene.duration,
-                  })
+            {/* Karaktere Bağla (Faz 4A Socket Bağlantısı) */}
+            {(() => {
+              const attachableChars = scene.objects.filter((o) => {
+                if (o.id === selectedObject.id || o.category !== 'characters' || o.assetId === 'char-robot-mira') {
+                  return false;
                 }
-                className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
-                title="Bu katmanı tüm sahne süresi boyunca görünür yap"
+                const effCfg =
+                  resolveEffectiveCharacterConfig(o, scene.audioClips) ||
+                  o.characterConfig ||
+                  DEFAULT_CHARACTER_CONFIGS[o.assetId];
+                if (!effCfg) return false;
+                const prof = buildCharacterRigProfile(effCfg, o.assetId);
+                return prof.isSupported && prof.propSockets.length > 0;
+              });
+
+              const currentAtt = selectedObject.attachment;
+              const activeParentId =
+                currentAtt?.parentObjectId ??
+                (attachableChars.some((c) => c.id === attachParentId)
+                  ? attachParentId
+                  : attachableChars[0]?.id ?? '');
+              const activeSocketId: PropSocketId =
+                currentAtt?.socketId ?? attachSocketId;
+
+              const SOCKET_LABELS: Record<PropSocketId, string> = {
+                leftPropSocket: 'Sol el',
+                rightPropSocket: 'Sağ el',
+                backPropSocket: 'Sırt',
+              };
+
+              const handleAttach = (nextParentId: string, nextSocketId: PropSocketId) => {
+                setAttachError(null);
+                const normalizedObjects = scene.objects.map((o) =>
+                  o.category === 'characters'
+                    ? {
+                      ...o,
+                      characterConfig:
+                        resolveEffectiveCharacterConfig(o, scene.audioClips) ||
+                        o.characterConfig ||
+                        DEFAULT_CHARACTER_CONFIGS[o.assetId],
+                    }
+                    : o
+                );
+                const candidate = {
+                  parentObjectId: nextParentId,
+                  socketId: nextSocketId,
+                  localOffsetX: currentAtt?.parentObjectId === nextParentId && currentAtt?.socketId === nextSocketId
+                    ? (currentAtt.localOffsetX ?? 0)
+                    : 0,
+                  localOffsetY: currentAtt?.parentObjectId === nextParentId && currentAtt?.socketId === nextSocketId
+                    ? (currentAtt.localOffsetY ?? 0)
+                    : 0,
+                  localRotationDeg: currentAtt?.localRotationDeg ?? 0,
+                  inheritScale: currentAtt?.inheritScale ?? true,
+                  inheritRotation: currentAtt?.inheritRotation ?? true,
+                  inheritFlip: currentAtt?.inheritFlip ?? true,
+                };
+                const validation = validateObjectAttachment(
+                  normalizedObjects,
+                  selectedObject.id,
+                  candidate,
+                  buildCharacterRigProfile
+                );
+                if (!validation.valid) {
+                  setAttachError(validation.message ?? 'Soket bağlantısı doğrulanamadı.');
+                  return;
+                }
+                onUpdateObject(selectedObject.id, { attachment: candidate }, true);
+              };
+
+              const handleDetach = () => {
+                setAttachError(null);
+                if (!currentAtt) return;
+                const parentObj = scene.objects.find((o) => o.id === currentAtt.parentObjectId);
+                if (parentObj) {
+                  const socketTransform = resolveParentCharacterSocketTransform(
+                    parentObj,
+                    currentAtt.socketId,
+                    scene,
+                    currentTime,
+                    false
+                  );
+                  if (socketTransform) {
+                    const objAnim = computeObjectAnimation(selectedObject, currentTime, false);
+                    const resolved = resolveAttachedObjectStageTransform(
+                      selectedObject,
+                      socketTransform,
+                      objAnim
+                    );
+                    const patch = detachObjectPreservingWorldTransform(resolved);
+                    onUpdateObject(selectedObject.id, patch, true);
+                    return;
+                  }
+                }
+                onUpdateObject(selectedObject.id, { attachment: undefined }, true);
+              };
+
+              return (
+                <DesignAccordionSection
+                  isOpen={isSectionOpen('attachment')}
+                  onToggle={() => toggleSection('attachment')}
+                  title={
+                    <>
+                      <Link2 className="w-3.5 h-3.5 text-emerald-600" />
+                      Karaktere Bağla
+                    </>
+                  }
+                  headerExtra={
+                    currentAtt ? (
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold">
+                        Bağlı
+                      </span>
+                    ) : undefined
+                  }
+                >
+                  {attachableChars.length === 0 ? (
+                    <p className="text-[11px] text-slate-500 leading-snug">
+                      Sahnede soket destekleyen başka bir karakter bulunmuyor.
+                    </p>
+                  ) : (
+                    <div className="space-y-2.5">
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                          Hedef Karakter
+                        </label>
+                        <select
+                          value={activeParentId}
+                          onChange={(e) => {
+                            const nextId = e.target.value;
+                            setAttachParentId(nextId);
+                            setAttachError(null);
+                            if (currentAtt) {
+                              handleAttach(nextId, activeSocketId);
+                            }
+                          }}
+                          className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                        >
+                          {(() => {
+                            const nameTotals = new Map<string, number>();
+                            attachableChars.forEach((c) => {
+                              nameTotals.set(c.name, (nameTotals.get(c.name) ?? 0) + 1);
+                            });
+                            const nameSeen = new Map<string, number>();
+                            return attachableChars.map((ch) => {
+                              const total = nameTotals.get(ch.name) ?? 1;
+                              const idx = (nameSeen.get(ch.name) ?? 0) + 1;
+                              nameSeen.set(ch.name, idx);
+                              const displayName = total > 1 ? `${ch.name} #${idx}` : ch.name;
+                              return (
+                                <option key={ch.id} value={ch.id}>
+                                  {displayName}
+                                </option>
+                              );
+                            });
+                          })()}
+                        </select>
+                      </div>
+
+                      <div>
+                        <span className="block text-[11px] font-medium text-slate-600 mb-1">
+                          Soket Noktası
+                        </span>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {(['leftPropSocket', 'rightPropSocket', 'backPropSocket'] as PropSocketId[]).map(
+                            (sockId) => {
+                              const isActive = activeSocketId === sockId;
+                              return (
+                                <button
+                                  key={sockId}
+                                  type="button"
+                                  onClick={() => {
+                                    setAttachSocketId(sockId);
+                                    setAttachError(null);
+                                    if (currentAtt && activeParentId) {
+                                      handleAttach(activeParentId, sockId);
+                                    }
+                                  }}
+                                  className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer ${isActive
+                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                    }`}
+                                >
+                                  {SOCKET_LABELS[sockId]}
+                                </button>
+                              );
+                            }
+                          )}
+                        </div>
+                      </div>
+
+                      {attachError && (
+                        <p className="text-[11px] text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-2 py-1">
+                          {attachError}
+                        </p>
+                      )}
+
+                      <div className="flex items-center gap-2 pt-0.5">
+                        {!currentAtt ? (
+                          <button
+                            type="button"
+                            onClick={() => handleAttach(activeParentId, activeSocketId)}
+                            disabled={!activeParentId}
+                            className="w-full py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                          >
+                            <Link2 className="w-3.5 h-3.5" />
+                            <span>Bağla</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleDetach}
+                            className="w-full py-1.5 px-3 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          >
+                            <Unlink className="w-3.5 h-3.5" />
+                            <span>Bağlantıyı Kaldır</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </DesignAccordionSection>
+              );
+            })()}
+
+            {/* 2-LEVEL COMPOSITE PART INSPECTOR (only for Parçalı Varlık) */}
+            {resolvedAssetClass === 'composite' && mathDef?.parts && (
+              <DesignAccordionSection
+                isOpen={isSectionOpen('composite')}
+                onToggle={() => toggleSection('composite')}
+                containerClassName="p-3 rounded-xl bg-pink-50/70 border border-pink-200"
+                titleClassName="text-xs font-bold text-pink-900"
+                title={
+                  <>
+                    <Puzzle className="w-3.5 h-3.5 text-pink-600" />
+                    Parçalı Varlık — Parça Düzenleyici
+                  </>
+                }
+                headerExtra={
+                  selectedPartId ? (
+                    <button
+                      onClick={() => onSelectPart?.(null)}
+                      className="px-2 py-0.5 rounded bg-white border border-pink-200 text-[10px] font-semibold text-pink-700 hover:bg-pink-100 cursor-pointer"
+                    >
+                      Bütün Nesneyi Seç
+                    </button>
+                  ) : undefined
+                }
               >
-                Tüm Sahneye Yay
-              </button>
-            }
-          >
-            <div className="grid grid-cols-2 gap-2">
-              <label className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex justify-between items-center">
-                <span className="text-[11px] text-slate-500">Başlangıç</span>
-                <input
-                  type="number"
-                  step={0.1}
-                  min={0}
-                  max={Number(Math.max(0, scene.duration - 0.5).toFixed(2))}
-                  value={Number(selectedObject.startTime.toFixed(2))}
-                  onChange={(e) => {
-                    const parsed = Number(e.target.value);
-                    if (!Number.isFinite(parsed)) return;
-                    onUpdateObject(selectedObject.id, {
-                      startTime: Number(
-                        Math.max(0, Math.min(scene.duration - 0.5, parsed)).toFixed(2)
-                      ),
-                    });
-                  }}
-                  className="w-14 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
-                />
-              </label>
-              <label className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex justify-between items-center">
-                <span className="text-[11px] text-slate-500">Süre (sn)</span>
-                <input
-                  type="number"
-                  step={0.1}
-                  min={0.5}
-                  max={Number(scene.duration.toFixed(2))}
-                  value={Number(selectedObject.duration.toFixed(2))}
-                  onChange={(e) => {
-                    const parsed = Number(e.target.value);
-                    if (!Number.isFinite(parsed)) return;
-                    onUpdateObject(selectedObject.id, {
-                      duration: Number(
-                        Math.max(
-                          0.5,
-                          Math.min(scene.duration - selectedObject.startTime, parsed)
-                        ).toFixed(2)
-                      ),
-                    });
-                  }}
-                  className="w-14 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
-                />
-              </label>
-            </div>
-          </DesignAccordionSection>
 
-          {/* Quick Camera Focus on Selected Character / Object */}
-          <button
-            onClick={() => focusCameraOnObject(selectedObject)}
-            className="w-full py-2 px-3 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            title="Kamera Aracı ile bu karaktere / nesneye yakınlaşma (Zoom & Pan) hareketi ekler"
-          >
-            <Video className="w-3.5 h-3.5 text-orange-600" />
-            <span>Kamerayı Bu {isArticulatedCharacter ? 'Karaktere' : 'Nesneye'} Yakınlaştır (Zoom)</span>
-          </button>
+                <p className="text-[10px] text-pink-800/80 leading-snug">
+                  Alt parçayı doğrudan sahneden veya aşağıdaki listeden seçip bağımsız olarak konumlandırabilir, döndürebilir ve ölçekleyebilirsiniz.
+                </p>
 
-          {/* Quick Motion Path & Continue Scene Access in Design Tab */}
-          <DesignAccordionSection
-            isOpen={isSectionOpen('motionpath')}
-            onToggle={() => toggleSection('motionpath')}
-            containerClassName="p-3 rounded-xl bg-amber-50/70 border border-amber-200"
-            titleClassName="text-xs font-bold text-amber-900"
-            title={
-              <>
-                <Route className="w-3.5 h-3.5 text-amber-600" />
-                Hareket Yolu (Motion Path)
-              </>
-            }
-            headerExtra={
-              <button
-                onClick={() => {
-                  const nextEnabled = !selectedObject.motionPath?.enabled;
-                  onUpdateObject(selectedObject.id, {
-                    motionPath: {
-                      enabled: nextEnabled,
-                      endX:
-                        selectedObject.motionPath?.endX ??
-                        Math.min(760, selectedObject.x + 260),
-                      endY: selectedObject.motionPath?.endY ?? selectedObject.y,
-                      startTime: selectedObject.motionPath?.startTime ?? 0,
-                      duration:
-                        selectedObject.motionPath?.duration ??
-                        Math.max(1.5, scene.duration - 0.5),
-                      curve: selectedObject.motionPath?.curve ?? 'linear',
-                      autoFlipX:
-                        selectedObject.motionPath?.autoFlipX ??
-                        (selectedObject.category === 'characters' ? false : true),
-                      walkAlongPath:
-                        selectedObject.motionPath?.walkAlongPath ??
-                        (selectedObject.category === 'characters'),
-                    },
-                  });
-                }}
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${selectedObject.motionPath?.enabled
-                  ? 'bg-amber-500 text-white'
-                  : 'bg-white border border-amber-300 text-amber-800 hover:bg-amber-100'
-                  }`}
-              >
-                {selectedObject.motionPath?.enabled ? 'Aktif (Hedef B)' : '+ Rota Çiz'}
-              </button>
-            }
-          >
-            <p className="text-[10px] text-amber-800/90 leading-snug">
-              Sahnede A noktasından B noktasına yürüme veya ilerleme izi ekleyin. Detaylı eğri ve süre ayarları için <strong>Animasyon</strong> sekmesine geçin.
-            </p>
-            <button
-              onClick={onContinueScene}
-              className="w-full py-1.5 px-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-            >
-              <FastForward className="w-3.5 h-3.5" />
-              <span>Sahneye Devam Et (Continue Scene)</span>
-            </button>
-          </DesignAccordionSection>
-        </div>
-      )}
-
-      {/* TAB 2: ANIMATE (ANİMASYON) */}
-      {activeTab === 'animate' && (
-        <div className="space-y-4">
-          <button
-            onClick={() => onPreviewAnimation(selectedObject)}
-            className={`w-full py-2 px-3 rounded-xl text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer ${
-              isPlaying
-                ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20'
-                : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'
-            }`}
-          >
-            {isPlaying ? (
-              <>
-                <Square className="w-3.5 h-3.5 fill-current" />
-                <span>Durdur</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-3.5 h-3.5 fill-current" />
-                <span>Seçili Animasyonu Şimdi Oynat</span>
-              </>
-            )}
-          </button>
-
-          {/* BANIMORA MOTION STUDIO (T3) */}
-          {selectedObject.category === 'characters' && (
-            <MotionStudioPanel
-              selectedObject={selectedObject}
-              sceneDuration={scene.duration}
-              currentTime={currentTime}
-              selectedMotionClipId={selectedMotionClipId}
-              onSelectMotionClip={onSelectMotionClip}
-              onUpdateObject={onUpdateObject}
-              onEnsureMotionProp={onEnsureMotionProp}
-              stageMotionPreview={stageMotionPreview}
-              onStageMotionPreviewChange={onStageMotionPreviewChange}
-              rightOffsetPx={widthPx + 12}
-            />
-          )}
-
-          {/* KARAKTER EYLEMLERİ (AKILLI EYLEM KÜTÜPHANESİ) */}
-          {isArticulatedCharacter && resolvedCharConfig && (
-            <DesignAccordionSection
-              isOpen={isSectionOpen('actions')}
-              onToggle={() => toggleSection('actions')}
-              containerClassName="bg-white p-2.5 rounded-xl border border-indigo-100"
-              titleClassName="text-[11px] font-bold text-slate-800"
-              title={
-                <>
-                  <Bone className="w-3.5 h-3.5 text-indigo-600" />
-                  Akıllı Eylemler (Actions)
-                </>
-              }
-            >
-              {onApplySmartAction ? (
-                <SmartActionLibrarySection
-                  selectedObject={selectedObject}
-                  charConfig={resolvedCharConfig}
-                  onApplySmartAction={onApplySmartAction}
-                  pendingSmartActionTrial={pendingSmartActionTrial}
-                  onConfirmSmartAction={onConfirmSmartAction}
-                  onCancelSmartAction={onCancelSmartAction}
-                />
-              ) : (
                 <div className="grid grid-cols-2 gap-1.5">
-                  {CHARACTER_ACTION_CATEGORIES.flatMap((c) => c.actions).map((act) => {
-                    const isPoseActive = resolvedCharConfig.pose === act.id;
+                  {mathDef.parts.map((part) => {
+                    const isPartActive = selectedPartId === part.id;
                     return (
                       <button
-                        key={act.id}
+                        key={part.id}
                         onClick={() =>
-                          onUpdateObject(selectedObject.id, {
-                            characterConfig: {
-                              ...resolvedCharConfig,
-                              pose: act.id,
-                            },
-                          })
+                          onSelectPart?.(isPartActive ? null : part.id)
                         }
-                        className={`px-2.5 py-2 rounded-lg text-[11px] font-bold text-left border flex items-center justify-between gap-1.5 transition-all cursor-pointer truncate ${isPoseActive
-                          ? 'border-[#e06d53] bg-gradient-to-r from-[#e06d53] to-violet-600 text-white shadow-xs'
-                          : 'bg-slate-50/80 hover:border-violet-300 hover:bg-violet-50/50 border-slate-200 text-slate-700'
+                        className={`px-2 py-1.5 rounded-lg text-[10.5px] font-semibold text-left border transition-all cursor-pointer truncate ${isPartActive
+                          ? 'bg-pink-600 text-white border-pink-600 shadow-xs'
+                          : 'bg-white hover:bg-pink-50 border-pink-200 text-slate-700'
                           }`}
                       >
-                        <span className="truncate">{act.label}</span>
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                            isPoseActive ? 'bg-white' : 'bg-[#e06d53]'
-                          }`}
-                        />
+                        {part.name}
                       </button>
                     );
                   })}
                 </div>
-              )}
 
-              {/* Action Speed & Intensity Sliders (Customizable Motion Parameters!) */}
-              <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
-                <div className="bg-slate-50 rounded-lg p-1.5 border border-slate-200/80">
-                  <div className="flex justify-between text-[10px] mb-0.5">
-                    <span className="font-semibold text-slate-600">Hız (Tempo)</span>
-                    <span className="font-mono font-bold text-indigo-700">
-                      {(resolvedCharConfig.actionSpeed ?? 1.0).toFixed(1)}x
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.3}
-                    max={2.5}
-                    step={0.1}
-                    value={resolvedCharConfig.actionSpeed ?? 1.0}
-                    onChange={(e) =>
-                      onUpdateObject(selectedObject.id, {
-                        characterConfig: {
-                          ...resolvedCharConfig,
-                          actionSpeed: Number(e.target.value),
-                        },
-                      })
-                    }
-                    className="w-full accent-indigo-600 cursor-pointer h-1.5"
-                  />
-                </div>
-                <div className="bg-slate-50 rounded-lg p-1.5 border border-slate-200/80">
-                  <div className="flex justify-between text-[10px] mb-0.5">
-                    <span className="font-semibold text-slate-600">Genişlik (Açılar)</span>
-                    <span className="font-mono font-bold text-indigo-700">
-                      {(resolvedCharConfig.actionIntensity ?? 1.0).toFixed(1)}x
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.3}
-                    max={1.8}
-                    step={0.1}
-                    value={resolvedCharConfig.actionIntensity ?? 1.0}
-                    onChange={(e) =>
-                      onUpdateObject(selectedObject.id, {
-                        characterConfig: {
-                          ...resolvedCharConfig,
-                          actionIntensity: Number(e.target.value),
-                        },
-                      })
-                    }
-                    className="w-full accent-indigo-600 cursor-pointer h-1.5"
-                  />
-                </div>
-              </div>
-            </DesignAccordionSection>
-          )}
-
-          {/* CHARACTER HEAD DIRECTION IN ANIMATION TAB */}
-          {isArticulatedCharacter && resolvedCharConfig && (
-            <div className="p-3 rounded-xl bg-indigo-50/70 border border-indigo-200 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-indigo-950">
-                  Kafa & Bakış Yönü
-                </span>
-                <span className="text-[10px] text-indigo-600 font-medium">
-                  Animasyon Sırasında
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                {HEAD_DIRECTION_OPTIONS.map((dir) => {
-                  const curDir = resolvedCharConfig.headDirection || 'center';
-                  const isActive = curDir === dir.id;
+                {selectedPartId && (() => {
+                  const partSchema = mathDef.parts?.find(
+                    (p) => p.id === selectedPartId
+                  );
+                  if (!partSchema) return null;
+                  const pState: CompositePartState = selectedObject.partStates?.[
+                    selectedPartId
+                  ] || {
+                    offsetX: 0,
+                    offsetY: 0,
+                    rotation: 0,
+                    scale: 1,
+                    opacity: 100,
+                    pivotX: partSchema.pivotX,
+                    pivotY: partSchema.pivotY,
+                  };
                   return (
-                    <button
-                      key={dir.id}
-                      onClick={() =>
+                    <div className="bg-white rounded-lg p-2.5 border border-pink-200 space-y-2">
+                      <div className="flex items-center justify-between pb-1 border-b border-pink-100">
+                        <span className="text-[11px] font-bold text-pink-800">
+                          Seçili Parça: {partSchema.name}
+                        </span>
+                        <button
+                          onClick={() => resetCompositePart(selectedPartId)}
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 hover:bg-rose-50 text-[10px] font-semibold text-slate-600 hover:text-rose-600 cursor-pointer"
+                          title="Parça dönüşümlerini sıfırla"
+                        >
+                          <RotateCcw className="w-2.5 h-2.5" /> Sıfırla
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="text-[10px] text-slate-600">
+                          <div className="flex justify-between mb-0.5">
+                            <span>Kayma X</span>
+                            <span className="font-mono font-bold">
+                              {pState.offsetX}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={-80}
+                            max={80}
+                            value={pState.offsetX}
+                            onChange={(e) =>
+                              updateCompositePart(selectedPartId, {
+                                offsetX: Number(e.target.value),
+                              })
+                            }
+                            className="w-full accent-pink-600 cursor-pointer h-1.5"
+                          />
+                        </label>
+                        <label className="text-[10px] text-slate-600">
+                          <div className="flex justify-between mb-0.5">
+                            <span>Kayma Y</span>
+                            <span className="font-mono font-bold">
+                              {pState.offsetY}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={-80}
+                            max={80}
+                            value={pState.offsetY}
+                            onChange={(e) =>
+                              updateCompositePart(selectedPartId, {
+                                offsetY: Number(e.target.value),
+                              })
+                            }
+                            className="w-full accent-pink-600 cursor-pointer h-1.5"
+                          />
+                        </label>
+                      </div>
+
+                      <label className="block text-[10px] text-slate-600">
+                        <div className="flex justify-between mb-0.5">
+                          <span>Parça Açısı (Rotation)</span>
+                          <span className="font-mono font-bold">
+                            {pState.rotation}°
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={-180}
+                          max={180}
+                          value={pState.rotation}
+                          onChange={(e) =>
+                            updateCompositePart(selectedPartId, {
+                              rotation: Number(e.target.value),
+                            })
+                          }
+                          className="w-full accent-pink-600 cursor-pointer h-1.5"
+                        />
+                      </label>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="text-[10px] text-slate-600">
+                          <div className="flex justify-between mb-0.5">
+                            <span>Parça Ölçeği</span>
+                            <span className="font-mono font-bold">
+                              {pState.scale.toFixed(2)}x
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0.3}
+                            max={2.0}
+                            step={0.05}
+                            value={pState.scale}
+                            onChange={(e) =>
+                              updateCompositePart(selectedPartId, {
+                                scale: Number(e.target.value),
+                              })
+                            }
+                            className="w-full accent-pink-600 cursor-pointer h-1.5"
+                          />
+                        </label>
+                        <label className="text-[10px] text-slate-600">
+                          <div className="flex justify-between mb-0.5">
+                            <span>Parça Opaklığı</span>
+                            <span className="font-mono font-bold">
+                              %{pState.opacity}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={pState.opacity}
+                            onChange={(e) =>
+                              updateCompositePart(selectedPartId, {
+                                opacity: Number(e.target.value),
+                              })
+                            }
+                            className="w-full accent-pink-600 cursor-pointer h-1.5"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                        <label className="text-[10px] text-slate-500">
+                          <div className="flex justify-between mb-0.5">
+                            <span>Pivot X</span>
+                            <span className="font-mono">
+                              {pState.pivotX ?? partSchema.pivotX}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={200}
+                            value={pState.pivotX ?? partSchema.pivotX}
+                            onChange={(e) =>
+                              updateCompositePart(selectedPartId, {
+                                pivotX: Number(e.target.value),
+                              })
+                            }
+                            className="w-full accent-slate-500 cursor-pointer h-1.5"
+                          />
+                        </label>
+                        <label className="text-[10px] text-slate-500">
+                          <div className="flex justify-between mb-0.5">
+                            <span>Pivot Y</span>
+                            <span className="font-mono">
+                              {pState.pivotY ?? partSchema.pivotY}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={200}
+                            value={pState.pivotY ?? partSchema.pivotY}
+                            onChange={(e) =>
+                              updateCompositePart(selectedPartId, {
+                                pivotY: Number(e.target.value),
+                              })
+                            }
+                            className="w-full accent-slate-500 cursor-pointer h-1.5"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </DesignAccordionSection>
+            )}
+
+            {/* Text & Font Content Controls (if object supports text) */}
+            {(typeof selectedObject.text === 'string' ||
+              selectedObject.category === 'text' ||
+              selectedObject.assetId === 'obj-speech-bubble' ||
+              selectedObject.assetId === 'obj-formula-card' ||
+              selectedObject.assetId === 'obj-badge-star') && (
+                <DesignAccordionSection
+                  isOpen={isSectionOpen('text')}
+                  onToggle={() => toggleSection('text')}
+                  title={
+                    <>
+                      <Type className="w-3.5 h-3.5 text-indigo-600" />
+                      Metin İçeriği, Font & Boyut
+                    </>
+                  }
+                  headerExtra={
+                    selectedObject.assetId === 'text-formula' ||
+                      selectedObject.assetId === 'obj-formula-card' ? (
+                      <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[9.5px] font-bold">
+                        LaTeX Destekli
+                      </span>
+                    ) : undefined
+                  }
+                >
+                  <textarea
+                    rows={3}
+                    value={selectedObject.text || ''}
+                    onChange={(e) =>
+                      onUpdateObject(selectedObject.id, { text: e.target.value })
+                    }
+                    className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-lg p-2 text-xs font-mono text-slate-900 focus:outline-none resize-none"
+                    placeholder={
+                      selectedObject.assetId === 'text-formula' ||
+                        selectedObject.assetId === 'obj-formula-card'
+                        ? 'Örn: \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}'
+                        : 'Sahne metnini girin...'
+                    }
+                  />
+                  {(selectedObject.assetId === 'text-formula' ||
+                    selectedObject.assetId === 'obj-formula-card') && (
+                      <div className="flex flex-wrap gap-1">
+                        {[
+                          { label: 'Kesir', code: '\\frac{a}{b}' },
+                          { label: 'Karekök', code: '\\sqrt{x}' },
+                          { label: 'Üs', code: 'x^{2}' },
+                          { label: '±', code: '\\pm ' },
+                          { label: 'Toplam ∑', code: '\\sum_{i=1}^{n} ' },
+                          { label: 'İntegral ∫', code: '\\int_{a}^{b} ' },
+                          { label: 'π', code: '\\pi ' },
+                        ].map((snip) => (
+                          <button
+                            key={snip.label}
+                            type="button"
+                            onClick={() =>
+                              onUpdateObject(selectedObject.id, {
+                                text: (selectedObject.text || '') + snip.code,
+                              })
+                            }
+                            className="px-1.5 py-0.5 rounded bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-[10px] font-semibold text-slate-700 cursor-pointer"
+                            title={snip.code}
+                          >
+                            {snip.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-slate-600">Yazı Tipi (Font)</span>
+                    </div>
+                    <select
+                      value={selectedObject.fontFamily || 'Inter'}
+                      onChange={(e) =>
                         onUpdateObject(selectedObject.id, {
-                          characterConfig: {
-                            ...resolvedCharConfig,
-                            headDirection: dir.id,
-                          },
+                          fontFamily: e.target.value,
                         })
                       }
-                      className={`py-1.5 px-2 rounded-lg text-[10.5px] font-semibold border transition-all cursor-pointer ${isActive
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-white hover:bg-indigo-50 border-indigo-200 text-slate-700'
-                        }`}
+                      style={{ fontFamily: selectedObject.fontFamily || 'Inter' }}
+                      className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none cursor-pointer"
                     >
-                      {dir.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* STATIC ASSET INFO BANNER */}
-          {isMathAsset && resolvedAssetClass === 'static' && (
-            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[10.5px] text-slate-600 leading-snug">
-              <strong className="text-slate-800">Sabit Varlık:</strong> Yalnızca genel animasyonlar (Giriş, Vurgu, Çıkış ve Hareket Yolu) kullanılabilir. Nesneye özel hareket seçeneği içermez.
-            </div>
-          )}
-
-          {/* DYNAMIC OBJECT-SPECIFIC & PART-SPECIFIC ANIMATIONS */}
-          {(resolvedAssetClass === 'animated' || resolvedAssetClass === 'composite') &&
-            mathDef && (() => {
-              const activePartSchema =
-                resolvedAssetClass === 'composite' && selectedPartId
-                  ? mathDef.parts?.find((p) => p.id === selectedPartId)
-                  : undefined;
-
-              const availableSchemas = activePartSchema
-                ? activePartSchema.supportedAnimations
-                : mathDef.specificAnimations;
-
-              if (availableSchemas.length === 0 && (selectedObject.specificAnimations || []).length === 0) {
-                return null;
-              }
-
-              const activeAnims = selectedObject.specificAnimations || [];
-
-              return (
-                <div
-                  className={`p-3 rounded-xl border space-y-2.5 ${resolvedAssetClass === 'composite'
-                    ? 'bg-pink-50/70 border-pink-200'
-                    : 'bg-emerald-50/70 border-emerald-200'
-                    }`}
-                >
-                  <div className="flex items-center justify-between gap-1">
-                    <span
-                      className={`text-xs font-bold flex items-center gap-1.5 ${resolvedAssetClass === 'composite'
-                        ? 'text-pink-900'
-                        : 'text-emerald-900'
-                        }`}
-                    >
-                      {resolvedAssetClass === 'composite' ? (
-                        <Puzzle className="w-3.5 h-3.5 text-pink-600" />
-                      ) : (
-                        <Zap className="w-3.5 h-3.5 text-emerald-600" />
-                      )}
-                      {activePartSchema
-                        ? `Parça Animasyonu: ${activePartSchema.name}`
-                        : 'Nesneye Özel Animasyonlar'}
-                    </span>
-                    {activePartSchema && (
-                      <button
-                        onClick={() => onSelectPart?.(null)}
-                        className="text-[10px] font-semibold text-pink-700 hover:underline cursor-pointer"
-                      >
-                        Tümüne Dön
-                      </button>
-                    )}
+                      <option value="Inter">Inter (Varsayılan)</option>
+                      <option value="Poppins">Poppins</option>
+                      <option value="Roboto">Roboto</option>
+                      <option value="Montserrat">Montserrat</option>
+                      <option value="Playfair Display">Playfair Display (Serif)</option>
+                      <option value="Caveat">Caveat (El Yazısı)</option>
+                      <option value="JetBrains Mono">JetBrains Mono (Kod / Matematik)</option>
+                    </select>
                   </div>
-
-                  {/* Quick-Add Buttons */}
-                  <div className="flex flex-wrap gap-1">
-                    {availableSchemas.map((schema) => (
-                      <button
-                        key={schema.id}
-                        onClick={() =>
-                          addSpecificAnimation(schema, activePartSchema?.id)
-                        }
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-[10.5px] font-semibold text-slate-800 transition-colors cursor-pointer"
-                        title={schema.description}
-                      >
-                        <Plus className="w-3 h-3 text-indigo-600" />
-                        <span>{schema.label}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Active Specific Animation Instances */}
-                  {activeAnims.length === 0 ? (
-                    <div className="text-[10px] text-slate-500 bg-white/70 rounded-lg p-2 border border-dashed border-slate-200 text-center">
-                      Henüz özel animasyon eklenmedi. Yukarıdan bir animasyon ekleyin.
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-slate-600">Yazı Boyutu (px)</span>
+                      <span className="font-mono font-semibold text-slate-900">
+                        {selectedObject.fontSize || 18}px
+                      </span>
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {activeAnims.map((inst) => {
-                        const partSchema = inst.partId
-                          ? mathDef.parts?.find((p) => p.id === inst.partId)
-                          : undefined;
-                        const schema =
-                          partSchema?.supportedAnimations.find(
-                            (s) => s.id === inst.animationId
-                          ) ||
-                          mathDef.specificAnimations?.find(
-                            (s) => s.id === inst.animationId
-                          );
-                        const partLabel = partSchema?.name;
-                        return (
-                          <div
-                            key={inst.id}
-                            className="bg-white rounded-lg p-2.5 border border-slate-200 space-y-2 shadow-2xs"
-                          >
-                            <div className="flex items-center justify-between gap-1">
-                              <div className="min-w-0 flex items-center gap-1.5">
-                                <span className="text-[11px] font-bold text-slate-900 truncate">
-                                  {partLabel
-                                    ? `${partLabel} • ${schema?.label || inst.label}`
-                                    : schema?.label || inst.label}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <button
-                                  onClick={() => duplicateSpecificAnimation(inst.id)}
-                                  className="p-1 rounded hover:bg-slate-100 text-slate-500 cursor-pointer"
-                                  title="Animasyonu Kopyala"
-                                >
-                                  <Copy className="w-3 h-3" />
-                                </button>
-                                <button
-                                  onClick={() => deleteSpecificAnimation(inst.id)}
-                                  className="p-1 rounded hover:bg-rose-50 text-slate-500 hover:text-rose-600 cursor-pointer"
-                                  title="Animasyonu Sil"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
+                    <input
+                      type="range"
+                      min={12}
+                      max={44}
+                      value={selectedObject.fontSize || 18}
+                      onChange={(e) =>
+                        onUpdateObject(selectedObject.id, {
+                          fontSize: Number(e.target.value),
+                        })
+                      }
+                      className="w-full accent-indigo-600 cursor-pointer"
+                    />
+                  </div>
+                </DesignAccordionSection>
+              )}
 
-                            {/* Start Time & Duration */}
-                            <div className="grid grid-cols-2 gap-1.5">
-                              <label className="text-[10px] text-slate-600 bg-slate-50 rounded px-1.5 py-1 border border-slate-200">
-                                <span className="block text-[9px] text-slate-400">
-                                  Başlangıç (sn)
-                                </span>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={Math.max(0, scene.duration - 0.2)}
-                                  step={0.1}
-                                  value={inst.startTime}
-                                  onChange={(e) =>
-                                    updateSpecificAnimation(inst.id, {
-                                      startTime: Math.max(0, Number(e.target.value)),
-                                    })
-                                  }
-                                  className="w-full bg-transparent text-xs font-mono font-semibold text-slate-900 focus:outline-none"
-                                />
-                              </label>
-                              <label className="text-[10px] text-slate-600 bg-slate-50 rounded px-1.5 py-1 border border-slate-200">
-                                <span className="block text-[9px] text-slate-400">
-                                  Süre (sn)
-                                </span>
-                                <input
-                                  type="number"
-                                  min={0.2}
-                                  max={scene.duration}
-                                  step={0.1}
-                                  value={inst.duration}
-                                  onChange={(e) =>
-                                    updateSpecificAnimation(inst.id, {
-                                      duration: Math.max(0.2, Number(e.target.value)),
-                                    })
-                                  }
-                                  className="w-full bg-transparent text-xs font-mono font-semibold text-slate-900 focus:outline-none"
-                                />
-                              </label>
-                            </div>
+            {/* Live Chart Data Editor */}
+            {selectedObject.assetId.startsWith('chart-') && (
+              <DesignAccordionSection
+                isOpen={isSectionOpen('chart')}
+                onToggle={() => toggleSection('chart')}
+                containerClassName="p-3 rounded-xl bg-indigo-50/60 border border-indigo-200"
+                titleClassName="text-xs font-bold text-indigo-950"
+                title={
+                  <>
+                    <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
+                    Grafik Veri Editörü
+                  </>
+                }
+              >
 
-                            {/* Dynamic Schema Parameters */}
-                            {schema && schema.params.length > 0 && (
-                              <div className="space-y-1.5 pt-1 border-t border-slate-100">
-                                {schema.params.map((param) => {
-                                  const rawVal =
-                                    inst.params[param.key] ?? param.defaultValue;
-
-                                  if (param.type === 'number') {
-                                    const numVal = Number(rawVal);
-                                    return (
-                                      <label
-                                        key={param.key}
-                                        className="block text-[10px] text-slate-600"
-                                      >
-                                        <div className="flex justify-between mb-0.5">
-                                          <span>{param.label}</span>
-                                          <span className="font-mono font-bold text-slate-900">
-                                            {numVal}
-                                            {param.unit ? ` ${param.unit}` : ''}
-                                          </span>
-                                        </div>
-                                        <input
-                                          type="range"
-                                          min={param.min ?? 0}
-                                          max={param.max ?? 100}
-                                          step={param.step ?? 1}
-                                          value={numVal}
-                                          onChange={(e) =>
-                                            updateSpecificAnimation(inst.id, {
-                                              params: {
-                                                ...inst.params,
-                                                [param.key]: Number(e.target.value),
-                                              },
-                                            })
-                                          }
-                                          className="w-full accent-indigo-600 cursor-pointer h-1.5"
-                                        />
-                                      </label>
-                                    );
-                                  }
-
-                                  if (param.type === 'select' && param.options) {
-                                    return (
-                                      <label
-                                        key={param.key}
-                                        className="flex items-center justify-between gap-2 text-[10px] text-slate-600"
-                                      >
-                                        <span>{param.label}</span>
-                                        <select
-                                          value={String(rawVal)}
-                                          onChange={(e) => {
-                                            const nextV = e.target.value;
-                                            updateSpecificAnimation(inst.id, {
-                                              params: {
-                                                ...inst.params,
-                                                [param.key]:
-                                                  typeof param.defaultValue === 'number'
-                                                    ? Number(nextV)
-                                                    : nextV,
-                                              },
-                                            });
-                                          }}
-                                          className="bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-[10.5px] font-semibold text-slate-800 focus:outline-none"
-                                        >
-                                          {param.options.map((opt) => (
-                                            <option
-                                              key={String(opt.value)}
-                                              value={String(opt.value)}
-                                            >
-                                              {opt.label}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </label>
-                                    );
-                                  }
-
-                                  if (param.type === 'boolean') {
-                                    return (
-                                      <label
-                                        key={param.key}
-                                        className="flex items-center justify-between text-[10px] text-slate-600 cursor-pointer"
-                                      >
-                                        <span>{param.label}</span>
-                                        <input
-                                          type="checkbox"
-                                          checked={Boolean(rawVal)}
-                                          onChange={(e) =>
-                                            updateSpecificAnimation(inst.id, {
-                                              params: {
-                                                ...inst.params,
-                                                [param.key]: e.target.checked,
-                                              },
-                                            })
-                                          }
-                                          className="accent-indigo-600 cursor-pointer"
-                                        />
-                                      </label>
-                                    );
-                                  }
-
-                                  return null;
-                                })}
-                              </div>
-                            )}
+                <div>
+                  <span className="text-[10.5px] font-semibold text-slate-600 block mb-1">
+                    Renk Paleti
+                  </span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(['corporate', 'pastel', 'vibrant'] as const).map((palId) => {
+                      const pal = CHART_PALETTES[palId];
+                      const isAct = (selectedObject.chartPalette || 'vibrant') === palId;
+                      return (
+                        <button
+                          key={palId}
+                          type="button"
+                          onClick={() =>
+                            onUpdateObject(selectedObject.id, { chartPalette: palId })
+                          }
+                          className={`p-1.5 rounded-lg border text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition-all ${isAct
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                            }`}
+                        >
+                          <span>{pal.label}</span>
+                          <div className="flex gap-0.5">
+                            {pal.colors.slice(0, 4).map((c, ci) => (
+                              <span
+                                key={ci}
+                                className="w-2.5 h-2.5 rounded-full border border-white/40"
+                                style={{ backgroundColor: c }}
+                              />
+                            ))}
                           </div>
-                        );
-                      })}
-                    </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10.5px] font-semibold text-slate-600">
+                      Etiket & Değerler
+                    </span>
+                    {selectedObject.assetId !== 'chart-progress' &&
+                      selectedObject.assetId !== 'chart-gauge' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = selectedObject.chartData || [];
+                            onUpdateObject(selectedObject.id, {
+                              chartData: [
+                                ...cur,
+                                { label: `Veri ${cur.length + 1}`, value: 50 },
+                              ],
+                            });
+                          }}
+                          className="px-2 py-0.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold cursor-pointer"
+                        >
+                          + Ekle
+                        </button>
+                      )}
+                  </div>
+
+                  {(selectedObject.chartData || [{ label: 'Veri', value: 75 }]).map(
+                    (pt, idx) => (
+                      <div key={idx} className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          value={pt.label}
+                          onChange={(e) => {
+                            const next = [...(selectedObject.chartData || [])];
+                            next[idx] = { ...pt, label: e.target.value };
+                            onUpdateObject(selectedObject.id, { chartData: next });
+                          }}
+                          className="flex-1 min-w-0 bg-white border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-900"
+                          placeholder="Etiket"
+                        />
+                        <input
+                          type="number"
+                          value={pt.value}
+                          onChange={(e) => {
+                            const next = [...(selectedObject.chartData || [])];
+                            next[idx] = { ...pt, value: Number(e.target.value) || 0 };
+                            onUpdateObject(selectedObject.id, { chartData: next });
+                          }}
+                          className="w-16 bg-white border border-slate-200 rounded-md px-2 py-1 text-xs font-mono text-slate-900"
+                        />
+                        {selectedObject.assetId !== 'chart-progress' &&
+                          selectedObject.assetId !== 'chart-gauge' &&
+                          (selectedObject.chartData?.length || 0) > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = (selectedObject.chartData || []).filter(
+                                  (_, i) => i !== idx
+                                );
+                                onUpdateObject(selectedObject.id, { chartData: next });
+                              }}
+                              className="p-1 text-rose-500 hover:bg-rose-50 rounded cursor-pointer"
+                              title="Sil"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                      </div>
+                    )
                   )}
                 </div>
-              );
-            })()}
+              </DesignAccordionSection>
+            )}
 
-          {/* 0. MOTION PATH (HAREKET YOLU) & CONTINUE SCENE */}
-          <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                <Route className="w-3.5 h-3.5 text-amber-600" />
-                Hareket Yolu (Motion Path)
-              </span>
-              <button
-                onClick={() => {
-                  const nextEnabled = !selectedObject.motionPath?.enabled;
-                  onUpdateObject(selectedObject.id, {
-                    motionPath: {
-                      enabled: nextEnabled,
-                      endX:
-                        selectedObject.motionPath?.endX ??
-                        Math.min(760, selectedObject.x + 260),
-                      endY: selectedObject.motionPath?.endY ?? selectedObject.y,
-                      startTime: selectedObject.motionPath?.startTime ?? 0,
-                      duration:
-                        selectedObject.motionPath?.duration ??
-                        Math.max(1.5, scene.duration - 0.5),
-                      curve: selectedObject.motionPath?.curve ?? 'linear',
-                      autoFlipX:
-                        selectedObject.motionPath?.autoFlipX ??
-                        (selectedObject.category === 'characters' ? false : true),
-                      walkAlongPath:
-                        selectedObject.motionPath?.walkAlongPath ??
-                        (selectedObject.category === 'characters'),
-                    },
-                  });
-                }}
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${selectedObject.motionPath?.enabled
-                  ? 'bg-amber-500 text-white'
-                  : 'bg-white border border-amber-300 text-amber-800 hover:bg-amber-100'
-                  }`}
+            {/* Live Table Editor */}
+            {selectedObject.assetId.startsWith('table-') && (
+              <DesignAccordionSection
+                isOpen={isSectionOpen('table')}
+                onToggle={() => toggleSection('table')}
+                containerClassName="p-3 rounded-xl bg-indigo-50/60 border border-indigo-200"
+                titleClassName="text-xs font-bold text-indigo-950"
+                title={
+                  <>
+                    <Table className="w-3.5 h-3.5 text-indigo-600" />
+                    Tablo Düzenleyici
+                  </>
+                }
               >
-                {selectedObject.motionPath?.enabled ? 'Aktif' : 'Etkinleştir'}
-              </button>
-            </div>
 
-            {/* Quick Motion Path Presets */}
-            <div className="grid grid-cols-2 gap-1.5">
-              {[
-                {
-                  label: 'Soldan Sağa İlerle',
-                  endX: Math.min(780, selectedObject.x + 280),
-                  endY: selectedObject.y,
-                  pose: 'walk' as CharacterPoseType,
-                },
-                {
-                  label: 'Sağdan Sola İlerle',
-                  endX: Math.max(30, selectedObject.x - 280),
-                  endY: selectedObject.y,
-                  pose: 'walk' as CharacterPoseType,
-                },
-                {
-                  label: 'Masaya / Merkeze',
-                  endX: 420,
-                  endY: 200,
-                  pose: 'walk' as CharacterPoseType,
-                },
-                {
-                  label: 'Sahne Dışına Koş',
-                  endX: 840,
-                  endY: selectedObject.y,
-                  pose: 'run' as CharacterPoseType,
-                },
-              ].map((preset) => (
+                <div>
+                  <span className="text-[10.5px] font-semibold text-slate-600 block mb-1">
+                    Renk Paleti
+                  </span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(['corporate', 'pastel', 'vibrant'] as const).map((palId) => {
+                      const pal = CHART_PALETTES[palId];
+                      const isAct = (selectedObject.chartPalette || 'corporate') === palId;
+                      return (
+                        <button
+                          key={palId}
+                          type="button"
+                          onClick={() =>
+                            onUpdateObject(selectedObject.id, { chartPalette: palId })
+                          }
+                          className={`p-1.5 rounded-lg border text-[10px] font-bold flex flex-col items-center gap-1 cursor-pointer transition-all ${isAct
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                            }`}
+                        >
+                          <span>{pal.label}</span>
+                          <div className="flex gap-0.5">
+                            {pal.colors.slice(0, 4).map((c, ci) => (
+                              <span
+                                key={ci}
+                                className="w-2.5 h-2.5 rounded-full border border-white/40"
+                                style={{ backgroundColor: c }}
+                              />
+                            ))}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const td = selectedObject.tableData || {
+                        headers: ['Sütun 1', 'Sütun 2'],
+                        rows: [['A', 'B']],
+                      };
+                      const newRow = td.headers.map((_, i) => `Veri ${i + 1}`);
+                      onUpdateObject(selectedObject.id, {
+                        tableData: { ...td, rows: [...td.rows, newRow] },
+                      });
+                    }}
+                    className="py-1.5 px-2 rounded-lg bg-white hover:bg-indigo-50 border border-indigo-200 text-[10.5px] font-bold text-indigo-700 cursor-pointer"
+                  >
+                    + Satır Ekle
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const td = selectedObject.tableData;
+                      if (!td || td.rows.length <= 1) return;
+                      onUpdateObject(selectedObject.id, {
+                        tableData: { ...td, rows: td.rows.slice(0, -1) },
+                      });
+                    }}
+                    className="py-1.5 px-2 rounded-lg bg-white hover:bg-rose-50 border border-slate-200 text-[10.5px] font-bold text-rose-600 cursor-pointer"
+                  >
+                    - Satır Sil
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const td = selectedObject.tableData || {
+                        headers: ['Sütun 1', 'Sütun 2'],
+                        rows: [['A', 'B']],
+                      };
+                      onUpdateObject(selectedObject.id, {
+                        tableData: {
+                          headers: [...td.headers, `Sütun ${td.headers.length + 1}`],
+                          rows: td.rows.map((r) => [...r, '-']),
+                        },
+                      });
+                    }}
+                    className="py-1.5 px-2 rounded-lg bg-white hover:bg-indigo-50 border border-indigo-200 text-[10.5px] font-bold text-indigo-700 cursor-pointer"
+                  >
+                    + Sütun Ekle
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const td = selectedObject.tableData;
+                      if (!td || td.headers.length <= 1) return;
+                      onUpdateObject(selectedObject.id, {
+                        tableData: {
+                          headers: td.headers.slice(0, -1),
+                          rows: td.rows.map((r) => r.slice(0, -1)),
+                        },
+                      });
+                    }}
+                    className="py-1.5 px-2 rounded-lg bg-white hover:bg-rose-50 border border-slate-200 text-[10.5px] font-bold text-rose-600 cursor-pointer"
+                  >
+                    - Sütun Sil
+                  </button>
+                </div>
+                <p className="text-[10px] text-indigo-700/80 leading-snug">
+                  İpucu: Sahnedeki herhangi bir hücreye çift tıklayarak metni doğrudan düzenleyebilirsiniz.
+                </p>
+              </DesignAccordionSection>
+            )}
+
+            {/* Color Pickers & Swatches */}
+            {!selectedObject.imageUrl && (
+              <DesignAccordionSection
+                isOpen={isSectionOpen('palette')}
+                onToggle={() => toggleSection('palette')}
+                title={
+                  <>
+                    <Palette className="w-3.5 h-3.5 text-indigo-600" />
+                    Renk Paleti
+                  </>
+                }
+              >
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-2 cursor-pointer">
+                    <input
+                      type="color"
+                      value={selectedObject.color}
+                      onChange={(e) =>
+                        onUpdateObject(selectedObject.id, { color: e.target.value })
+                      }
+                      className="w-6 h-6 rounded border-0 bg-transparent cursor-pointer"
+                    />
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-slate-500 block">
+                        {selectedObject.assetId.startsWith('text-rough-')
+                          ? 'Çizgi & Metin'
+                          : 'Ana Renk'}
+                      </span>
+                      <span className="text-xs font-mono text-slate-900 uppercase">
+                        {selectedObject.color}
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-2 cursor-pointer">
+                    <input
+                      type="color"
+                      value={selectedObject.secondaryColor || '#6366f1'}
+                      onChange={(e) =>
+                        onUpdateObject(selectedObject.id, {
+                          secondaryColor: e.target.value,
+                        })
+                      }
+                      className="w-6 h-6 rounded border-0 bg-transparent cursor-pointer"
+                    />
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-slate-500 block">
+                        {selectedObject.assetId.startsWith('text-rough-')
+                          ? 'Dolgu Rengi'
+                          : 'İkincil'}
+                      </span>
+                      <span className="text-xs font-mono text-slate-900 uppercase">
+                        {selectedObject.secondaryColor || '#6366f1'}
+                      </span>
+                    </div>
+                  </label>
+                </div>
+
+                {selectedObject.assetId.startsWith('text-rough-') && (
+                  <div className="bg-white border border-slate-200 rounded-lg p-2">
+                    <div className="flex items-center justify-between text-[11px] mb-1">
+                      <span className="text-slate-600 font-medium">Çizgi Kalınlığı</span>
+                      <span className="font-mono text-indigo-700 font-semibold">
+                        {(selectedObject.strokeWidth ?? 2.3).toFixed(1)} px
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={1}
+                      max={6}
+                      step={0.5}
+                      value={selectedObject.strokeWidth ?? 2.3}
+                      onChange={(e) =>
+                        onUpdateObject(selectedObject.id, {
+                          strokeWidth: Number(e.target.value),
+                        })
+                      }
+                      className="w-full accent-indigo-600 cursor-pointer"
+                    />
+                  </div>
+                )}
+
+                {/* Quick Studio Swatches */}
+                <div>
+                  <span className="text-[10px] text-slate-500 block mb-1.5">
+                    Hızlı Stüdyo Renkleri
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {STUDIO_SWATCHES.map((swatch) => (
+                      <button
+                        key={swatch}
+                        onClick={() =>
+                          onUpdateObject(selectedObject.id, { color: swatch })
+                        }
+                        style={{ backgroundColor: swatch }}
+                        className={`w-5 h-5 rounded-md border transition-transform cursor-pointer ${selectedObject.color.toLowerCase() === swatch.toLowerCase()
+                          ? 'scale-110 ring-2 ring-indigo-500 border-white'
+                          : 'border-slate-300 hover:scale-105'
+                          }`}
+                        title={swatch}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </DesignAccordionSection>
+            )}
+
+            {/* Timeline Timing inside Design Tab */}
+            <DesignAccordionSection
+              isOpen={isSectionOpen('timing')}
+              onToggle={() => toggleSection('timing')}
+              title={
+                <>
+                  <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                  Zaman Çizelgesi Aralığı
+                </>
+              }
+              headerExtra={
                 <button
-                  key={preset.label}
                   onClick={() =>
                     onUpdateObject(selectedObject.id, {
+                      startTime: 0,
+                      duration: scene.duration,
+                    })
+                  }
+                  className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                  title="Bu katmanı tüm sahne süresi boyunca görünür yap"
+                >
+                  Tüm Sahneye Yay
+                </button>
+              }
+            >
+              <div className="grid grid-cols-2 gap-2">
+                <label className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex justify-between items-center">
+                  <span className="text-[11px] text-slate-500">Başlangıç</span>
+                  <input
+                    type="number"
+                    step={0.1}
+                    min={0}
+                    max={Number(Math.max(0, scene.duration - 0.5).toFixed(2))}
+                    value={Number(selectedObject.startTime.toFixed(2))}
+                    onChange={(e) => {
+                      const parsed = Number(e.target.value);
+                      if (!Number.isFinite(parsed)) return;
+                      onUpdateObject(selectedObject.id, {
+                        startTime: Number(
+                          Math.max(0, Math.min(scene.duration - 0.5, parsed)).toFixed(2)
+                        ),
+                      });
+                    }}
+                    className="w-14 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
+                  />
+                </label>
+                <label className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex justify-between items-center">
+                  <span className="text-[11px] text-slate-500">Süre (sn)</span>
+                  <input
+                    type="number"
+                    step={0.1}
+                    min={0.5}
+                    max={Number(scene.duration.toFixed(2))}
+                    value={Number(selectedObject.duration.toFixed(2))}
+                    onChange={(e) => {
+                      const parsed = Number(e.target.value);
+                      if (!Number.isFinite(parsed)) return;
+                      onUpdateObject(selectedObject.id, {
+                        duration: Number(
+                          Math.max(
+                            0.5,
+                            Math.min(scene.duration - selectedObject.startTime, parsed)
+                          ).toFixed(2)
+                        ),
+                      });
+                    }}
+                    className="w-14 bg-transparent text-right text-xs font-mono text-slate-900 focus:outline-none"
+                  />
+                </label>
+              </div>
+            </DesignAccordionSection>
+
+            {/* Quick Camera Focus on Selected Character / Object */}
+            <button
+              onClick={() => focusCameraOnObject(selectedObject)}
+              className="w-full py-2 px-3 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              title="Kamera Aracı ile bu karaktere / nesneye yakınlaşma (Zoom & Pan) hareketi ekler"
+            >
+              <Video className="w-3.5 h-3.5 text-orange-600" />
+              <span>Kamerayı Bu {isArticulatedCharacter ? 'Karaktere' : 'Nesneye'} Yakınlaştır (Zoom)</span>
+            </button>
+
+            {/* Quick Motion Path & Continue Scene Access in Design Tab */}
+            <DesignAccordionSection
+              isOpen={isSectionOpen('motionpath')}
+              onToggle={() => toggleSection('motionpath')}
+              containerClassName="p-3 rounded-xl bg-amber-50/70 border border-amber-200"
+              titleClassName="text-xs font-bold text-amber-900"
+              title={
+                <>
+                  <Route className="w-3.5 h-3.5 text-amber-600" />
+                  Hareket Yolu (Motion Path)
+                </>
+              }
+              headerExtra={
+                <button
+                  onClick={() => {
+                    const nextEnabled = !selectedObject.motionPath?.enabled;
+                    onUpdateObject(selectedObject.id, {
                       motionPath: {
-                        enabled: true,
-                        endX: preset.endX,
-                        endY: preset.endY,
+                        enabled: nextEnabled,
+                        endX:
+                          selectedObject.motionPath?.endX ??
+                          Math.min(760, selectedObject.x + 260),
+                        endY: selectedObject.motionPath?.endY ?? selectedObject.y,
                         startTime: selectedObject.motionPath?.startTime ?? 0,
                         duration:
                           selectedObject.motionPath?.duration ??
                           Math.max(1.5, scene.duration - 0.5),
                         curve: selectedObject.motionPath?.curve ?? 'linear',
-                        autoFlipX: true,
-                        walkAlongPath: selectedObject.category === 'characters',
+                        autoFlipX:
+                          selectedObject.motionPath?.autoFlipX ??
+                          (selectedObject.category === 'characters' ? false : true),
+                        walkAlongPath:
+                          selectedObject.motionPath?.walkAlongPath ??
+                          (selectedObject.category === 'characters'),
                       },
-                      ...(isArticulatedCharacter && resolvedCharConfig
-                        ? {
-                          characterConfig: {
-                            ...resolvedCharConfig,
-                            pose: 'idle',
-                            headDirection:
-                              preset.label === 'Masaya / Merkeze'
-                                ? 'center'
-                                : 'right',
-                          },
-                        }
-                        : {}),
-                    })
-                  }
-                  className="px-2 py-1.5 rounded-lg bg-white hover:bg-amber-100/70 border border-amber-200 text-[10.5px] font-medium text-amber-950 text-left transition-colors cursor-pointer truncate"
+                    });
+                  }}
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${selectedObject.motionPath?.enabled
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-white border border-amber-300 text-amber-800 hover:bg-amber-100'
+                    }`}
                 >
-                  {preset.label}
+                  {selectedObject.motionPath?.enabled ? 'Aktif (Hedef B)' : '+ Rota Çiz'}
                 </button>
-              ))}
-            </div>
+              }
+            >
+              <p className="text-[10px] text-amber-800/90 leading-snug">
+                Sahnede A noktasından B noktasına yürüme veya ilerleme izi ekleyin. Detaylı eğri ve süre ayarları için <strong>Animasyon</strong> sekmesine geçin.
+              </p>
+              <button
+                onClick={onContinueScene}
+                className="w-full py-1.5 px-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              >
+                <FastForward className="w-3.5 h-3.5" />
+                <span>Sahneye Devam Et (Continue Scene)</span>
+              </button>
+            </DesignAccordionSection>
+          </div>
+        )}
 
-            {selectedObject.motionPath?.enabled && (
-              <div className="pt-2 border-t border-amber-200/80 space-y-2">
-                {/* Curve Type Selector */}
-                <div>
-                  <span className="text-[10.5px] font-semibold text-amber-900 block mb-1">
-                    Yol Eğrisi (Trajectory Curve)
-                  </span>
-                  <div className="grid grid-cols-2 gap-1">
-                    {MOTION_CURVE_OPTIONS.map((c) => {
-                      const isCur = selectedObject.motionPath?.curve === c.id;
+        {/* TAB 2: ANIMATE (ANİMASYON) */}
+        {activeTab === 'animate' && (
+          <div className="space-y-4">
+            <button
+              onClick={() => onPreviewAnimation(selectedObject)}
+              className={`w-full py-2 px-3 rounded-xl text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer ${isPlaying
+                  ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20'
+                  : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'
+                }`}
+            >
+              {isPlaying ? (
+                <>
+                  <Square className="w-3.5 h-3.5 fill-current" />
+                  <span>Durdur</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Seçili Animasyonu Şimdi Oynat</span>
+                </>
+              )}
+            </button>
+
+            {/* BANIMORA MOTION STUDIO (T3) */}
+            {selectedObject.category === 'characters' && (
+              <MotionStudioPanel
+                selectedObject={selectedObject}
+                sceneDuration={scene.duration}
+                currentTime={currentTime}
+                selectedMotionClipId={selectedMotionClipId}
+                onSelectMotionClip={onSelectMotionClip}
+                onUpdateObject={onUpdateObject}
+                onEnsureMotionProp={onEnsureMotionProp}
+                stageMotionPreview={stageMotionPreview}
+                onStageMotionPreviewChange={onStageMotionPreviewChange}
+                rightOffsetPx={widthPx + 12}
+              />
+            )}
+
+            {/* KARAKTER EYLEMLERİ (AKILLI EYLEM KÜTÜPHANESİ) */}
+            {isArticulatedCharacter && resolvedCharConfig && (
+              <DesignAccordionSection
+                isOpen={isSectionOpen('actions')}
+                onToggle={() => toggleSection('actions')}
+                containerClassName="bg-white p-2.5 rounded-xl border border-indigo-100"
+                titleClassName="text-[11px] font-bold text-slate-800"
+                title={
+                  <>
+                    <Bone className="w-3.5 h-3.5 text-indigo-600" />
+                    Akıllı Eylemler (Actions)
+                  </>
+                }
+              >
+                {onApplySmartAction ? (
+                  <SmartActionLibrarySection
+                    selectedObject={selectedObject}
+                    charConfig={resolvedCharConfig}
+                    onApplySmartAction={onApplySmartAction}
+                    pendingSmartActionTrial={pendingSmartActionTrial}
+                    onConfirmSmartAction={onConfirmSmartAction}
+                    onCancelSmartAction={onCancelSmartAction}
+                  />
+                ) : (
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {CHARACTER_ACTION_CATEGORIES.flatMap((c) => c.actions).map((act) => {
+                      const isPoseActive = resolvedCharConfig.pose === act.id;
                       return (
                         <button
-                          key={c.id}
+                          key={act.id}
                           onClick={() =>
                             onUpdateObject(selectedObject.id, {
-                              motionPath: {
-                                ...selectedObject.motionPath!,
-                                curve: c.id,
+                              characterConfig: {
+                                ...resolvedCharConfig,
+                                pose: act.id,
                               },
                             })
                           }
-                          className={`px-2 py-1 rounded-md text-[10px] font-medium border transition-colors cursor-pointer ${isCur
-                            ? 'bg-amber-500 text-white border-amber-500 font-semibold'
-                            : 'bg-white hover:bg-amber-50 border-amber-200 text-slate-700'
+                          className={`px-2.5 py-2 rounded-lg text-[11px] font-bold text-left border flex items-center justify-between gap-1.5 transition-all cursor-pointer truncate ${isPoseActive
+                            ? 'border-[#e06d53] bg-gradient-to-r from-[#e06d53] to-violet-600 text-white shadow-xs'
+                            : 'bg-slate-50/80 hover:border-violet-300 hover:bg-violet-50/50 border-slate-200 text-slate-700'
                             }`}
                         >
-                          {c.label}
+                          <span className="truncate">{act.label}</span>
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full shrink-0 ${isPoseActive ? 'bg-white' : 'bg-[#e06d53]'
+                              }`}
+                          />
                         </button>
                       );
                     })}
                   </div>
-                </div>
+                )}
 
-                {/* Duration Slider */}
-                <div>
-                  <div className="flex justify-between text-[11px] mb-0.5">
-                    <span className="text-amber-900">Yol Süresi (Duration)</span>
-                    <span className="font-mono font-semibold text-amber-950">
-                      {selectedObject.motionPath.duration.toFixed(1)} sn
-                    </span>
+                {/* Action Speed & Intensity Sliders (Customizable Motion Parameters!) */}
+                <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
+                  <div className="bg-slate-50 rounded-lg p-1.5 border border-slate-200/80">
+                    <div className="flex justify-between text-[10px] mb-0.5">
+                      <span className="font-semibold text-slate-600">Hız (Tempo)</span>
+                      <span className="font-mono font-bold text-indigo-700">
+                        {(resolvedCharConfig.actionSpeed ?? 1.0).toFixed(1)}x
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.3}
+                      max={2.5}
+                      step={0.1}
+                      value={resolvedCharConfig.actionSpeed ?? 1.0}
+                      onChange={(e) =>
+                        onUpdateObject(selectedObject.id, {
+                          characterConfig: {
+                            ...resolvedCharConfig,
+                            actionSpeed: Number(e.target.value),
+                          },
+                        })
+                      }
+                      className="w-full accent-indigo-600 cursor-pointer h-1.5"
+                    />
                   </div>
-                  <input
-                    type="range"
-                    min={0.5}
-                    max={Math.max(2, scene.duration)}
-                    step={0.1}
-                    value={selectedObject.motionPath.duration}
-                    onChange={(e) =>
+                  <div className="bg-slate-50 rounded-lg p-1.5 border border-slate-200/80">
+                    <div className="flex justify-between text-[10px] mb-0.5">
+                      <span className="font-semibold text-slate-600">Genişlik (Açılar)</span>
+                      <span className="font-mono font-bold text-indigo-700">
+                        {(resolvedCharConfig.actionIntensity ?? 1.0).toFixed(1)}x
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.3}
+                      max={1.8}
+                      step={0.1}
+                      value={resolvedCharConfig.actionIntensity ?? 1.0}
+                      onChange={(e) =>
+                        onUpdateObject(selectedObject.id, {
+                          characterConfig: {
+                            ...resolvedCharConfig,
+                            actionIntensity: Number(e.target.value),
+                          },
+                        })
+                      }
+                      className="w-full accent-indigo-600 cursor-pointer h-1.5"
+                    />
+                  </div>
+                </div>
+              </DesignAccordionSection>
+            )}
+
+            {/* CHARACTER HEAD DIRECTION IN ANIMATION TAB */}
+            {isArticulatedCharacter && resolvedCharConfig && (
+              <div className="p-3 rounded-xl bg-indigo-50/70 border border-indigo-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-indigo-950">
+                    Kafa & Bakış Yönü
+                  </span>
+                  <span className="text-[10px] text-indigo-600 font-medium">
+                    Animasyon Sırasında
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {HEAD_DIRECTION_OPTIONS.map((dir) => {
+                    const curDir = resolvedCharConfig.headDirection || 'center';
+                    const isActive = curDir === dir.id;
+                    return (
+                      <button
+                        key={dir.id}
+                        onClick={() =>
+                          onUpdateObject(selectedObject.id, {
+                            characterConfig: {
+                              ...resolvedCharConfig,
+                              headDirection: dir.id,
+                            },
+                          })
+                        }
+                        className={`py-1.5 px-2 rounded-lg text-[10.5px] font-semibold border transition-all cursor-pointer ${isActive
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                          : 'bg-white hover:bg-indigo-50 border-indigo-200 text-slate-700'
+                          }`}
+                      >
+                        {dir.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* STATIC ASSET INFO BANNER */}
+            {isMathAsset && resolvedAssetClass === 'static' && (
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[10.5px] text-slate-600 leading-snug">
+                <strong className="text-slate-800">Sabit Varlık:</strong> Yalnızca genel animasyonlar (Giriş, Vurgu, Çıkış ve Hareket Yolu) kullanılabilir. Nesneye özel hareket seçeneği içermez.
+              </div>
+            )}
+
+            {/* DYNAMIC OBJECT-SPECIFIC & PART-SPECIFIC ANIMATIONS */}
+            {(resolvedAssetClass === 'animated' || resolvedAssetClass === 'composite') &&
+              mathDef && (() => {
+                const activePartSchema =
+                  resolvedAssetClass === 'composite' && selectedPartId
+                    ? mathDef.parts?.find((p) => p.id === selectedPartId)
+                    : undefined;
+
+                const availableSchemas = activePartSchema
+                  ? activePartSchema.supportedAnimations
+                  : mathDef.specificAnimations;
+
+                if (availableSchemas.length === 0 && (selectedObject.specificAnimations || []).length === 0) {
+                  return null;
+                }
+
+                const activeAnims = selectedObject.specificAnimations || [];
+
+                return (
+                  <div
+                    className={`p-3 rounded-xl border space-y-2.5 ${resolvedAssetClass === 'composite'
+                      ? 'bg-pink-50/70 border-pink-200'
+                      : 'bg-emerald-50/70 border-emerald-200'
+                      }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span
+                        className={`text-xs font-bold flex items-center gap-1.5 ${resolvedAssetClass === 'composite'
+                          ? 'text-pink-900'
+                          : 'text-emerald-900'
+                          }`}
+                      >
+                        {resolvedAssetClass === 'composite' ? (
+                          <Puzzle className="w-3.5 h-3.5 text-pink-600" />
+                        ) : (
+                          <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                        )}
+                        {activePartSchema
+                          ? `Parça Animasyonu: ${activePartSchema.name}`
+                          : 'Nesneye Özel Animasyonlar'}
+                      </span>
+                      {activePartSchema && (
+                        <button
+                          onClick={() => onSelectPart?.(null)}
+                          className="text-[10px] font-semibold text-pink-700 hover:underline cursor-pointer"
+                        >
+                          Tümüne Dön
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Quick-Add Buttons */}
+                    <div className="flex flex-wrap gap-1">
+                      {availableSchemas.map((schema) => (
+                        <button
+                          key={schema.id}
+                          onClick={() =>
+                            addSpecificAnimation(schema, activePartSchema?.id)
+                          }
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-[10.5px] font-semibold text-slate-800 transition-colors cursor-pointer"
+                          title={schema.description}
+                        >
+                          <Plus className="w-3 h-3 text-indigo-600" />
+                          <span>{schema.label}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Active Specific Animation Instances */}
+                    {activeAnims.length === 0 ? (
+                      <div className="text-[10px] text-slate-500 bg-white/70 rounded-lg p-2 border border-dashed border-slate-200 text-center">
+                        Henüz özel animasyon eklenmedi. Yukarıdan bir animasyon ekleyin.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {activeAnims.map((inst) => {
+                          const partSchema = inst.partId
+                            ? mathDef.parts?.find((p) => p.id === inst.partId)
+                            : undefined;
+                          const schema =
+                            partSchema?.supportedAnimations.find(
+                              (s) => s.id === inst.animationId
+                            ) ||
+                            mathDef.specificAnimations?.find(
+                              (s) => s.id === inst.animationId
+                            );
+                          const partLabel = partSchema?.name;
+                          return (
+                            <div
+                              key={inst.id}
+                              className="bg-white rounded-lg p-2.5 border border-slate-200 space-y-2 shadow-2xs"
+                            >
+                              <div className="flex items-center justify-between gap-1">
+                                <div className="min-w-0 flex items-center gap-1.5">
+                                  <span className="text-[11px] font-bold text-slate-900 truncate">
+                                    {partLabel
+                                      ? `${partLabel} • ${schema?.label || inst.label}`
+                                      : schema?.label || inst.label}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    onClick={() => duplicateSpecificAnimation(inst.id)}
+                                    className="p-1 rounded hover:bg-slate-100 text-slate-500 cursor-pointer"
+                                    title="Animasyonu Kopyala"
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => deleteSpecificAnimation(inst.id)}
+                                    className="p-1 rounded hover:bg-rose-50 text-slate-500 hover:text-rose-600 cursor-pointer"
+                                    title="Animasyonu Sil"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Start Time & Duration */}
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <label className="text-[10px] text-slate-600 bg-slate-50 rounded px-1.5 py-1 border border-slate-200">
+                                  <span className="block text-[9px] text-slate-400">
+                                    Başlangıç (sn)
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={Math.max(0, scene.duration - 0.2)}
+                                    step={0.1}
+                                    value={inst.startTime}
+                                    onChange={(e) =>
+                                      updateSpecificAnimation(inst.id, {
+                                        startTime: Math.max(0, Number(e.target.value)),
+                                      })
+                                    }
+                                    className="w-full bg-transparent text-xs font-mono font-semibold text-slate-900 focus:outline-none"
+                                  />
+                                </label>
+                                <label className="text-[10px] text-slate-600 bg-slate-50 rounded px-1.5 py-1 border border-slate-200">
+                                  <span className="block text-[9px] text-slate-400">
+                                    Süre (sn)
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min={0.2}
+                                    max={scene.duration}
+                                    step={0.1}
+                                    value={inst.duration}
+                                    onChange={(e) =>
+                                      updateSpecificAnimation(inst.id, {
+                                        duration: Math.max(0.2, Number(e.target.value)),
+                                      })
+                                    }
+                                    className="w-full bg-transparent text-xs font-mono font-semibold text-slate-900 focus:outline-none"
+                                  />
+                                </label>
+                              </div>
+
+                              {/* Dynamic Schema Parameters */}
+                              {schema && schema.params.length > 0 && (
+                                <div className="space-y-1.5 pt-1 border-t border-slate-100">
+                                  {schema.params.map((param) => {
+                                    const rawVal =
+                                      inst.params[param.key] ?? param.defaultValue;
+
+                                    if (param.type === 'number') {
+                                      const numVal = Number(rawVal);
+                                      return (
+                                        <label
+                                          key={param.key}
+                                          className="block text-[10px] text-slate-600"
+                                        >
+                                          <div className="flex justify-between mb-0.5">
+                                            <span>{param.label}</span>
+                                            <span className="font-mono font-bold text-slate-900">
+                                              {numVal}
+                                              {param.unit ? ` ${param.unit}` : ''}
+                                            </span>
+                                          </div>
+                                          <input
+                                            type="range"
+                                            min={param.min ?? 0}
+                                            max={param.max ?? 100}
+                                            step={param.step ?? 1}
+                                            value={numVal}
+                                            onChange={(e) =>
+                                              updateSpecificAnimation(inst.id, {
+                                                params: {
+                                                  ...inst.params,
+                                                  [param.key]: Number(e.target.value),
+                                                },
+                                              })
+                                            }
+                                            className="w-full accent-indigo-600 cursor-pointer h-1.5"
+                                          />
+                                        </label>
+                                      );
+                                    }
+
+                                    if (param.type === 'select' && param.options) {
+                                      return (
+                                        <label
+                                          key={param.key}
+                                          className="flex items-center justify-between gap-2 text-[10px] text-slate-600"
+                                        >
+                                          <span>{param.label}</span>
+                                          <select
+                                            value={String(rawVal)}
+                                            onChange={(e) => {
+                                              const nextV = e.target.value;
+                                              updateSpecificAnimation(inst.id, {
+                                                params: {
+                                                  ...inst.params,
+                                                  [param.key]:
+                                                    typeof param.defaultValue === 'number'
+                                                      ? Number(nextV)
+                                                      : nextV,
+                                                },
+                                              });
+                                            }}
+                                            className="bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-[10.5px] font-semibold text-slate-800 focus:outline-none"
+                                          >
+                                            {param.options.map((opt) => (
+                                              <option
+                                                key={String(opt.value)}
+                                                value={String(opt.value)}
+                                              >
+                                                {opt.label}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        </label>
+                                      );
+                                    }
+
+                                    if (param.type === 'boolean') {
+                                      return (
+                                        <label
+                                          key={param.key}
+                                          className="flex items-center justify-between text-[10px] text-slate-600 cursor-pointer"
+                                        >
+                                          <span>{param.label}</span>
+                                          <input
+                                            type="checkbox"
+                                            checked={Boolean(rawVal)}
+                                            onChange={(e) =>
+                                              updateSpecificAnimation(inst.id, {
+                                                params: {
+                                                  ...inst.params,
+                                                  [param.key]: e.target.checked,
+                                                },
+                                              })
+                                            }
+                                            className="accent-indigo-600 cursor-pointer"
+                                          />
+                                        </label>
+                                      );
+                                    }
+
+                                    return null;
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+            {/* 0. MOTION PATH (HAREKET YOLU) & CONTINUE SCENE */}
+            <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                  <Route className="w-3.5 h-3.5 text-amber-600" />
+                  Hareket Yolu (Motion Path)
+                </span>
+                <button
+                  onClick={() => {
+                    const nextEnabled = !selectedObject.motionPath?.enabled;
+                    onUpdateObject(selectedObject.id, {
+                      motionPath: {
+                        enabled: nextEnabled,
+                        endX:
+                          selectedObject.motionPath?.endX ??
+                          Math.min(760, selectedObject.x + 260),
+                        endY: selectedObject.motionPath?.endY ?? selectedObject.y,
+                        startTime: selectedObject.motionPath?.startTime ?? 0,
+                        duration:
+                          selectedObject.motionPath?.duration ??
+                          Math.max(1.5, scene.duration - 0.5),
+                        curve: selectedObject.motionPath?.curve ?? 'linear',
+                        autoFlipX:
+                          selectedObject.motionPath?.autoFlipX ??
+                          (selectedObject.category === 'characters' ? false : true),
+                        walkAlongPath:
+                          selectedObject.motionPath?.walkAlongPath ??
+                          (selectedObject.category === 'characters'),
+                      },
+                    });
+                  }}
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${selectedObject.motionPath?.enabled
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-white border border-amber-300 text-amber-800 hover:bg-amber-100'
+                    }`}
+                >
+                  {selectedObject.motionPath?.enabled ? 'Aktif' : 'Etkinleştir'}
+                </button>
+              </div>
+
+              {/* Quick Motion Path Presets */}
+              <div className="grid grid-cols-2 gap-1.5">
+                {[
+                  {
+                    label: 'Soldan Sağa İlerle',
+                    endX: Math.min(780, selectedObject.x + 280),
+                    endY: selectedObject.y,
+                    pose: 'walk' as CharacterPoseType,
+                  },
+                  {
+                    label: 'Sağdan Sola İlerle',
+                    endX: Math.max(30, selectedObject.x - 280),
+                    endY: selectedObject.y,
+                    pose: 'walk' as CharacterPoseType,
+                  },
+                  {
+                    label: 'Masaya / Merkeze',
+                    endX: 420,
+                    endY: 200,
+                    pose: 'walk' as CharacterPoseType,
+                  },
+                  {
+                    label: 'Sahne Dışına Koş',
+                    endX: 840,
+                    endY: selectedObject.y,
+                    pose: 'run' as CharacterPoseType,
+                  },
+                ].map((preset) => (
+                  <button
+                    key={preset.label}
+                    onClick={() =>
                       onUpdateObject(selectedObject.id, {
                         motionPath: {
-                          ...selectedObject.motionPath!,
-                          duration: Number(e.target.value),
+                          enabled: true,
+                          endX: preset.endX,
+                          endY: preset.endY,
+                          startTime: selectedObject.motionPath?.startTime ?? 0,
+                          duration:
+                            selectedObject.motionPath?.duration ??
+                            Math.max(1.5, scene.duration - 0.5),
+                          curve: selectedObject.motionPath?.curve ?? 'linear',
+                          autoFlipX: true,
+                          walkAlongPath: selectedObject.category === 'characters',
                         },
+                        ...(isArticulatedCharacter && resolvedCharConfig
+                          ? {
+                            characterConfig: {
+                              ...resolvedCharConfig,
+                              pose: 'idle',
+                              headDirection:
+                                preset.label === 'Masaya / Merkeze'
+                                  ? 'center'
+                                  : 'right',
+                            },
+                          }
+                          : {}),
                       })
                     }
-                    className="w-full accent-amber-500 cursor-pointer"
-                  />
-                </div>
-
-                {selectedObject.category === 'characters' && (
-                  <div className="pt-1.5 border-t border-amber-200/70 space-y-1.5">
-                    <label className="flex items-center justify-between gap-2 text-[10.5px] font-semibold text-amber-900 cursor-pointer">
-                      <span>Yol Boyunca Yürü (Otomatik Adım)</span>
-                      <input
-                        type="checkbox"
-                        checked={Boolean(selectedObject.motionPath.walkAlongPath)}
-                        onChange={(e) =>
-                          onUpdateObject(selectedObject.id, {
-                            motionPath: {
-                              ...selectedObject.motionPath!,
-                              walkAlongPath: e.target.checked,
-                            },
-                          })
-                        }
-                        className="accent-amber-600 cursor-pointer"
-                      />
-                    </label>
-                    <label className="flex items-center justify-between gap-2 text-[10.5px] font-medium text-amber-800 cursor-pointer">
-                      <span>Sola Giderken Gövdeyi Aynala</span>
-                      <input
-                        type="checkbox"
-                        checked={Boolean(selectedObject.motionPath.autoFlipX)}
-                        onChange={(e) =>
-                          onUpdateObject(selectedObject.id, {
-                            motionPath: {
-                              ...selectedObject.motionPath!,
-                              autoFlipX: e.target.checked,
-                            },
-                          })
-                        }
-                        className="accent-amber-600 cursor-pointer"
-                      />
-                    </label>
-                  </div>
-                )}
+                    className="px-2 py-1.5 rounded-lg bg-white hover:bg-amber-100/70 border border-amber-200 text-[10.5px] font-medium text-amber-950 text-left transition-colors cursor-pointer truncate"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
               </div>
-            )}
 
-            <button
-              onClick={onContinueScene}
-              className="w-full py-1.5 px-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-              title="Sonraki sahneyi bu sahnedeki karakterlerin bitiş konumlarından başlatır"
+              {selectedObject.motionPath?.enabled && (
+                <div className="pt-2 border-t border-amber-200/80 space-y-2">
+                  {/* Curve Type Selector */}
+                  <div>
+                    <span className="text-[10.5px] font-semibold text-amber-900 block mb-1">
+                      Yol Eğrisi (Trajectory Curve)
+                    </span>
+                    <div className="grid grid-cols-2 gap-1">
+                      {MOTION_CURVE_OPTIONS.map((c) => {
+                        const isCur = selectedObject.motionPath?.curve === c.id;
+                        return (
+                          <button
+                            key={c.id}
+                            onClick={() =>
+                              onUpdateObject(selectedObject.id, {
+                                motionPath: {
+                                  ...selectedObject.motionPath!,
+                                  curve: c.id,
+                                },
+                              })
+                            }
+                            className={`px-2 py-1 rounded-md text-[10px] font-medium border transition-colors cursor-pointer ${isCur
+                              ? 'bg-amber-500 text-white border-amber-500 font-semibold'
+                              : 'bg-white hover:bg-amber-50 border-amber-200 text-slate-700'
+                              }`}
+                          >
+                            {c.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Duration Slider */}
+                  <div>
+                    <div className="flex justify-between text-[11px] mb-0.5">
+                      <span className="text-amber-900">Yol Süresi (Duration)</span>
+                      <span className="font-mono font-semibold text-amber-950">
+                        {selectedObject.motionPath.duration.toFixed(1)} sn
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.5}
+                      max={Math.max(2, scene.duration)}
+                      step={0.1}
+                      value={selectedObject.motionPath.duration}
+                      onChange={(e) =>
+                        onUpdateObject(selectedObject.id, {
+                          motionPath: {
+                            ...selectedObject.motionPath!,
+                            duration: Number(e.target.value),
+                          },
+                        })
+                      }
+                      className="w-full accent-amber-500 cursor-pointer"
+                    />
+                  </div>
+
+                  {selectedObject.category === 'characters' && (
+                    <div className="pt-1.5 border-t border-amber-200/70 space-y-1.5">
+                      <label className="flex items-center justify-between gap-2 text-[10.5px] font-semibold text-amber-900 cursor-pointer">
+                        <span>Yol Boyunca Yürü (Otomatik Adım)</span>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(selectedObject.motionPath.walkAlongPath)}
+                          onChange={(e) =>
+                            onUpdateObject(selectedObject.id, {
+                              motionPath: {
+                                ...selectedObject.motionPath!,
+                                walkAlongPath: e.target.checked,
+                              },
+                            })
+                          }
+                          className="accent-amber-600 cursor-pointer"
+                        />
+                      </label>
+                      <label className="flex items-center justify-between gap-2 text-[10.5px] font-medium text-amber-800 cursor-pointer">
+                        <span>Sola Giderken Gövdeyi Aynala</span>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(selectedObject.motionPath.autoFlipX)}
+                          onChange={(e) =>
+                            onUpdateObject(selectedObject.id, {
+                              motionPath: {
+                                ...selectedObject.motionPath!,
+                                autoFlipX: e.target.checked,
+                              },
+                            })
+                          }
+                          className="accent-amber-600 cursor-pointer"
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button
+                onClick={onContinueScene}
+                className="w-full py-1.5 px-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                title="Sonraki sahneyi bu sahnedeki karakterlerin bitiş konumlarından başlatır"
+              >
+                <FastForward className="w-3.5 h-3.5" />
+                <span>Sahneye Devam Et (Continue Scene)</span>
+              </button>
+            </div>
+
+            {/* 1. ENTER ANIMATION (GİRİŞ) */}
+            <DesignAccordionSection
+              isOpen={isSectionOpen('animEnter')}
+              onToggle={() => toggleSection('animEnter')}
+              containerClassName="p-3 rounded-xl bg-slate-50 border border-slate-200"
+              titleClassName="text-xs font-bold text-emerald-700 uppercase tracking-wider"
+              title="1. Giriş (Enter)"
+              headerExtra={
+                <span className="text-[10px] font-mono text-slate-500">
+                  {animations.enter.type !== 'none'
+                    ? `${animations.enter.duration.toFixed(1)}s`
+                    : 'Yok'}
+                </span>
+              }
             >
-              <FastForward className="w-3.5 h-3.5" />
-              <span>Sahneye Devam Et (Continue Scene)</span>
-            </button>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                {ENTER_OPTIONS.map((opt) => {
+                  const isSelected = animations.enter.type === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => updatePhase('enter', { type: opt.id })}
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-left border transition-all cursor-pointer truncate ${isSelected
+                        ? 'bg-indigo-600 border-indigo-600 text-white font-semibold'
+                        : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                        }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {animations.enter.type !== 'none' && (
+                <div className="pt-2 border-t border-slate-200 space-y-2">
+                  <div>
+                    <div className="flex justify-between text-[11px] mb-0.5">
+                      <span className="text-slate-600">Süre (Duration)</span>
+                      <span className="font-mono font-semibold text-slate-900">
+                        {animations.enter.duration.toFixed(1)} sn
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.2}
+                      max={3.0}
+                      step={0.1}
+                      value={animations.enter.duration}
+                      onChange={(e) =>
+                        updatePhase('enter', { duration: Number(e.target.value) })
+                      }
+                      className="w-full accent-indigo-600 cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[11px] mb-0.5">
+                      <span className="text-slate-600">Gecikme (Delay)</span>
+                      <span className="font-mono font-semibold text-slate-900">
+                        {animations.enter.delay.toFixed(1)} sn
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={2.5}
+                      step={0.1}
+                      value={animations.enter.delay}
+                      onChange={(e) =>
+                        updatePhase('enter', { delay: Number(e.target.value) })
+                      }
+                      className="w-full accent-indigo-600 cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-slate-600">Eğri (Easing)</span>
+                    <select
+                      value={animations.enter.easing}
+                      onChange={(e) =>
+                        updatePhase('enter', {
+                          easing: e.target.value as EasingType,
+                        })
+                      }
+                      className="bg-white border border-slate-200 rounded-md px-2 py-1 text-[11px] text-slate-900 focus:outline-none"
+                    >
+                      {EASING_OPTIONS.map((eo) => (
+                        <option key={eo.id} value={eo.id}>
+                          {eo.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </DesignAccordionSection>
+
+            {/* 2. EMPHASIS / LOOP ANIMATION (VURGU) */}
+            <DesignAccordionSection
+              isOpen={isSectionOpen('animEmphasis')}
+              onToggle={() => toggleSection('animEmphasis')}
+              containerClassName="p-3 rounded-xl bg-slate-50 border border-slate-200"
+              titleClassName="text-xs font-bold text-violet-700 uppercase tracking-wider"
+              title="2. Vurgu (Loop / Emphasis)"
+              headerExtra={
+                <span className="text-[10px] font-mono text-slate-500">
+                  {animations.emphasis.type !== 'none'
+                    ? `${animations.emphasis.duration.toFixed(1)}s döngü`
+                    : 'Yok'}
+                </span>
+              }
+            >
+
+              <div className="grid grid-cols-2 gap-1.5">
+                {EMPHASIS_OPTIONS.map((opt) => {
+                  const isSelected = animations.emphasis.type === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => updatePhase('emphasis', { type: opt.id })}
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-left border transition-all cursor-pointer truncate ${isSelected
+                        ? 'bg-violet-600 border-violet-600 text-white font-semibold'
+                        : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                        }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {animations.emphasis.type !== 'none' && (
+                <div className="pt-2 border-t border-slate-200 space-y-2">
+                  <div>
+                    <div className="flex justify-between text-[11px] mb-0.5">
+                      <span className="text-slate-600">Döngü Süresi (Duration)</span>
+                      <span className="font-mono font-semibold text-slate-900">
+                        {animations.emphasis.duration.toFixed(1)} sn
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.5}
+                      max={6.0}
+                      step={0.1}
+                      value={animations.emphasis.duration}
+                      onChange={(e) =>
+                        updatePhase('emphasis', { duration: Number(e.target.value) })
+                      }
+                      className="w-full accent-violet-600 cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[11px] mb-0.5">
+                      <span className="text-slate-600">Gecikme (Delay)</span>
+                      <span className="font-mono font-semibold text-slate-900">
+                        {animations.emphasis.delay.toFixed(1)} sn
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={2.0}
+                      step={0.1}
+                      value={animations.emphasis.delay}
+                      onChange={(e) =>
+                        updatePhase('emphasis', { delay: Number(e.target.value) })
+                      }
+                      className="w-full accent-violet-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
+            </DesignAccordionSection>
+
+            {/* 3. EXIT ANIMATION (ÇIKIŞ) */}
+            <DesignAccordionSection
+              isOpen={isSectionOpen('animExit')}
+              onToggle={() => toggleSection('animExit')}
+              containerClassName="p-3 rounded-xl bg-slate-50 border border-slate-200"
+              titleClassName="text-xs font-bold text-rose-700 uppercase tracking-wider"
+              title="3. Çıkış (Exit)"
+              headerExtra={
+                <span className="text-[10px] font-mono text-slate-500">
+                  {animations.exit.type !== 'none'
+                    ? `${animations.exit.duration.toFixed(1)}s`
+                    : 'Yok'}
+                </span>
+              }
+            >
+
+              <div className="grid grid-cols-1 gap-1.5">
+                {EXIT_OPTIONS.map((opt) => {
+                  const isSelected = animations.exit.type === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => updatePhase('exit', { type: opt.id })}
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-left border transition-all cursor-pointer ${isSelected
+                        ? 'bg-rose-600 border-rose-600 text-white font-semibold'
+                        : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                        }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {animations.exit.type !== 'none' && (
+                <div className="pt-2 border-t border-slate-200 space-y-2">
+                  <div>
+                    <div className="flex justify-between text-[11px] mb-0.5">
+                      <span className="text-slate-600">Çıkış Süresi (Duration)</span>
+                      <span className="font-mono font-semibold text-slate-900">
+                        {animations.exit.duration.toFixed(1)} sn
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.2}
+                      max={2.5}
+                      step={0.1}
+                      value={animations.exit.duration}
+                      onChange={(e) =>
+                        updatePhase('exit', { duration: Number(e.target.value) })
+                      }
+                      className="w-full accent-rose-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
+            </DesignAccordionSection>
           </div>
-
-          {/* 1. ENTER ANIMATION (GİRİŞ) */}
-          <DesignAccordionSection
-            isOpen={isSectionOpen('animEnter')}
-            onToggle={() => toggleSection('animEnter')}
-            containerClassName="p-3 rounded-xl bg-slate-50 border border-slate-200"
-            titleClassName="text-xs font-bold text-emerald-700 uppercase tracking-wider"
-            title="1. Giriş (Enter)"
-            headerExtra={
-              <span className="text-[10px] font-mono text-slate-500">
-                {animations.enter.type !== 'none'
-                  ? `${animations.enter.duration.toFixed(1)}s`
-                  : 'Yok'}
-              </span>
-            }
-          >
-
-            <div className="grid grid-cols-2 gap-1.5">
-              {ENTER_OPTIONS.map((opt) => {
-                const isSelected = animations.enter.type === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    onClick={() => updatePhase('enter', { type: opt.id })}
-                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-left border transition-all cursor-pointer truncate ${isSelected
-                      ? 'bg-indigo-600 border-indigo-600 text-white font-semibold'
-                      : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
-                      }`}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {animations.enter.type !== 'none' && (
-              <div className="pt-2 border-t border-slate-200 space-y-2">
-                <div>
-                  <div className="flex justify-between text-[11px] mb-0.5">
-                    <span className="text-slate-600">Süre (Duration)</span>
-                    <span className="font-mono font-semibold text-slate-900">
-                      {animations.enter.duration.toFixed(1)} sn
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.2}
-                    max={3.0}
-                    step={0.1}
-                    value={animations.enter.duration}
-                    onChange={(e) =>
-                      updatePhase('enter', { duration: Number(e.target.value) })
-                    }
-                    className="w-full accent-indigo-600 cursor-pointer"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-[11px] mb-0.5">
-                    <span className="text-slate-600">Gecikme (Delay)</span>
-                    <span className="font-mono font-semibold text-slate-900">
-                      {animations.enter.delay.toFixed(1)} sn
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={2.5}
-                    step={0.1}
-                    value={animations.enter.delay}
-                    onChange={(e) =>
-                      updatePhase('enter', { delay: Number(e.target.value) })
-                    }
-                    className="w-full accent-indigo-600 cursor-pointer"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-slate-600">Eğri (Easing)</span>
-                  <select
-                    value={animations.enter.easing}
-                    onChange={(e) =>
-                      updatePhase('enter', {
-                        easing: e.target.value as EasingType,
-                      })
-                    }
-                    className="bg-white border border-slate-200 rounded-md px-2 py-1 text-[11px] text-slate-900 focus:outline-none"
-                  >
-                    {EASING_OPTIONS.map((eo) => (
-                      <option key={eo.id} value={eo.id}>
-                        {eo.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
-          </DesignAccordionSection>
-
-          {/* 2. EMPHASIS / LOOP ANIMATION (VURGU) */}
-          <DesignAccordionSection
-            isOpen={isSectionOpen('animEmphasis')}
-            onToggle={() => toggleSection('animEmphasis')}
-            containerClassName="p-3 rounded-xl bg-slate-50 border border-slate-200"
-            titleClassName="text-xs font-bold text-violet-700 uppercase tracking-wider"
-            title="2. Vurgu (Loop / Emphasis)"
-            headerExtra={
-              <span className="text-[10px] font-mono text-slate-500">
-                {animations.emphasis.type !== 'none'
-                  ? `${animations.emphasis.duration.toFixed(1)}s döngü`
-                  : 'Yok'}
-              </span>
-            }
-          >
-
-            <div className="grid grid-cols-2 gap-1.5">
-              {EMPHASIS_OPTIONS.map((opt) => {
-                const isSelected = animations.emphasis.type === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    onClick={() => updatePhase('emphasis', { type: opt.id })}
-                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-left border transition-all cursor-pointer truncate ${isSelected
-                      ? 'bg-violet-600 border-violet-600 text-white font-semibold'
-                      : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
-                      }`}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {animations.emphasis.type !== 'none' && (
-              <div className="pt-2 border-t border-slate-200 space-y-2">
-                <div>
-                  <div className="flex justify-between text-[11px] mb-0.5">
-                    <span className="text-slate-600">Döngü Süresi (Duration)</span>
-                    <span className="font-mono font-semibold text-slate-900">
-                      {animations.emphasis.duration.toFixed(1)} sn
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.5}
-                    max={6.0}
-                    step={0.1}
-                    value={animations.emphasis.duration}
-                    onChange={(e) =>
-                      updatePhase('emphasis', { duration: Number(e.target.value) })
-                    }
-                    className="w-full accent-violet-600 cursor-pointer"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-[11px] mb-0.5">
-                    <span className="text-slate-600">Gecikme (Delay)</span>
-                    <span className="font-mono font-semibold text-slate-900">
-                      {animations.emphasis.delay.toFixed(1)} sn
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={2.0}
-                    step={0.1}
-                    value={animations.emphasis.delay}
-                    onChange={(e) =>
-                      updatePhase('emphasis', { delay: Number(e.target.value) })
-                    }
-                    className="w-full accent-violet-600 cursor-pointer"
-                  />
-                </div>
-              </div>
-            )}
-          </DesignAccordionSection>
-
-          {/* 3. EXIT ANIMATION (ÇIKIŞ) */}
-          <DesignAccordionSection
-            isOpen={isSectionOpen('animExit')}
-            onToggle={() => toggleSection('animExit')}
-            containerClassName="p-3 rounded-xl bg-slate-50 border border-slate-200"
-            titleClassName="text-xs font-bold text-rose-700 uppercase tracking-wider"
-            title="3. Çıkış (Exit)"
-            headerExtra={
-              <span className="text-[10px] font-mono text-slate-500">
-                {animations.exit.type !== 'none'
-                  ? `${animations.exit.duration.toFixed(1)}s`
-                  : 'Yok'}
-              </span>
-            }
-          >
-
-            <div className="grid grid-cols-1 gap-1.5">
-              {EXIT_OPTIONS.map((opt) => {
-                const isSelected = animations.exit.type === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    onClick={() => updatePhase('exit', { type: opt.id })}
-                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-left border transition-all cursor-pointer ${isSelected
-                      ? 'bg-rose-600 border-rose-600 text-white font-semibold'
-                      : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
-                      }`}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {animations.exit.type !== 'none' && (
-              <div className="pt-2 border-t border-slate-200 space-y-2">
-                <div>
-                  <div className="flex justify-between text-[11px] mb-0.5">
-                    <span className="text-slate-600">Çıkış Süresi (Duration)</span>
-                    <span className="font-mono font-semibold text-slate-900">
-                      {animations.exit.duration.toFixed(1)} sn
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.2}
-                    max={2.5}
-                    step={0.1}
-                    value={animations.exit.duration}
-                    onChange={(e) =>
-                      updatePhase('exit', { duration: Number(e.target.value) })
-                    }
-                    className="w-full accent-rose-600 cursor-pointer"
-                  />
-                </div>
-              </div>
-            )}
-          </DesignAccordionSection>
-        </div>
-      )}
-    </aside>
+        )}
+      </aside>
+    </div>
   );
 };

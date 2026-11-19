@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, KeyRound, LogIn, Mail, UserPlus, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { BanimoraLogo } from './BanimoraLogo';
 
 export type AuthModalTab = 'signin' | 'signup' | 'reset' | 'recovery';
 
@@ -145,16 +146,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 backdrop-blur-xs p-4">
       <div className="w-full max-w-md rounded-2xl bg-white border border-slate-200 shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/70">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-              {tab === 'signup' ? (
-                <UserPlus className="w-4 h-4" />
-              ) : tab === 'reset' || tab === 'recovery' ? (
-                <KeyRound className="w-4 h-4" />
-              ) : (
-                <LogIn className="w-4 h-4" />
-              )}
-            </span>
+          <div className="flex items-center gap-2.5">
+            <BanimoraLogo size={34} className="rounded-xl shadow-xs" />
             <div>
               <h2 className="text-sm font-bold text-slate-900">
                 {tab === 'signup'
@@ -165,9 +158,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       ? 'Yeni Parola Belirle'
                       : 'Banimora Hesabına Giriş'}
               </h2>
-              <p className="text-[11px] text-slate-500">
-                Yerel çalışmalarınız giriş yapmadan da cihazınızda korunur.
-              </p>
             </div>
           </div>
           <button

@@ -110,7 +110,7 @@ export const ProjectConflictDialog: React.FC<ProjectConflictDialogProps> = ({
         {/* Body */}
         <div className="p-5 space-y-3.5 text-xs">
           <p className="text-slate-600 leading-relaxed">
-            Bu proje hem bu cihazda hem de bulutta farklı şekillerde güncellenmiş.
+            Bu projenin iki farklı sürümü tespit edildi.
             Hiçbir verinin kaybolmaması için nasıl devam etmek istediğinizi seçin.
           </p>
 
@@ -119,7 +119,7 @@ export const ProjectConflictDialog: React.FC<ProjectConflictDialogProps> = ({
             <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-2.5">
               <div className="flex items-center gap-1.5 font-semibold text-slate-800">
                 <HardDrive className="w-3.5 h-3.5 text-slate-600" />
-                <span>Bu Cihazdaki Sürüm</span>
+                <span>Son Düzenlenen Sürüm</span>
               </div>
               <p className="mt-1 font-medium text-slate-700 truncate">
                 {projectName}
@@ -134,7 +134,7 @@ export const ProjectConflictDialog: React.FC<ProjectConflictDialogProps> = ({
             <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-2.5">
               <div className="flex items-center gap-1.5 font-semibold text-sky-900">
                 <CloudDownload className="w-3.5 h-3.5 text-sky-600" />
-                <span>Buluttaki Sürüm</span>
+                <span>Hesaptaki Kayıtlı Sürüm</span>
               </div>
               <p className="mt-1 font-medium text-sky-900 truncate">
                 {cloudProjectName ?? projectName}
@@ -161,11 +161,10 @@ export const ProjectConflictDialog: React.FC<ProjectConflictDialogProps> = ({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-bold text-slate-900">
-                  1. Bulut sürümünü kullan
+                  1. Kayıtlı sürümü kullan
                 </p>
                 <p className="mt-0.5 text-[11px] text-slate-600">
-                  Buluttaki sürüm bu cihaza indirilir ve bu cihazdaki çakışan
-                  değişikliklerin üzerine yazılır.
+                  Hesaptaki kayıtlı sürüm yüklenir ve kaydedilmemiş değişikliklerin üzerine yazılır.
                 </p>
               </div>
               {confirmStep !== 'keep-cloud' && (
@@ -184,8 +183,7 @@ export const ProjectConflictDialog: React.FC<ProjectConflictDialogProps> = ({
             {confirmStep === 'keep-cloud' && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 space-y-2">
                 <p className="text-[11px] font-semibold text-amber-900">
-                  Onay: Bu cihazdaki yerel değişiklikler silinecek ve bulut
-                  sürümüyle değiştirilecek. Devam edilsin mi?
+                  Onay: Kaydedilmemiş değişiklikler silinecek ve kayıtlı sürümle değiştirilecek. Devam edilsin mi?
                 </p>
                 <div className="flex items-center justify-end gap-2">
                   <button
@@ -205,7 +203,7 @@ export const ProjectConflictDialog: React.FC<ProjectConflictDialogProps> = ({
                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-semibold cursor-pointer"
                   >
                     {isSubmitting && <Loader2 className="w-3 h-3 animate-spin" />}
-                    <span>Evet, Bulut Sürümünü Kullan</span>
+                    <span>Evet, Kayıtlı Sürümü Kullan</span>
                   </button>
                 </div>
               </div>
@@ -217,11 +215,10 @@ export const ProjectConflictDialog: React.FC<ProjectConflictDialogProps> = ({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-bold text-slate-900">
-                  2. Bu cihazdaki sürümü buluta kaydet
+                  2. Son düzenlenen sürümü kaydet
                 </p>
                 <p className="mt-0.5 text-[11px] text-slate-600">
-                  Bu cihazdaki çalışmanız korunur ve buluttaki güncel sürümün
-                  üzerine kaydedilir.
+                  Mevcut çalışmanız korunur ve önceki sürümün üzerine kaydedilir.
                 </p>
               </div>
               {confirmStep !== 'keep-local' && (
@@ -240,8 +237,7 @@ export const ProjectConflictDialog: React.FC<ProjectConflictDialogProps> = ({
             {confirmStep === 'keep-local' && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 space-y-2">
                 <p className="text-[11px] font-semibold text-amber-900">
-                  Onay: Buluttaki sürüm bu cihazdaki sürümle değiştirilecek.
-                  Devam edilsin mi?
+                  Onay: Önceki kayıtlı sürüm mevcut çalışmanızla güncellenecek. Devam edilsin mi?
                 </p>
                 <div className="flex items-center justify-end gap-2">
                   <button
@@ -261,7 +257,7 @@ export const ProjectConflictDialog: React.FC<ProjectConflictDialogProps> = ({
                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold cursor-pointer"
                   >
                     {isSubmitting && <Loader2 className="w-3 h-3 animate-spin" />}
-                    <span>Evet, Yerel Sürümü Buluta Yaz</span>
+                    <span>Evet, Mevcut Sürümü Kaydet</span>
                   </button>
                 </div>
               </div>
@@ -272,11 +268,10 @@ export const ProjectConflictDialog: React.FC<ProjectConflictDialogProps> = ({
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 space-y-2">
             <div>
               <p className="font-bold text-slate-900">
-                3. Bu cihazdaki sürümü yeni proje olarak kaydet
+                3. Yeni proje olarak kaydet
               </p>
               <p className="mt-0.5 text-[11px] text-slate-600">
-                Hem bu cihazdaki hem buluttaki orijinal projelere dokunulmaz; bu
-                cihazdaki sürüm yeni bir kopya olarak buluta kaydedilir.
+                Orijinal projeye dokunulmaz; mevcut çalışmanız yeni bir proje kopyası olarak kaydedilir.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">

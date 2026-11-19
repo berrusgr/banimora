@@ -31,6 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const controller = controllerRef.current!;
     const unsubscribeState = controller.subscribe(setState);
+    setState(controller.getState());
     let active = true;
     let disposeInit: (() => void) | undefined;
 
@@ -39,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispose();
       } else {
         disposeInit = dispose;
+        setState(controller.getState());
       }
     });
 
@@ -46,23 +48,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       active = false;
       unsubscribeState();
       disposeInit?.();
-      controller.dispose();
     };
   }, []);
 
   const signUp = useCallback(
-    (email: string, password: string, displayName?: string) =>
-      controllerRef.current!.signUp(email, password, displayName),
+    async (email: string, password: string, displayName?: string) => {
+      try {
+        return await controllerRef.current!.signUp(email, password, displayName);
+      } finally {
+        setState(controllerRef.current!.getState());
+      }
+    },
     []
   );
 
   const signInWithPassword = useCallback(
-    (email: string, password: string) =>
-      controllerRef.current!.signInWithPassword(email, password),
+    async (email: string, password: string) => {
+      try {
+        return await controllerRef.current!.signInWithPassword(email, password);
+      } finally {
+        setState(controllerRef.current!.getState());
+      }
+    },
     []
   );
 
-  const signOut = useCallback(() => controllerRef.current!.signOut(), []);
+  const signOut = useCallback(async () => {
+    try {
+      return await controllerRef.current!.signOut();
+    } finally {
+      setState(controllerRef.current!.getState());
+    }
+  }, []);
 
   const resetPasswordForEmail = useCallback(
     (email: string) => controllerRef.current!.resetPasswordForEmail(email),
@@ -70,12 +87,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const updatePassword = useCallback(
-    (newPassword: string) => controllerRef.current!.updatePassword(newPassword),
+    async (newPassword: string) => {
+      try {
+        return await controllerRef.current!.updatePassword(newPassword);
+      } finally {
+        setState(controllerRef.current!.getState());
+      }
+    },
     []
   );
 
   const clearRecoveryMode = useCallback(() => {
     controllerRef.current!.clearRecoveryMode();
+    setState(controllerRef.current!.getState());
   }, []);
 
   const value = useMemo<AuthContextValue>(

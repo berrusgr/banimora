@@ -61,12 +61,24 @@ interface PendingDeleteState {
 
 const FILTER_OPTIONS: Array<{ value: ProjectsModalFilter; label: string }> = [
   { value: 'all', label: 'Tümü' },
-  { value: 'local-only', label: 'Bu cihazda' },
-  { value: 'cloud-only', label: 'Bulutta' },
   { value: 'synced', label: 'Senkronize' },
   { value: 'dirty', label: 'Kaydedilmemiş' },
   { value: 'conflict', label: 'Çakışma' },
 ];
+
+function matchesModalFilter(
+  syncState: CombinedSyncStatus,
+  filter: ProjectsModalFilter
+): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'synced') {
+    return syncState === 'synced' || syncState === 'cloud-only';
+  }
+  if (filter === 'dirty') {
+    return syncState === 'dirty' || syncState === 'local-only';
+  }
+  return syncState === filter;
+}
 
 function formatUpdatedAt(iso: string): string {
   const date = new Date(iso);
@@ -126,7 +138,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
   const filteredProjects = useMemo(() => {
     const q = searchQuery.trim().toLocaleLowerCase('tr-TR');
     return projects.filter((item) => {
-      if (statusFilter !== 'all' && item.syncState !== statusFilter) {
+      if (!matchesModalFilter(item.syncState, statusFilter)) {
         return false;
       }
       if (!q) return true;
@@ -185,7 +197,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
                 Projelerim
               </h2>
               <p className="text-[11px] text-slate-500 truncate">
-                Bu cihazdaki ve buluttaki projelerinizi tek yerden yönetin
+                Projelerinizi tek yerden yönetin
               </p>
             </div>
           </div>
@@ -229,8 +241,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
               <div className="flex items-center gap-2">
                 <HardDrive className="w-4 h-4 text-slate-500 shrink-0" />
                 <span>
-                  Yerel moddasınız. Bulut projelerinize erişmek ve buluta kaydetmek
-                  için giriş yapın.
+                  Projelerinize her yerden erişmek ve kaydetmek için giriş yapın.
                 </span>
               </div>
               {onOpenAuth && (
@@ -249,7 +260,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
             <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs text-amber-800">
               <CloudOff className="w-4 h-4 shrink-0" />
               <span>
-                Bulut bağlantısı şu anda kullanılamıyor. Bu cihazdaki projelerinizi
+                Sunucu bağlantısı şu anda kullanılamıyor. Projelerinizi
                 güvenle açıp düzenlemeye devam edebilirsiniz.
               </span>
             </div>
@@ -311,11 +322,10 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
                   key={opt.value}
                   type="button"
                   onClick={() => setStatusFilter(opt.value)}
-                  className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
-                    statusFilter === opt.value
-                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                      : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/70 border border-transparent'
-                  }`}
+                  className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${statusFilter === opt.value
+                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                    : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/70 border border-transparent'
+                    }`}
                 >
                   {opt.label}
                 </button>
@@ -328,14 +338,10 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
         {pendingDelete && (
           <div className="mx-5 mt-3 rounded-xl border border-rose-200 bg-rose-50/90 p-3 text-xs text-rose-900 shrink-0">
             <p className="font-semibold">
-              {pendingDelete.target === 'local'
-                ? `"${pendingDelete.entry.projectName}" bu cihazdan silinsin mi?`
-                : `"${pendingDelete.entry.projectName}" buluttan silinsin mi?`}
+              {`"${pendingDelete.entry.projectName}" projesi silinsin mi?`}
             </p>
             <p className="mt-1 text-rose-700">
-              {pendingDelete.target === 'local'
-                ? 'Proje bu tarayıcıdaki yerel depodan kaldırılır. Bulutta kayıtlı bir kopyası varsa buluttan silinmez.'
-                : 'Proje bulut hesabınızdan kaldırılır. Bu cihazdaki yerel kopyanız korunur.'}
+              Proje kalıcı olarak kaldırılır.
             </p>
             <div className="mt-2.5 flex items-center justify-end gap-2">
               <button
@@ -352,9 +358,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
                 }}
                 className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold cursor-pointer"
               >
-                {pendingDelete.target === 'local'
-                  ? 'Evet, Bu Cihazdan Sil'
-                  : 'Evet, Buluttan Sil'}
+                Evet, Sil
               </button>
             </div>
           </div>
@@ -396,11 +400,10 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
               return (
                 <div
                   key={entry.projectId}
-                  className={`rounded-xl border p-3 transition-colors ${
-                    isActive
-                      ? 'border-indigo-300 bg-indigo-50/30'
-                      : 'border-slate-200 bg-white hover:border-slate-300'
-                  }`}
+                  className={`rounded-xl border p-3 transition-colors ${isActive
+                    ? 'border-indigo-300 bg-indigo-50/30'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                     {/* Left Info */}
@@ -453,11 +456,10 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
                           )}
                           {entry.mode && (
                             <span
-                              className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
-                                entry.mode === 'addie'
-                                  ? 'bg-violet-50 text-violet-700 border border-violet-200'
-                                  : 'bg-slate-100 text-slate-600 border border-slate-200'
-                              }`}
+                              className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold ${entry.mode === 'addie'
+                                ? 'bg-violet-50 text-violet-700 border border-violet-200'
+                                : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                }`}
                             >
                               {entry.mode === 'addie' ? 'ADDIE' : 'Klasik'}
                             </span>
@@ -479,12 +481,6 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
                         <span>
                           Son güncelleme: {formatUpdatedAt(entry.updatedAt)}
                         </span>
-                        {entry.cloudRevision !== null && (
-                          <span className="inline-flex items-center gap-1">
-                            <Cloud className="w-3 h-3" />
-                            Bulut v{entry.cloudRevision}
-                          </span>
-                        )}
                       </div>
                     </div>
 
@@ -492,19 +488,19 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
                     <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                       {(availability.canOpenLocal ||
                         availability.canOpenFromCloud) && (
-                        <button
-                          type="button"
-                          onClick={() => onOpenProject(entry)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold transition-colors cursor-pointer"
-                        >
-                          {isRowBusy ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <FolderOpen className="w-3 h-3" />
-                          )}
-                          <span>Aç</span>
-                        </button>
-                      )}
+                          <button
+                            type="button"
+                            onClick={() => onOpenProject(entry)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold transition-colors cursor-pointer"
+                          >
+                            {isRowBusy ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <FolderOpen className="w-3 h-3" />
+                            )}
+                            <span>Aç</span>
+                          </button>
+                        )}
 
                       {availability.canSaveToCloud && (
                         <button
@@ -517,7 +513,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
                           ) : (
                             <CloudUpload className="w-3 h-3" />
                           )}
-                          <span>Buluta Kaydet</span>
+                          <span>Kaydet</span>
                         </button>
                       )}
 
@@ -544,33 +540,25 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
                         </button>
                       )}
 
-                      {availability.canDeleteLocal && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPendingDelete({ entry, target: 'local' })
-                          }
-                          className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-slate-600 hover:text-rose-700 text-[11px] font-medium transition-colors cursor-pointer"
-                          title="Bu Cihazdan Sil"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          <span className="hidden md:inline">Yerelden Sil</span>
-                        </button>
-                      )}
-
-                      {availability.canDeleteCloud && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPendingDelete({ entry, target: 'cloud' })
-                          }
-                          className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-slate-600 hover:text-rose-700 text-[11px] font-medium transition-colors cursor-pointer"
-                          title="Buluttan Sil (Yerel kopya korunur)"
-                        >
-                          <CloudOff className="w-3 h-3" />
-                          <span className="hidden md:inline">Buluttan Sil</span>
-                        </button>
-                      )}
+                      {(availability.canDeleteLocal ||
+                        availability.canDeleteCloud) && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPendingDelete({
+                                entry,
+                                target: availability.canDeleteCloud
+                                  ? 'cloud'
+                                  : 'local',
+                              })
+                            }
+                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-slate-600 hover:text-rose-700 text-[11px] font-medium transition-colors cursor-pointer"
+                            title="Projeyi Sil"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span className="hidden md:inline">Sil</span>
+                          </button>
+                        )}
                     </div>
                   </div>
                 </div>

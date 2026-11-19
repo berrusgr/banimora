@@ -20,6 +20,7 @@ import {
   ArticulatedCharacterRig,
   DEFAULT_CHARACTER_CONFIGS,
 } from './ArticulatedCharacterRig';
+import { BanimoraLogo } from './BanimoraLogo';
 import type {
   CharacterConfig,
   CharacterExpressionType,
@@ -163,15 +164,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* Üst Gezinme Çubuğu (Mobil Uyumlu) */}
       <header className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
         <div className="flex items-center gap-2.5 sm:gap-3">
-          <div
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-md shadow-[#e06d53]/25 sm:h-10 sm:w-10"
-            style={{
-              background:
-                'linear-gradient(135deg, #4f46e5 0%, #7c3aed 52%, #e06d53 100%)',
-            }}
-          >
-            <Sparkles className="h-5 w-5" />
-          </div>
+          <BanimoraLogo
+            size={38}
+            className="rounded-xl shadow-md shadow-indigo-500/20"
+          />
           <div className="flex flex-col">
             <span className="text-base font-extrabold tracking-tight text-slate-900 sm:text-lg">
               Banimora
@@ -226,7 +222,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <h1 className="mt-4 text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl lg:text-[42px]">
               Derslerinizi{' '}
               <span className="bg-gradient-to-r from-indigo-600 via-violet-600 to-[#e06d53] bg-clip-text text-transparent">
-                Elvan Hanım ve akıllı sahnelerle
+                Elvan Öğretmen ve akıllı sahnelerle
               </span>{' '}
               canlandırın.
             </h1>
@@ -586,23 +582,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       </g>
                     </svg>
 
-                    {/* Elvan Hanım Konuşma Balonu */}
+                    {/* Elvan Öğretmen Konuşma Balonu */}
                     <div className="absolute left-3 top-2.5 z-20 max-w-[215px] rounded-xl border border-[#e06d53]/40 bg-white/95 px-2.5 py-1.5 shadow-sm backdrop-blur-xs sm:left-4 sm:top-3 sm:max-w-[250px]">
                       <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#c8563d]">
                         <span className="h-1.5 w-1.5 rounded-full bg-[#e06d53] animate-ping" />
-                        <span>Elvan Hanım (Öğretmen)</span>
+                        <span>Elvan Öğretmen</span>
                       </div>
                       <p className="mt-0.5 text-[10.5px] font-medium leading-snug text-slate-700 sm:text-[11px]">
                         {activePoseItem.speech}
                       </p>
                     </div>
 
-                    {/* Gerçek ArticulatedCharacterRig ile Hareket Eden Elvan Hanım */}
+                    {/* Gerçek ArticulatedCharacterRig ile Hareket Eden Elvan Öğretmen */}
                     <div className="absolute bottom-1 left-2 z-10 h-[84%] w-[44%] sm:left-4">
                       {/* Seçili Karakter Çerçevesi (Tasarım Ekranı Hissi) */}
                       <div className="pointer-events-none absolute inset-x-3 inset-y-2 rounded-xl border border-dashed border-[#e06d53]/60 bg-[#e06d53]/[0.02]">
                         <span className="absolute -top-2 left-2 rounded bg-[#e06d53] px-1.5 py-0.2 text-[8.5px] font-bold text-white shadow-2xs">
-                          Elvan Hanım • {activePoseItem.label}
+                          Elvan Öğretmen • {activePoseItem.label}
                         </span>
                         <span className="absolute -left-1 -top-1 h-2 w-2 rounded-full border border-white bg-[#e06d53]" />
                         <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full border border-white bg-[#e06d53]" />
@@ -630,13 +626,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                           KARAKTER DENETÇİSİ
                         </span>
                         <h3 className="text-xs font-bold text-slate-900">
-                          Elvan Hanım
+                          Elvan Öğretmen
                         </h3>
                       </div>
                       <span
                         className="h-4 w-4 rounded-full border border-slate-200 shadow-2xs"
                         style={{ backgroundColor: '#e06d53' }}
-                        title="Elvan Hanım Süveter Teması (#e06d53)"
+                        title="Elvan Öğretmen Süveter Teması (#e06d53)"
                       />
                     </div>
 
@@ -729,10 +725,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     <div className=" -ml-1.5 h-2.5 w-3.5 rounded-b bg-[#e06d53]" />
                   </div>
 
-                  {/* Kanal 1: Elvan Hanım Hareket */}
+                  {/* Kanal 1: Elvan Öğretmen Hareket */}
                   <div className="flex items-center gap-2">
                     <span className="w-16 shrink-0 truncate text-[10px] font-semibold text-slate-300">
-                      Elvan Hanım
+                      Elvan Öğretmen
                     </span>
                     <div className="grid h-4 flex-1 grid-cols-4 gap-1 rounded bg-slate-900/80 p-0.5">
                       {ELVAN_POSE_SEQUENCE.map((p, idx) => (
@@ -777,7 +773,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               Yeni animasyon oluştur
             </h2>
             <p className="mt-1.5 text-xs leading-relaxed text-slate-600 sm:text-sm">
-              Ücretsiz hesap açarak veya demoyu deneyerek Elvan Hanım ve diğer
+              Ücretsiz hesap açarak veya demoyu deneyerek Elvan Öğretmen ve diğer
               eğitim karakterleriyle ilk ders sahnenizi hemen hazırlayın.
             </p>
           </div>

@@ -383,9 +383,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </div>
                 </div>
 
-                {/* Orta Sahne Tuvali: Elvan Hanım + Ders Tahtası */}
-                <div className="md:col-span-7 p-2.5 sm:p-3.5 flex flex-col justify-center">
-                  <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl border border-slate-200/90 bg-gradient-to-b from-[#fdf8f6] via-white to-violet-50/60 shadow-inner">
+                {/* Orta Sahne Tuvali: Elvan Öğretmen + Ders Tahtası */}
+                <div className="md:col-span-7 px-2.5 pb-2.5 pt-6 sm:px-3.5 sm:pb-3.5 sm:pt-7 flex flex-col justify-center">
+                  <div className="relative">
+                    {/* Elvan Öğretmen Konuşma Balonu (Karakterin Başının Üstünde) */}
+                    <div className="absolute left-2 -top-5 z-20 max-w-[215px] rounded-xl border border-[#e06d53]/40 bg-white/95 px-2.5 py-1.5 shadow-sm backdrop-blur-xs sm:left-3 sm:-top-6 sm:max-w-[245px]">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#c8563d]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#e06d53] animate-ping" />
+                        <span>Elvan Öğretmen</span>
+                      </div>
+                      <p className="mt-0.5 text-[10px] font-medium leading-snug text-slate-700 sm:text-[10.5px]">
+                        {activePoseItem.speech}
+                      </p>
+                    </div>
+
+                    <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl border border-slate-200/90 bg-gradient-to-b from-[#fdf8f6] via-white to-violet-50/60 shadow-inner">
                     {/* Sınıf Arka Plan Dekoru & Akıllı Tahta */}
                     <svg
                       viewBox="0 0 420 262"
@@ -582,19 +594,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       </g>
                     </svg>
 
-                    {/* Elvan Öğretmen Konuşma Balonu */}
-                    <div className="absolute left-3 top-2.5 z-20 max-w-[215px] rounded-xl border border-[#e06d53]/40 bg-white/95 px-2.5 py-1.5 shadow-sm backdrop-blur-xs sm:left-4 sm:top-3 sm:max-w-[250px]">
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#c8563d]">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#e06d53] animate-ping" />
-                        <span>Elvan Öğretmen</span>
-                      </div>
-                      <p className="mt-0.5 text-[10.5px] font-medium leading-snug text-slate-700 sm:text-[11px]">
-                        {activePoseItem.speech}
-                      </p>
-                    </div>
-
                     {/* Gerçek ArticulatedCharacterRig ile Hareket Eden Elvan Öğretmen */}
-                    <div className="absolute bottom-1 left-2 z-10 h-[84%] w-[44%] sm:left-4">
+                    <div className="absolute bottom-1 left-2 z-10 h-[75%] w-[44%] sm:left-4">
                       {/* Seçili Karakter Çerçevesi (Tasarım Ekranı Hissi) */}
                       <div className="pointer-events-none absolute inset-x-3 inset-y-2 rounded-xl border border-dashed border-[#e06d53]/60 bg-[#e06d53]/[0.02]">
                         <span className="absolute -top-2 left-2 rounded bg-[#e06d53] px-1.5 py-0.2 text-[8.5px] font-bold text-white shadow-2xs">
@@ -614,6 +615,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         />
                       </div>
                     </div>
+                  </div>
                   </div>
                 </div>
 

@@ -1,12 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
-  <!-- Deep Indigo Squircle Background -->
-  <rect width="120" height="120" rx="28" fill="#362CC6"/>
-  <!-- Left White Vertical Stem of B (Rounded outer-left corners) -->
-  <path d="M35 26H38V94H35C29.4772 94 25 89.5228 25 84V36C25 30.4772 29.4772 26 35 26Z" fill="#FFFFFF"/>
-  <!-- Top Coral Loop of B with Play-Triangle Cutout -->
-  <path fill-rule="evenodd" clip-rule="evenodd" d="M42 26H63.5C75.9264 26 86 35.402 86 47C86 58.598 75.9264 68 63.5 68H42V26ZM54 38.5L72 47.5L54 56.5V38.5Z" fill="#E06D53"/>
-  <!-- Bottom Vibrant Violet Loop of B -->
-  <path d="M42 71H61.5V82.5H68.5C73.7467 82.5 78 78.6944 78 74C78 70.1292 75.1088 66.8639 71.1508 65.8434C75.7924 64.119 80.0149 61.3446 83.4184 57.8266C87.4988 61.5999 90 66.8244 90 72.6C90 84.4189 79.7025 94 67 94H42V71Z" fill="#8B3DFF"/>
-  <!-- Four-Pointed Coral Animation Spark -->
-  <path d="M92 18L94.6 25.4L102 28L94.6 30.6L92 38L89.4 30.6L82 28L89.4 25.4L92 18Z" fill="#F26651"/>
+  <!-- Clean White Squircle with Deep Indigo Border -->
+  <rect x="7" y="7" width="106" height="106" rx="24" fill="#FFFFFF" stroke="#2D24A8" stroke-width="7"/>
+  <!-- Deep Indigo Upper & Left Stem "B" Form -->
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M36 30H61C71.5 30 79 36.8 79 45.5C79 50.6 76.2 54.8 71.8 57.3L63.4 51.8C65.6 50.5 67 48.3 67 45.8C67 42.1 63.8 39.5 59.5 39.5H47.5V88H36V30Z" fill="#2D24A8"/>
+  <!-- Warm Coral Interlocking Lower Bowl with Play-Triangle Cutout -->
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M51 42.5L74.2 57.6C80.5 61.7 84 66.8 84 72.8C84 81.8 76.4 88 65.5 88H51V42.5ZM60.5 57.5V76.5L75.5 67L60.5 57.5Z" fill="#E06D53"/>
 </svg>

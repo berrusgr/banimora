@@ -3272,10 +3272,18 @@ export function App() {
           setIsPlaying((p) => !p);
         }}
         onOpenExport={() => {
+          if (isDemoMode) {
+            showProjectNotice(
+              'error',
+              'Demo modunda dışa aktarma kapalıdır. Kendi projelerinizi dışa aktarmak için giriş yapın.'
+            );
+            return;
+          }
           setIsPlaying(false);
           setIsExportOpen(true);
         }}
         onOpenWatchShare={isDemoMode ? undefined : handleOpenWatchShare}
+        isDemoMode={isDemoMode}
         onSaveProjectJson={handleSaveProjectJson}
         onLoadProjectJson={handleLoadProjectJson}
         projectMode={educationalMetadata.mode}
